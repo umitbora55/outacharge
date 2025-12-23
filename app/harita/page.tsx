@@ -2,122 +2,41 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, Star, X, Navigation, Locate, Filter, ChevronDown } from "lucide-react";
+import { Zap, Battery, Clock, Star, X, Navigation, Locate, Filter, ChevronDown, Loader2 } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-const stations = [
-  {
-    id: 1,
-    name: "ZES Ankara Kızılay",
-    lat: 39.9208,
-    lng: 32.8541,
-    operator: "ZES",
-    power: 60,
-    powerType: "DC",
-    status: "active",
-    reliability: 94,
-    connectors: ["CCS", "CHAdeMO"],
-    price: "8.99 TL/kWh",
-    lastReport: "10 dk önce",
-  },
-  {
-    id: 2,
-    name: "Eşarj Ankara Çankaya",
-    lat: 39.9035,
-    lng: 32.8597,
-    operator: "Eşarj",
-    power: 120,
-    powerType: "DC",
-    status: "active",
-    reliability: 87,
-    connectors: ["CCS"],
-    price: "9.49 TL/kWh",
-    lastReport: "25 dk önce",
-  },
-  {
-    id: 3,
-    name: "Trugo Ankara Ulus",
-    lat: 39.9412,
-    lng: 32.8543,
-    operator: "Trugo",
-    power: 22,
-    powerType: "AC",
-    status: "broken",
-    reliability: 45,
-    connectors: ["Type 2"],
-    price: "7.99 TL/kWh",
-    lastReport: "2 saat önce",
-  },
-  {
-    id: 4,
-    name: "ZES Ankara Tunalı",
-    lat: 39.9105,
-    lng: 32.8642,
-    operator: "ZES",
-    power: 90,
-    powerType: "DC",
-    status: "busy",
-    reliability: 91,
-    connectors: ["CCS", "CHAdeMO"],
-    price: "8.99 TL/kWh",
-    lastReport: "5 dk önce",
-  },
-  {
-    id: 5,
-    name: "Voltrun Ankara Bahçelievler",
-    lat: 39.9256,
-    lng: 32.8234,
-    operator: "Voltrun",
-    power: 180,
-    powerType: "DC",
-    status: "active",
-    reliability: 96,
-    connectors: ["CCS"],
-    price: "10.49 TL/kWh",
-    lastReport: "3 dk önce",
-  },
-  {
-    id: 6,
-    name: "Sharz Ankara Kavaklıdere",
-    lat: 39.8985,
-    lng: 32.8612,
-    operator: "Sharz",
-    power: 22,
-    powerType: "AC",
-    status: "active",
-    reliability: 78,
-    connectors: ["Type 2"],
-    price: "6.99 TL/kWh",
-    lastReport: "1 saat önce",
-  },
-  {
-    id: 7,
-    name: "Eşarj Ankara Gaziosmanpaşa",
-    lat: 39.8756,
-    lng: 32.8534,
-    operator: "Eşarj",
-    power: 60,
-    powerType: "DC",
-    status: "active",
-    reliability: 82,
-    connectors: ["CCS", "CHAdeMO"],
-    price: "9.49 TL/kWh",
-    lastReport: "15 dk önce",
-  },
-];
+interface Station {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  operator: string;
+  power: number;
+  powerType: string;
+  status: string;
+  connectors: string[];
+  address: string;
+  numberOfPoints: number;
+}
 
-const operators = ["Tümü", "ZES", "Eşarj", "Trugo", "Voltrun", "Sharz"];
-const powerTypes = ["Tümü", "AC", "DC"];
-const powerLevels = [
-  { label: "Tümü", min: 0, max: 999 },
-  { label: "22 kW ve altı", min: 0, max: 22 },
-  { label: "23-60 kW", min: 23, max: 60 },
-  { label: "61-120 kW", min: 61, max: 120 },
-  { label: "120 kW üzeri", min: 121, max: 999 },
-];
+const connectionTypes: Record<number, string> = {
+  1: "Type 1",
+  2: "CHAdeMO",
+  25: "Type 2",
+  27: "Tesla",
+  30: "Tesla",
+  32: "CCS Type 1",
+  33: "CCS Type 2",
+};
+
+const currentTypes: Record<number, string> = {
+  10: "AC",
+  20: "AC",
+  30: "DC",
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -150,22 +69,71 @@ export default function HaritaPage() {
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
-  const [selectedStation, setSelectedStation] = useState<typeof stations[0] | null>(null);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [locatingUser, setLocatingUser] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  
-  const [filterOperator, setFilterOperator] = useState("Tümü");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
   const [filterPowerType, setFilterPowerType] = useState("Tümü");
-  const [filterPowerLevel, setFilterPowerLevel] = useState(powerLevels[0]);
-  const [filterOnlyAvailable, setFilterOnlyAvailable] = useState(false);
+  const [filterMinPower, setFilterMinPower] = useState(0);
+
+  const powerTypes = ["Tümü", "AC", "DC"];
+  const powerLevels = [
+    { label: "Tümü", value: 0 },
+    { label: "22 kW+", value: 22 },
+    { label: "50 kW+", value: 50 },
+    { label: "100 kW+", value: 100 },
+    { label: "150 kW+", value: 150 },
+  ];
 
   const filteredStations = stations.filter((station) => {
-    if (filterOperator !== "Tümü" && station.operator !== filterOperator) return false;
     if (filterPowerType !== "Tümü" && station.powerType !== filterPowerType) return false;
-    if (station.power < filterPowerLevel.min || station.power > filterPowerLevel.max) return false;
-    if (filterOnlyAvailable && station.status !== "active") return false;
+    if (station.power < filterMinPower) return false;
     return true;
   });
+
+  const fetchStations = async (lat: number, lng: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=50&distanceunit=KM&maxresults=100&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
+      );
+      const data = await response.json();
+
+      const formattedStations: Station[] = data.map((item: any) => {
+        const connections = item.Connections || [];
+        const maxPower = Math.max(...connections.map((c: any) => c.PowerKW || 0), 0);
+        const powerType = connections.some((c: any) => c.CurrentTypeID === 30) ? "DC" : "AC";
+        const connectorTypes = [...new Set(connections.map((c: any) => connectionTypes[c.ConnectionTypeID] || "Diğer"))];
+
+        let status = "active";
+        if (item.StatusTypeID === 30 || item.StatusTypeID === 100) status = "broken";
+        else if (item.StatusTypeID === 20) status = "busy";
+
+        return {
+          id: item.ID,
+          name: item.AddressInfo?.Title || "Bilinmeyen İstasyon",
+          lat: item.AddressInfo?.Latitude,
+          lng: item.AddressInfo?.Longitude,
+          operator: item.OperatorInfo?.Title || "Bilinmeyen Operatör",
+          power: maxPower,
+          powerType,
+          status,
+          connectors: connectorTypes,
+          address: item.AddressInfo?.AddressLine1 || "",
+          numberOfPoints: item.NumberOfPoints || 1,
+        };
+      });
+
+      setStations(formattedStations);
+    } catch (error) {
+      console.error("İstasyonlar yüklenemedi:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const locateUser = () => {
     if (!navigator.geolocation) {
@@ -177,11 +145,12 @@ export default function HaritaPage() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        
+        setUserLocation({ lat: latitude, lng: longitude });
+
         if (map.current) {
           map.current.flyTo({
             center: [longitude, latitude],
-            zoom: 14,
+            zoom: 13,
           });
 
           if (userMarker.current) {
@@ -201,11 +170,14 @@ export default function HaritaPage() {
               .addTo(map.current);
           }
         }
+
+        fetchStations(latitude, longitude);
         setLocatingUser(false);
       },
       (error) => {
         console.error("Konum alınamadı:", error);
-        alert("Konum alınamadı. Lütfen konum izni verin.");
+        alert("Konum alınamadı. Varsayılan konum kullanılıyor.");
+        fetchStations(39.9208, 32.8541); // Ankara varsayilan
         setLocatingUser(false);
       },
       { enableHighAccuracy: true }
@@ -255,13 +227,14 @@ export default function HaritaPage() {
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: [32.8541, 39.9208],
-      zoom: 13,
+      zoom: 12,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.current.on("load", () => {
-      updateMarkers();
+      // Varsayilan olarak Ankara'daki istasyonlari yukle
+      fetchStations(39.9208, 32.8541);
     });
 
     return () => {
@@ -270,21 +243,21 @@ export default function HaritaPage() {
   }, []);
 
   useEffect(() => {
-    if (map.current) {
+    if (map.current && stations.length > 0) {
       updateMarkers();
     }
-  }, [filterOperator, filterPowerType, filterPowerLevel, filterOnlyAvailable]);
+  }, [stations, filterPowerType, filterMinPower]);
 
-  const openDirections = (station: typeof stations[0]) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
+  const openDirections = (station: Station) => {
+    const url = userLocation
+      ? `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${station.lat},${station.lng}`
+      : `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
     window.open(url, "_blank");
   };
 
   const activeFilterCount = [
-    filterOperator !== "Tümü",
     filterPowerType !== "Tümü",
-    filterPowerLevel.label !== "Tümü",
-    filterOnlyAvailable,
+    filterMinPower > 0,
   ].filter(Boolean).length;
 
   return (
@@ -334,24 +307,7 @@ export default function HaritaPage() {
         {showFilters && (
           <div className="border-t border-slate-700 bg-slate-800/95 backdrop-blur-sm">
             <div className="container mx-auto px-4 py-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {/* Operator Filter */}
-                <div>
-                  <label className="block text-slate-400 text-xs mb-1">Operatör</label>
-                  <div className="relative">
-                    <select
-                      value={filterOperator}
-                      onChange={(e) => setFilterOperator(e.target.value)}
-                      className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
-                    >
-                      {operators.map((op) => (
-                        <option key={op} value={op}>{op}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {/* Power Type Filter */}
                 <div>
                   <label className="block text-slate-400 text-xs mb-1">Şarj Tipi</label>
@@ -371,48 +327,46 @@ export default function HaritaPage() {
 
                 {/* Power Level Filter */}
                 <div>
-                  <label className="block text-slate-400 text-xs mb-1">Güç Seviyesi</label>
+                  <label className="block text-slate-400 text-xs mb-1">Minimum Güç</label>
                   <div className="relative">
                     <select
-                      value={filterPowerLevel.label}
-                      onChange={(e) => {
-                        const level = powerLevels.find((l) => l.label === e.target.value);
-                        if (level) setFilterPowerLevel(level);
-                      }}
+                      value={filterMinPower}
+                      onChange={(e) => setFilterMinPower(Number(e.target.value))}
                       className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
                     >
                       {powerLevels.map((level) => (
-                        <option key={level.label} value={level.label}>{level.label}</option>
+                        <option key={level.value} value={level.value}>{level.label}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
 
-                {/* Only Available Filter */}
+                {/* Locate Button */}
                 <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filterOnlyAvailable}
-                      onChange={(e) => setFilterOnlyAvailable(e.target.checked)}
-                      className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-emerald-500 focus:ring-emerald-500"
-                    />
-                    <span className="text-white text-sm">Sadece müsait</span>
-                  </label>
+                  <button
+                    onClick={locateUser}
+                    disabled={locatingUser}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+                  >
+                    {locatingUser ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Locate className="w-4 h-4" />
+                    )}
+                    Konumumu Bul
+                  </button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
                 <span className="text-slate-400 text-sm">
-                  {filteredStations.length} istasyon bulundu
+                  {loading ? "Yükleniyor..." : `${filteredStations.length} istasyon bulundu`}
                 </span>
                 <button
                   onClick={() => {
-                    setFilterOperator("Tümü");
                     setFilterPowerType("Tümü");
-                    setFilterPowerLevel(powerLevels[0]);
-                    setFilterOnlyAvailable(false);
+                    setFilterMinPower(0);
                   }}
                   className="text-emerald-400 text-sm hover:text-emerald-300 transition"
                 >
@@ -427,6 +381,16 @@ export default function HaritaPage() {
       {/* Map */}
       <div ref={mapContainer} className="w-full h-full" />
 
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-30">
+          <div className="bg-slate-800 rounded-xl p-6 flex items-center gap-4">
+            <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+            <span className="text-white font-medium">İstasyonlar yükleniyor...</span>
+          </div>
+        </div>
+      )}
+
       {/* Locate User Button */}
       <button
         onClick={locateUser}
@@ -439,7 +403,7 @@ export default function HaritaPage() {
 
       {/* Station Detail Panel */}
       {selectedStation && (
-        <div className="absolute bottom-32 md:bottom-auto left-4 right-4 md:left-auto md:right-4 md:top-20 md:w-80 z-20">
+  <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-80 z-20">
           <div className="bg-slate-800 text-white p-4 rounded-xl shadow-xl">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -455,15 +419,14 @@ export default function HaritaPage() {
             </div>
 
             <div className="flex items-center gap-2 mb-3">
-              <span 
+              <span
                 className="px-2 py-1 rounded-full text-xs font-medium text-white"
                 style={{ backgroundColor: getStatusColor(selectedStation.status) }}
               >
                 {getStatusText(selectedStation.status)}
               </span>
-              <span className="flex items-center gap-1 text-sm">
-                <Star className="w-4 h-4 text-yellow-400" />
-                %{selectedStation.reliability} Güvenilirlik
+              <span className="text-sm text-slate-300">
+                {selectedStation.numberOfPoints} şarj noktası
               </span>
             </div>
 
@@ -476,20 +439,21 @@ export default function HaritaPage() {
                 <Zap className="w-4 h-4 text-emerald-400" />
                 <span>{selectedStation.connectors.join(", ")}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-400" />
-                <span>Son rapor: {selectedStation.lastReport}</span>
-              </div>
+              {selectedStation.address && (
+                <div className="flex items-start gap-2">
+                  <Clock className="w-4 h-4 text-emerald-400 mt-0.5" />
+                  <span className="text-slate-400">{selectedStation.address}</span>
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-700 flex items-center justify-between">
-              <span className="font-bold text-emerald-400">{selectedStation.price}</span>
-              <button 
+            <div className="mt-4 pt-3 border-t border-slate-700">
+              <button
                 onClick={() => openDirections(selectedStation)}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
               >
                 <Navigation className="w-4 h-4" />
-                Yol Tarifi
+                Yol Tarifi Al
               </button>
             </div>
           </div>
@@ -497,35 +461,37 @@ export default function HaritaPage() {
       )}
 
       {/* Mobile Station List */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 p-4 md:hidden">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-white font-medium">{filteredStations.length} istasyon bulundu</span>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {filteredStations.map((station) => (
-            <div
-              key={station.id}
-              onClick={() => {
-                setSelectedStation(station);
-                map.current?.flyTo({
-                  center: [station.lng, station.lat],
-                  zoom: 15,
-                });
-              }}
-              className="flex-shrink-0 bg-slate-800 rounded-xl p-3 min-w-[200px] cursor-pointer hover:bg-slate-700 transition"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span 
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: getStatusColor(station.status) }}
-                ></span>
-                <span className="text-white font-medium text-sm truncate">{station.name}</span>
+      {!loading && (
+        <div className="absolute bottom-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 p-4 md:hidden">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white font-medium">{filteredStations.length} istasyon bulundu</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {filteredStations.slice(0, 20).map((station) => (
+              <div
+                key={station.id}
+                onClick={() => {
+                  setSelectedStation(station);
+                  map.current?.flyTo({
+                    center: [station.lng, station.lat],
+                    zoom: 15,
+                  });
+                }}
+                className="flex-shrink-0 bg-slate-800 rounded-xl p-3 min-w-[200px] cursor-pointer hover:bg-slate-700 transition"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: getStatusColor(station.status) }}
+                  ></span>
+                  <span className="text-white font-medium text-sm truncate">{station.name}</span>
+                </div>
+                <div className="text-slate-400 text-xs">{station.power} kW {station.powerType} - {station.connectors[0]}</div>
               </div>
-              <div className="text-slate-400 text-xs">{station.power} kW {station.powerType} - {station.price}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
