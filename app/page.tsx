@@ -28,9 +28,9 @@ export default function Home() {
                 <Zap className="w-5 h-5" />
                 Erken Erişim İçin Kayıt Ol
               </button>
-              <button className="border border-slate-500 hover:border-slate-400 text-white px-8 py-4 rounded-full font-semibold text-lg transition">
-                Nasıl Çalışır?
-              </button>
+<a href="/harita" className="border border-slate-500 hover:border-slate-400 text-white px-8 py-4 rounded-full font-semibold text-lg transition">
+  Haritayı Gör
+</a>
             </div>
           </div>
         </AnimatedSection>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, Menu, X } from "lucide-react";
+import { Zap, Menu, X, Map } from "lucide-react";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -21,9 +21,10 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          <button className="hidden sm:block bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-medium transition">
-            Yakında
-          </button>
+          <a href="/harita" className="hidden sm:flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-medium transition">
+            <Map className="w-4 h-4" />
+            Harita
+          </a>
 
           <button
             className="md:hidden text-white p-2"
@@ -40,7 +41,10 @@ export default function Header() {
             <a href="#features" className="text-slate-300 hover:text-white transition" onClick={() => setIsMenuOpen(false)}>Özellikler</a>
             <a href="#how-it-works" className="text-slate-300 hover:text-white transition" onClick={() => setIsMenuOpen(false)}>Nasıl Çalışır</a>
             <a href="#contact" className="text-slate-300 hover:text-white transition" onClick={() => setIsMenuOpen(false)}>İletişim</a>
-            <button className="sm:hidden bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-medium transition w-full">Yakında</button>
+            <a href="/harita" className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-medium transition justify-center" onClick={() => setIsMenuOpen(false)}>
+              <Map className="w-4 h-4" />
+              Harita
+            </a>
           </div>
         </div>
       )}
