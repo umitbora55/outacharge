@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle } from "lucide-react";
+import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
+import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } from "@/data/vehicles";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -87,6 +88,10 @@ export default function HaritaPage() {
     type: "success",
   });
 
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
+
   const powerTypes = ["Tümü", "AC", "DC"];
   const powerLevels = [
     { label: "Tümü", value: 0 },
@@ -99,6 +104,18 @@ export default function HaritaPage() {
   const filteredStations = stations.filter((station) => {
     if (filterPowerType !== "Tümü" && station.powerType !== filterPowerType) return false;
     if (station.power < filterMinPower) return false;
+    
+    // Arac seciliyse uyumluluk kontrolu
+    if (selectedVehicle) {
+      const compatibility = calculateCompatibility(
+        selectedVehicle,
+        station.connectors,
+        station.power,
+        station.powerType
+      );
+      if (compatibility.score === 0) return false;
+    }
+    
     return true;
   });
 
@@ -174,61 +191,61 @@ export default function HaritaPage() {
     }
   };
 
-const submitReport = async () => {
-  if (!selectedStation) return;
+  const submitReport = async () => {
+    if (!selectedStation) return;
 
-  setReportSubmitting(true);
-  try {
-    const { error } = await supabase.from("reports").insert([
-      {
-        station_id: selectedStation.id,
-        station_name: selectedStation.name,
-        status: reportStatus,
-        comment: reportComment,
-      },
-    ]);
+    setReportSubmitting(true);
+    try {
+      const { error } = await supabase.from("reports").insert([
+        {
+          station_id: selectedStation.id,
+          station_name: selectedStation.name,
+          status: reportStatus,
+          comment: reportComment,
+        },
+      ]);
 
-    if (error) {
-      setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
-      console.error(error);
-    } else {
-      console.log("Bildirim basarili, reportStatus:", reportStatus);
-      // Ariza bildirimi ise mail gonder
-      if (reportStatus === "broken") {
-        console.log("Mail gonderiliyor...");
-        await fetch("/api/report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            stationName: selectedStation.name,
-            stationId: selectedStation.id,
-            status: reportStatus,
-            comment: reportComment,
-            address: selectedStation.address,
-            operator: selectedStation.operator,
-            lat: selectedStation.lat,
-            lng: selectedStation.lng,
-          }),
-        });
+      if (error) {
+        setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
+        console.error(error);
+      } else {
+        console.log("Bildirim basarili, reportStatus:", reportStatus);
+        // Ariza bildirimi ise mail gonder
+        if (reportStatus === "broken") {
+          console.log("Mail gonderiliyor...");
+          await fetch("/api/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              stationName: selectedStation.name,
+              stationId: selectedStation.id,
+              status: reportStatus,
+              comment: reportComment,
+              address: selectedStation.address,
+              operator: selectedStation.operator,
+              lat: selectedStation.lat,
+              lng: selectedStation.lng,
+            }),
+          });
+        }
+
+        setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
+        setShowReportModal(false);
+        setReportComment("");
+
+        setStations((prev) =>
+          prev.map((s) => (s.id === selectedStation.id ? { ...s, status: reportStatus } : s))
+        );
+        setSelectedStation({ ...selectedStation, status: reportStatus });
       }
-
-      setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
-      setShowReportModal(false);
-      setReportComment("");
-
-      setStations((prev) =>
-        prev.map((s) => (s.id === selectedStation.id ? { ...s, status: reportStatus } : s))
-      );
-      setSelectedStation({ ...selectedStation, status: reportStatus });
+    } catch (err) {
+      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
+      console.error(err);
+    } finally {
+      setReportSubmitting(false);
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
     }
-  } catch (err) {
-    setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
-    console.error(err);
-  } finally {
-    setReportSubmitting(false);
-    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
-  }
-};
+  };
 
   const locateUser = () => {
     if (!navigator.geolocation) {
@@ -278,42 +295,86 @@ const submitReport = async () => {
     );
   };
 
-  const updateMarkers = () => {
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+const updateMarkers = () => {
+  markersRef.current.forEach((marker) => marker.remove());
+  markersRef.current = [];
 
-    if (!map.current) return;
+  if (!map.current) return;
 
-    filteredStations.forEach((station) => {
-      const el = document.createElement("div");
-      el.className = "marker";
-      el.style.width = "36px";
-      el.style.height = "36px";
-      el.style.borderRadius = "50%";
-      el.style.backgroundColor = getStatusColor(station.status);
-      el.style.display = "flex";
-      el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-      el.style.cursor = "pointer";
-      el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.3)";
+  filteredStations.forEach((station) => {
+    // Uyumluluk skoru hesapla
+    let compatibilityScore = 100;
+    let markerColor = getStatusColor(station.status);
+    
+if (selectedVehicle) {
+  const compatibility = calculateCompatibility(
+    selectedVehicle,
+    station.connectors,
+    station.power,
+    station.powerType
+  );
+  compatibilityScore = compatibility.score;
+  
+  // Arac seciliyse uyumluluk skoruna gore renk (gradient)
+  if (compatibilityScore >= 90) {
+    markerColor = "#059669"; // Koyu yesil - Mukemmel
+  } else if (compatibilityScore >= 80) {
+    markerColor = "#10b981"; // Yesil - Cok iyi
+  } else if (compatibilityScore >= 70) {
+    markerColor = "#34d399"; // Acik yesil - Iyi
+  } else if (compatibilityScore >= 60) {
+    markerColor = "#fbbf24"; // Sari - Orta
+  } else if (compatibilityScore >= 50) {
+    markerColor = "#f97316"; // Turuncu - Dusuk
+  } else if (compatibilityScore > 0) {
+    markerColor = "#ef4444"; // Kirmizi - Cok dusuk
+  } else {
+    markerColor = "#6b7280"; // Gri - Uyumsuz
+  }
+}
+
+    const el = document.createElement("div");
+    el.className = "marker";
+    el.style.width = selectedVehicle ? "40px" : "36px";
+    el.style.height = selectedVehicle ? "40px" : "36px";
+    el.style.borderRadius = "50%";
+    el.style.backgroundColor = markerColor;
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    el.style.cursor = "pointer";
+    el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.3)";
+    el.style.border = selectedVehicle ? "3px solid white" : "none";
+    el.style.transition = "all 0.3s ease";
+    
+    // Uyumluluk skoru dusukse opakligi azalt
+    if (selectedVehicle && compatibilityScore < 40) {
+      el.style.opacity = "0.6";
+      el.style.transform = "scale(0.8)";
+    }
+    
+    // Ikon - arac seciliyse skor goster
+    if (selectedVehicle && compatibilityScore > 0) {
+      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${compatibilityScore}</span>`;
+    } else {
       el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+    }
 
-      el.addEventListener("click", () => {
-        setSelectedStation(station);
-        map.current?.flyTo({
-          center: [station.lng, station.lat],
-          zoom: 15,
-        });
+    el.addEventListener("click", () => {
+      setSelectedStation(station);
+      map.current?.flyTo({
+        center: [station.lng, station.lat],
+        zoom: 15,
       });
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([station.lng, station.lat])
-        .addTo(map.current!);
-
-      markersRef.current.push(marker);
     });
-  };
 
+    const marker = new mapboxgl.Marker(el)
+      .setLngLat([station.lng, station.lat])
+      .addTo(map.current!);
+
+    markersRef.current.push(marker);
+  });
+};
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
@@ -339,7 +400,7 @@ const submitReport = async () => {
     if (map.current && stations.length > 0) {
       updateMarkers();
     }
-  }, [stations, filterPowerType, filterMinPower]);
+  }, [stations, filterPowerType, filterMinPower, selectedVehicle]);
 
   const openDirections = (station: Station) => {
     const url = userLocation
@@ -349,6 +410,11 @@ const submitReport = async () => {
   };
 
   const activeFilterCount = [filterPowerType !== "Tümü", filterMinPower > 0].filter(Boolean).length;
+
+  // Secili istasyon icin uyumluluk hesapla
+  const stationCompatibility = selectedStation && selectedVehicle
+    ? calculateCompatibility(selectedVehicle, selectedStation.connectors, selectedStation.power, selectedStation.powerType)
+    : null;
 
   return (
     <div className="h-screen w-full relative">
@@ -383,6 +449,29 @@ const submitReport = async () => {
             </div>
           </div>
 
+          {/* Vehicle Select Button */}
+          <button
+            onClick={() => setShowVehicleModal(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition flex-shrink-0 ${
+              selectedVehicle
+                ? "bg-emerald-500 text-white"
+                : "bg-slate-700 text-white hover:bg-slate-600"
+            }`}
+          >
+            <Car className="w-4 h-4" />
+            <span className="hidden sm:inline">
+              {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Araç Seç"}
+            </span>
+          </button>
+{/* Selected Vehicle Info Badge */}
+{selectedVehicle && (
+  <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
+    <CheckCircle className="w-3 h-3 text-emerald-400" />
+    <span className="text-emerald-400 text-xs">
+      Uyumluluk modu aktif
+    </span>
+  </div>
+)}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -477,6 +566,7 @@ const submitReport = async () => {
                   onClick={() => {
                     setFilterPowerType("Tümü");
                     setFilterMinPower(0);
+                    setSelectedVehicle(null);
                   }}
                   className="text-emerald-400 text-sm hover:text-emerald-300 transition"
                 >
@@ -513,7 +603,7 @@ const submitReport = async () => {
 
       {/* Station Detail Panel */}
       {selectedStation && (
-        <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-80 z-20">
+        <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-96 z-20">
           <div className="bg-slate-800 text-white p-4 rounded-xl shadow-xl">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -534,6 +624,42 @@ const submitReport = async () => {
               </span>
               <span className="text-sm text-slate-300">{selectedStation.numberOfPoints} şarj noktası</span>
             </div>
+
+            {/* Uyumluluk Skoru */}
+            {stationCompatibility && selectedVehicle && (
+              <div className={`mb-3 p-3 rounded-lg ${
+                stationCompatibility.score >= 70 ? "bg-emerald-500/20 border border-emerald-500/30" :
+                stationCompatibility.score >= 40 ? "bg-yellow-500/20 border border-yellow-500/30" :
+                "bg-red-500/20 border border-red-500/30"
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">
+                    {selectedVehicle.brand} {selectedVehicle.model} Uyumluluğu
+                  </span>
+                  <span className={`text-lg font-bold ${
+                    stationCompatibility.score >= 70 ? "text-emerald-400" :
+                    stationCompatibility.score >= 40 ? "text-yellow-400" :
+                    "text-red-400"
+                  }`}>
+                    %{stationCompatibility.score}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {stationCompatibility.reasons.map((reason, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-emerald-300">
+                      <CheckCircle className="w-3 h-3" />
+                      {reason}
+                    </div>
+                  ))}
+                  {stationCompatibility.warnings.map((warning, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-yellow-300">
+                      <XCircle className="w-3 h-3" />
+                      {warning}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
@@ -570,6 +696,90 @@ const submitReport = async () => {
                 Bildir
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vehicle Selection Modal */}
+      {showVehicleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">Aracınızı Seçin</h3>
+              <button onClick={() => setShowVehicleModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Marka Secimi */}
+            <div className="mb-4">
+              <label className="block text-slate-400 text-xs mb-2">Marka</label>
+              <div className="grid grid-cols-4 gap-2">
+                {brands.map((brand) => (
+                  <button
+                    key={brand}
+                    onClick={() => setSelectedBrand(brand)}
+                    className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
+                      selectedBrand === brand
+                        ? "bg-emerald-500 text-white"
+                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    }`}
+                  >
+                    {brand}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Model Listesi */}
+            {selectedBrand && (
+              <div className="flex-1 overflow-y-auto">
+                <label className="block text-slate-400 text-xs mb-2">Model</label>
+                <div className="space-y-2">
+                  {vehiclesByBrand[selectedBrand]?.map((vehicle) => (
+                    <button
+                      key={vehicle.id}
+                      onClick={() => {
+  setSelectedVehicle(vehicle);
+  setShowVehicleModal(false);
+  setToast({
+    show: true,
+    message: `${vehicle.brand} ${vehicle.model} seçildi. Haritada uyumluluk skorları gösteriliyor.`,
+    type: "success",
+  });
+  setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
+}}
+                      className={`w-full p-4 rounded-lg text-left transition ${
+                        selectedVehicle?.id === vehicle.id
+                          ? "bg-emerald-500 text-white"
+                          : "bg-slate-700 text-white hover:bg-slate-600"
+                      }`}
+                    >
+                      <div className="font-medium">{vehicle.model}</div>
+                      <div className="text-sm opacity-75 mt-1">
+                        {vehicle.batteryCapacity} kWh • {vehicle.range} km • DC {vehicle.maxDCPower} kW
+                      </div>
+                      <div className="text-xs opacity-60 mt-1">
+                        {vehicle.connectors.join(", ")}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Secimi Kaldir */}
+            {selectedVehicle && (
+              <button
+                onClick={() => {
+                  setSelectedVehicle(null);
+                  setShowVehicleModal(false);
+                }}
+                className="mt-4 w-full py-3 rounded-full bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 transition"
+              >
+                Araç Seçimini Kaldır
+              </button>
+            )}
           </div>
         </div>
       )}
