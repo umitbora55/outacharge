@@ -174,41 +174,61 @@ export default function HaritaPage() {
     }
   };
 
-  const submitReport = async () => {
-    if (!selectedStation) return;
+const submitReport = async () => {
+  if (!selectedStation) return;
 
-    setReportSubmitting(true);
-    try {
-      const { error } = await supabase.from("reports").insert([
-        {
-          station_id: selectedStation.id,
-          station_name: selectedStation.name,
-          status: reportStatus,
-          comment: reportComment,
-        },
-      ]);
+  setReportSubmitting(true);
+  try {
+    const { error } = await supabase.from("reports").insert([
+      {
+        station_id: selectedStation.id,
+        station_name: selectedStation.name,
+        status: reportStatus,
+        comment: reportComment,
+      },
+    ]);
 
-      if (error) {
-        setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
-        console.error(error);
-      } else {
-        setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
-        setShowReportModal(false);
-        setReportComment("");
-
-        setStations((prev) =>
-          prev.map((s) => (s.id === selectedStation.id ? { ...s, status: reportStatus } : s))
-        );
-        setSelectedStation({ ...selectedStation, status: reportStatus });
+    if (error) {
+      setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
+      console.error(error);
+    } else {
+      console.log("Bildirim basarili, reportStatus:", reportStatus);
+      // Ariza bildirimi ise mail gonder
+      if (reportStatus === "broken") {
+        console.log("Mail gonderiliyor...");
+        await fetch("/api/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stationName: selectedStation.name,
+            stationId: selectedStation.id,
+            status: reportStatus,
+            comment: reportComment,
+            address: selectedStation.address,
+            operator: selectedStation.operator,
+            lat: selectedStation.lat,
+            lng: selectedStation.lng,
+          }),
+        });
       }
-    } catch (err) {
-      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
-      console.error(err);
-    } finally {
-      setReportSubmitting(false);
-      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+
+      setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
+      setShowReportModal(false);
+      setReportComment("");
+
+      setStations((prev) =>
+        prev.map((s) => (s.id === selectedStation.id ? { ...s, status: reportStatus } : s))
+      );
+      setSelectedStation({ ...selectedStation, status: reportStatus });
     }
-  };
+  } catch (err) {
+    setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
+    console.error(err);
+  } finally {
+    setReportSubmitting(false);
+    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+  }
+};
 
   const locateUser = () => {
     if (!navigator.geolocation) {
