@@ -1,945 +1,748 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car } from "lucide-react";
+import { useState } from "react";
+import { Zap, MapPin, Battery, Bell, Shield, Users, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, Clock } from "lucide-react";
 import Link from "next/link";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
-import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } from "@/data/vehicles";
+import { vehicles, vehiclesByBrand, brands } from "@/data/vehicles";
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
-
-// Debounce helper
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-interface Station {
-  id: number;
-  name: string;
-  lat: number;
-  lng: number;
-  operator: string;
-  power: number;
-  powerType: string;
-  status: string;
-  connectors: string[];
-  address: string;
-  numberOfPoints: number;
-}
-
-const connectionTypes: Record<number, string> = {
-  1: "Type 1",
-  2: "CHAdeMO",
-  25: "Type 2",
-  27: "Tesla",
-  30: "Tesla",
-  32: "CCS Type 1",
-  33: "CCS Type 2",
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "active":
-      return "#10b981";
-    case "busy":
-      return "#eab308";
-    case "broken":
-      return "#ef4444";
-    default:
-      return "#6b7280";
-  }
-};
-
-const getStatusText = (status: string) => {
-  switch (status) {
-    case "active":
-      return "Müsait";
-    case "busy":
-      return "Dolu";
-    case "broken":
-      return "Arızalı";
-    default:
-      return "Bilinmiyor";
-  }
-};
-
-export default function HaritaPage() {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const userMarker = useRef<mapboxgl.Marker | null>(null);
-  const [stations, setStations] = useState<Station[]>([]);
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [locatingUser, setLocatingUser] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-
-  const [filterPowerType, setFilterPowerType] = useState("Tümü");
-  const [filterMinPower, setFilterMinPower] = useState(0);
-
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportStatus, setReportStatus] = useState<"active" | "broken" | "busy">("active");
-  const [reportComment, setReportComment] = useState("");
-  const [reportSubmitting, setReportSubmitting] = useState(false);
-
+export default function HomePage() {
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [registerStep, setRegisterStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
     show: false,
     message: "",
     type: "success",
   });
 
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [showVehicleModal, setShowVehicleModal] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<string>("");
-
-  // Debounced values for performance
-  const debouncedFilterPowerType = useDebounce(filterPowerType, 150);
-  const debouncedFilterMinPower = useDebounce(filterMinPower, 150);
-
-  const powerTypes = ["Tümü", "AC", "DC"];
-  const powerLevels = [
-    { label: "Tümü", value: 0 },
-    { label: "22 kW+", value: 22 },
-    { label: "50 kW+", value: 50 },
-    { label: "100 kW+", value: 100 },
-    { label: "150 kW+", value: 150 },
-  ];
-
-  const filteredStations = stations.filter((station) => {
-    if (filterPowerType !== "Tümü" && station.powerType !== filterPowerType) return false;
-    if (station.power < filterMinPower) return false;
-    
-    if (selectedVehicle) {
-      const compatibility = calculateCompatibility(
-        selectedVehicle,
-        station.connectors,
-        station.power,
-        station.powerType
-      );
-      if (compatibility.score === 0) return false;
-    }
-    
-    return true;
+  // Form state
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    fullName: "",
+    phone: "",
+    city: "",
+    vehicleBrand: "",
+    vehicleModel: "",
+    vehicleYear: "",
+    chargingFrequency: "",
+    homeCharging: false,
+    monthlyKm: "",
+    preferredChargerType: "",
+    notificationsEnabled: true,
+    marketingConsent: false,
   });
 
-  const fetchStations = async (lat: number, lng: number, searchAll: boolean = false) => {
+  const cities = [
+    "İstanbul", "Ankara", "İzmir", "Bursa", "Antalya", "Adana", "Konya", "Gaziantep",
+    "Mersin", "Kayseri", "Eskişehir", "Samsun", "Denizli", "Şanlıurfa", "Trabzon",
+    "Kocaeli", "Tekirdağ", "Muğla", "Aydın", "Balıkesir", "Manisa", "Sakarya", "Diğer"
+  ];
+
+  const chargingFrequencies = [
+    { value: "daily", label: "Her gün" },
+    { value: "weekly", label: "Haftada birkaç kez" },
+    { value: "biweekly", label: "Haftada bir" },
+    { value: "monthly", label: "Ayda birkaç kez" },
+    { value: "rarely", label: "Nadiren" },
+  ];
+
+  const chargerTypes = [
+    { value: "ac", label: "AC (Yavaş şarj)" },
+    { value: "dc", label: "DC (Hızlı şarj)" },
+    { value: "both", label: "Her ikisi de" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 10 }, (_, i) => (currentYear - i).toString());
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
+
+  const validateStep1 = () => {
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.fullName) {
+      setToast({ show: true, message: "Lütfen tüm zorunlu alanları doldurun.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return false;
+    }
+    if (formData.password.length < 6) {
+      setToast({ show: true, message: "Şifre en az 6 karakter olmalıdır.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setToast({ show: true, message: "Şifreler eşleşmiyor.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return false;
+    }
+    return true;
+  };
+
+  const handleRegister = async () => {
     setLoading(true);
     try {
-      const url = searchAll
-        ? `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&maxresults=500&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
-        : `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=50&distanceunit=KM&maxresults=200&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`;
+      // Basit hash (production'da bcrypt kullanilmali)
+      const encoder = new TextEncoder();
+      const data = encoder.encode(formData.password);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-      const response = await fetch(url);
-      const data = await response.json();
-
-      const formattedStations: Station[] = data.map((item: any) => {
-        const connections = item.Connections || [];
-        const maxPower = Math.max(...connections.map((c: any) => c.PowerKW || 0), 0);
-        const powerType = connections.some((c: any) => c.CurrentTypeID === 30) ? "DC" : "AC";
-        const connectorTypes = [...new Set(connections.map((c: any) => connectionTypes[c.ConnectionTypeID] || "Diğer"))];
-
-        let status = "active";
-        if (item.StatusTypeID === 30 || item.StatusTypeID === 100) status = "broken";
-        else if (item.StatusTypeID === 20) status = "busy";
-
-        return {
-          id: item.ID,
-          name: item.AddressInfo?.Title || "Bilinmeyen İstasyon",
-          lat: item.AddressInfo?.Latitude,
-          lng: item.AddressInfo?.Longitude,
-          operator: item.OperatorInfo?.Title || "Bilinmeyen Operatör",
-          power: maxPower,
-          powerType,
-          status,
-          connectors: connectorTypes,
-          address: item.AddressInfo?.AddressLine1 || "",
-          numberOfPoints: item.NumberOfPoints || 1,
-        };
-      });
-
-      setStations(formattedStations);
-    } catch (error) {
-      console.error("İstasyonlar yüklenemedi:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setSearching(true);
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?country=TR&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
-      );
-      const data = await response.json();
-
-      if (data.features && data.features.length > 0) {
-        const [lng, lat] = data.features[0].center;
-
-        map.current?.flyTo({
-          center: [lng, lat],
-          zoom: 12,
-        });
-
-        fetchStations(lat, lng, false);
-      } else {
-        alert("Konum bulunamadı. Lütfen farklı bir arama yapın.");
-      }
-    } catch (error) {
-      console.error("Arama hatası:", error);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const submitReport = async () => {
-    if (!selectedStation) return;
-
-    setReportSubmitting(true);
-    try {
-      const { error } = await supabase.from("reports").insert([
+      const { error } = await supabase.from("users").insert([
         {
-          station_id: selectedStation.id,
-          station_name: selectedStation.name,
-          status: reportStatus,
-          comment: reportComment,
+          email: formData.email,
+          password_hash: passwordHash,
+          full_name: formData.fullName,
+          phone: formData.phone || null,
+          city: formData.city || null,
+          vehicle_brand: formData.vehicleBrand || null,
+          vehicle_model: formData.vehicleModel || null,
+          vehicle_year: formData.vehicleYear || null,
+          charging_frequency: formData.chargingFrequency || null,
+          home_charging: formData.homeCharging,
+          monthly_km: formData.monthlyKm ? parseInt(formData.monthlyKm) : null,
+          preferred_charger_type: formData.preferredChargerType || null,
+          notifications_enabled: formData.notificationsEnabled,
+          marketing_consent: formData.marketingConsent,
         },
       ]);
 
       if (error) {
-        setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
+        if (error.code === "23505") {
+          setToast({ show: true, message: "Bu e-posta adresi zaten kayıtlı.", type: "error" });
+        } else {
+          setToast({ show: true, message: "Kayıt sırasında bir hata oluştu.", type: "error" });
+        }
         console.error(error);
       } else {
-        if (reportStatus === "broken") {
-          await fetch("/api/report", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              stationName: selectedStation.name,
-              stationId: selectedStation.id,
-              status: reportStatus,
-              comment: reportComment,
-              address: selectedStation.address,
-              operator: selectedStation.operator,
-              lat: selectedStation.lat,
-              lng: selectedStation.lng,
-            }),
-          });
-        }
-
-        setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
-        setShowReportModal(false);
-        setReportComment("");
-
-        setStations((prev) =>
-          prev.map((s) => (s.id === selectedStation.id ? { ...s, status: reportStatus } : s))
-        );
-        setSelectedStation({ ...selectedStation, status: reportStatus });
+        setToast({ show: true, message: "Kayıt başarılı! Hoş geldiniz.", type: "success" });
+        setShowRegisterModal(false);
+        setRegisterStep(1);
+        setFormData({
+          email: "",
+          password: "",
+          confirmPassword: "",
+          fullName: "",
+          phone: "",
+          city: "",
+          vehicleBrand: "",
+          vehicleModel: "",
+          vehicleYear: "",
+          chargingFrequency: "",
+          homeCharging: false,
+          monthlyKm: "",
+          preferredChargerType: "",
+          notificationsEnabled: true,
+          marketingConsent: false,
+        });
       }
     } catch (err) {
       setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
       console.error(err);
     } finally {
-      setReportSubmitting(false);
+      setLoading(false);
       setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
     }
   };
 
-  const locateUser = () => {
-    if (!navigator.geolocation) {
-      alert("Tarayıcınız konum özelliğini desteklemiyor.");
-      return;
-    }
+  const features = [
+    {
+      icon: MapPin,
+      title: "500+ Şarj İstasyonu",
+      description: "Türkiye genelinde tüm şarj istasyonlarını haritada görün",
+    },
+    {
+      icon: Car,
+      title: "Araç Uyumluluğu",
+      description: "Aracınıza uygun istasyonları otomatik filtreleyin",
+    },
+    {
+      icon: Battery,
+      title: "Gerçek Zamanlı Durum",
+      description: "İstasyonların anlık durumunu öğrenin",
+    },
+    {
+      icon: Bell,
+      title: "Bildirimler",
+      description: "Favori istasyonlarınız müsait olduğunda haberdar olun",
+    },
+    {
+      icon: TrendingUp,
+      title: "Fiyat Karşılaştırma",
+      description: "En uygun fiyatlı istasyonu bulun",
+    },
+    {
+      icon: Shield,
+      title: "Güvenilir Bilgi",
+      description: "Topluluk tarafından doğrulanmış veriler",
+    },
+  ];
 
-    setLocatingUser(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserLocation({ lat: latitude, lng: longitude });
-
-        if (map.current) {
-          map.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 13,
-          });
-
-          if (userMarker.current) {
-            userMarker.current.setLngLat([longitude, latitude]);
-          } else {
-            const el = document.createElement("div");
-            el.className = "user-marker";
-            el.style.width = "20px";
-            el.style.height = "20px";
-            el.style.borderRadius = "50%";
-            el.style.backgroundColor = "#3b82f6";
-            el.style.border = "3px solid white";
-            el.style.boxShadow = "0 2px 10px rgba(59,130,246,0.5)";
-
-            userMarker.current = new mapboxgl.Marker(el)
-              .setLngLat([longitude, latitude])
-              .addTo(map.current);
-          }
-        }
-
-        fetchStations(latitude, longitude, false);
-        setLocatingUser(false);
-      },
-      (error) => {
-        console.error("Konum alınamadı:", error);
-        alert("Konum alınamadı. Varsayılan konum kullanılıyor.");
-        setLocatingUser(false);
-      },
-      { enableHighAccuracy: true }
-    );
-  };
-
-  const updateMarkers = () => {
-    if (markersRef.current.length > 0) {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-    }
-
-    if (!map.current) return;
-
-    const newMarkers: mapboxgl.Marker[] = [];
-
-    filteredStations.forEach((station) => {
-      let compatibilityScore = 100;
-      let markerColor = getStatusColor(station.status);
-
-      if (selectedVehicle) {
-        const compatibility = calculateCompatibility(
-          selectedVehicle,
-          station.connectors,
-          station.power,
-          station.powerType
-        );
-        compatibilityScore = compatibility.score;
-
-        if (compatibilityScore >= 90) {
-          markerColor = "#059669";
-        } else if (compatibilityScore >= 80) {
-          markerColor = "#10b981";
-        } else if (compatibilityScore >= 70) {
-          markerColor = "#34d399";
-        } else if (compatibilityScore >= 60) {
-          markerColor = "#fbbf24";
-        } else if (compatibilityScore >= 50) {
-          markerColor = "#f97316";
-        } else if (compatibilityScore > 0) {
-          markerColor = "#ef4444";
-        } else {
-          markerColor = "#6b7280";
-        }
-      }
-
-      const el = document.createElement("div");
-      el.className = "station-marker";
-
-      Object.assign(el.style, {
-        width: selectedVehicle ? "40px" : "36px",
-        height: selectedVehicle ? "40px" : "36px",
-        borderRadius: "50%",
-        backgroundColor: markerColor,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-        border: selectedVehicle ? "3px solid white" : "none",
-        opacity: selectedVehicle && compatibilityScore < 40 ? "0.6" : "1",
-        transform: selectedVehicle && compatibilityScore < 40 ? "scale(0.8)" : "scale(1)",
-      });
-
-      if (selectedVehicle && compatibilityScore > 0) {
-        el.innerHTML = `<span style="color:white;font-size:11px;font-weight:bold">${compatibilityScore}</span>`;
-      } else {
-        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
-      }
-
-      el.onclick = () => {
-        setSelectedStation(station);
-        map.current?.flyTo({
-          center: [station.lng, station.lat],
-          zoom: 15,
-        });
-      };
-
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([station.lng, station.lat])
-        .addTo(map.current!);
-
-      newMarkers.push(marker);
-    });
-
-    markersRef.current = newMarkers;
-  };
-
-  useEffect(() => {
-    if (map.current || !mapContainer.current) return;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [32.8541, 39.9208],
-      zoom: 6,
-    });
-
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    map.current.on("load", () => {
-      fetchStations(39.9208, 32.8541, true);
-    });
-
-    return () => {
-      map.current?.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (map.current && stations.length > 0) {
-      updateMarkers();
-    }
-  }, [stations, debouncedFilterPowerType, debouncedFilterMinPower, selectedVehicle]);
-
-  const openDirections = (station: Station) => {
-    const url = userLocation
-      ? `https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${station.lat},${station.lng}`
-      : `https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}`;
-    window.open(url, "_blank");
-  };
-
-  const activeFilterCount = [filterPowerType !== "Tümü", filterMinPower > 0].filter(Boolean).length;
-
-  const stationCompatibility = selectedStation && selectedVehicle
-    ? calculateCompatibility(selectedVehicle, selectedStation.connectors, selectedStation.power, selectedStation.powerType)
-    : null;
+  const stats = [
+    { value: "500+", label: "Şarj İstasyonu" },
+    { value: "35+", label: "Desteklenen Araç" },
+    { value: "81", label: "İl Kapsamı" },
+    { value: "7/24", label: "Erişim" },
+  ];
 
   return (
-    <div className="h-screen w-full relative">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
-          <Link href="/" className="text-xl font-bold text-white flex items-center gap-2 flex-shrink-0">
-            <Zap className="w-6 h-6 text-emerald-400" />
-            <span className="hidden sm:inline">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-8 h-8 text-emerald-400" />
+            <span className="text-2xl font-bold text-white">
               Outa<span className="text-emerald-400">Charge</span>
             </span>
-          </Link>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium"
+            >
+              Giriş Yap
+            </button>
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-medium transition"
+            >
+              Üye Ol
+            </button>
+          </div>
+        </div>
+      </header>
 
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Şehir veya adres ara..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    handleSearch();
-                  }
-                }}
-                className="w-full bg-slate-700 text-white rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              {searching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 animate-spin" />
-              )}
-            </div>
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-4">
+        <div className="container mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+            <Star className="w-4 h-4 text-emerald-400" />
+            <span className="text-emerald-400 text-sm font-medium">Türkiye'nin En Kapsamlı EV Şarj Uygulaması</span>
+          </div>
+          
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            Elektrikli Aracınız İçin
+            <br />
+            <span className="text-emerald-400">En Yakın Şarj İstasyonu</span>
+          </h1>
+          
+          <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
+            500+ şarj istasyonu, gerçek zamanlı durum bilgisi ve aracınıza özel uyumluluk skoru ile şarj deneyiminizi kolaylaştırın.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+            <Link
+              href="/harita"
+              className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-lg font-semibold transition flex items-center gap-2 shadow-lg shadow-emerald-500/25"
+            >
+              <MapPin className="w-5 h-5" />
+              Haritayı Keşfet
+              <ChevronRight className="w-5 h-5" />
+            </Link>
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-lg font-semibold transition"
+            >
+              Ücretsiz Üye Ol
+            </button>
           </div>
 
-          {/* Vehicle Select Button */}
-          <button
-            onClick={() => setShowVehicleModal(true)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition flex-shrink-0 ${
-              selectedVehicle
-                ? "bg-emerald-500 text-white"
-                : "bg-slate-700 text-white hover:bg-slate-600"
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Araç Seç"}
-            </span>
-          </button>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            {stats.map((stat, i) => (
+              <div key={i} className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                <div className="text-3xl font-bold text-emerald-400 mb-1">{stat.value}</div>
+                <div className="text-slate-400 text-sm">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          {/* Selected Vehicle Info Badge */}
-          {selectedVehicle && (
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
-              <CheckCircle className="w-3 h-3 text-emerald-400" />
-              <span className="text-emerald-400 text-xs">
-                Uyumluluk modu aktif
+      {/* Features Section */}
+      <section className="py-20 px-4 bg-slate-800/30">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Neden OutaCharge?
+            </h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+              Elektrikli araç sahipleri için tasarlanmış, kullanımı kolay ve güvenilir platform
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, i) => (
+              <div
+                key={i}
+                className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 hover:border-emerald-500/30 transition group"
+              >
+                <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-emerald-500/20 transition">
+                  <feature.icon className="w-7 h-7 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                <p className="text-slate-400">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4">
+        <div className="container mx-auto">
+          <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-3xl p-12 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Hemen Üye Olun
+            </h2>
+            <p className="text-emerald-100 text-lg mb-8 max-w-xl mx-auto">
+              Ücretsiz üyelik ile tüm özelliklere erişin, favori istasyonlarınızı kaydedin ve bildirim alın.
+            </p>
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-8 py-4 bg-white text-emerald-600 rounded-full text-lg font-semibold hover:bg-emerald-50 transition shadow-lg"
+            >
+              Ücretsiz Başla
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 px-4 border-t border-slate-800">
+        <div className="container mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <Zap className="w-6 h-6 text-emerald-400" />
+              <span className="text-xl font-bold text-white">
+                Outa<span className="text-emerald-400">Charge</span>
               </span>
             </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
-                showFilters || activeFilterCount > 0
-                  ? "bg-emerald-500 text-white"
-                  : "bg-slate-700 text-white hover:bg-slate-600"
-              }`}
-            >
-              <Filter className="w-4 h-4" />
-              <span className="hidden sm:inline">Filtre</span>
-              {activeFilterCount > 0 && (
-                <span className="bg-white text-emerald-500 px-2 py-0.5 rounded-full text-xs">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            <div className="hidden md:flex items-center gap-3 text-sm text-white">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                Müsait
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                Dolu
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                Arızalı
-              </span>
+            <div className="flex items-center gap-6 text-slate-400 text-sm">
+              <a href="#" className="hover:text-white transition">Hakkımızda</a>
+              <a href="#" className="hover:text-white transition">Gizlilik</a>
+              <a href="#" className="hover:text-white transition">Kullanım Şartları</a>
+              <a href="#" className="hover:text-white transition">İletişim</a>
+            </div>
+            <div className="text-slate-500 text-sm">
+              © 2025 OutaCharge. Tüm hakları saklıdır.
             </div>
           </div>
         </div>
+      </footer>
 
-        {showFilters && (
-          <div className="border-t border-slate-700 bg-slate-800/95 backdrop-blur-sm">
-            <div className="container mx-auto px-4 py-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-white font-medium">Filtreler</span>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="text-slate-400 hover:text-white p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-slate-400 text-xs mb-1">Şarj Tipi</label>
-                  <div className="relative">
-                    <select
-                      value={filterPowerType}
-                      onChange={(e) => setFilterPowerType(e.target.value)}
-                      className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
-                    >
-                      {powerTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 text-xs mb-1">Minimum Güç</label>
-                  <div className="relative">
-                    <select
-                      value={filterMinPower}
-                      onChange={(e) => setFilterMinPower(Number(e.target.value))}
-                      className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
-                    >
-                      {powerLevels.map((level) => (
-                        <option key={level.value} value={level.value}>
-                          {level.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div className="flex items-end">
-                  <button
-                    onClick={locateUser}
-                    disabled={locatingUser}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
-                  >
-                    {locatingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
-                    Konumumu Bul
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
-                <span className="text-slate-400 text-sm">
-                  {loading ? "Yükleniyor..." : `${filteredStations.length} istasyon bulundu`}
-                </span>
+      {/* Register Modal */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-bold text-white">Üye Ol</h3>
                 <button
                   onClick={() => {
-                    setFilterPowerType("Tümü");
-                    setFilterMinPower(0);
-                    setSelectedVehicle(null);
+                    setShowRegisterModal(false);
+                    setRegisterStep(1);
                   }}
-                  className="text-emerald-400 text-sm hover:text-emerald-300 transition"
+                  className="text-slate-400 hover:text-white"
                 >
-                  Filtreleri Temizle
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Map */}
-      <div ref={mapContainer} className="w-full h-full" />
-
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-30">
-          <div className="bg-slate-800 rounded-xl p-6 flex items-center gap-4">
-            <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
-            <span className="text-white font-medium">İstasyonlar yükleniyor...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Locate User Button */}
-      <button
-        onClick={locateUser}
-        disabled={locatingUser}
-        className="absolute bottom-32 md:bottom-8 right-4 z-10 bg-white hover:bg-gray-100 text-slate-900 p-3 rounded-full shadow-lg transition disabled:opacity-50"
-        title="Konumumu Bul"
-      >
-        <Locate className={`w-6 h-6 ${locatingUser ? "animate-pulse" : ""}`} />
-      </button>
-
-      {/* Station Detail Panel */}
-      {selectedStation && (
-        <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-96 z-20">
-          <div className="bg-slate-800 text-white p-4 rounded-xl shadow-xl">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="font-bold text-lg">{selectedStation.name}</h3>
-                <p className="text-slate-400 text-sm">{selectedStation.operator}</p>
-              </div>
-              <button onClick={() => setSelectedStation(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="px-2 py-1 rounded-full text-xs font-medium text-white"
-                style={{ backgroundColor: getStatusColor(selectedStation.status) }}
-              >
-                {getStatusText(selectedStation.status)}
-              </span>
-              <span className="text-sm text-slate-300">{selectedStation.numberOfPoints} şarj noktası</span>
-            </div>
-
-            {/* Uyumluluk Skoru */}
-            {stationCompatibility && selectedVehicle && (
-              <div className={`mb-3 p-3 rounded-lg ${
-                stationCompatibility.score >= 70 ? "bg-emerald-500/20 border border-emerald-500/30" :
-                stationCompatibility.score >= 40 ? "bg-yellow-500/20 border border-yellow-500/30" :
-                "bg-red-500/20 border border-red-500/30"
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">
-                    {selectedVehicle.brand} {selectedVehicle.model} Uyumluluğu
-                  </span>
-                  <span className={`text-lg font-bold ${
-                    stationCompatibility.score >= 70 ? "text-emerald-400" :
-                    stationCompatibility.score >= 40 ? "text-yellow-400" :
-                    "text-red-400"
-                  }`}>
-                    %{stationCompatibility.score}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {stationCompatibility.reasons.map((reason, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-emerald-300">
-                      <CheckCircle className="w-3 h-3" />
-                      {reason}
-                    </div>
-                  ))}
-                  {stationCompatibility.warnings.map((warning, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-yellow-300">
-                      <XCircle className="w-3 h-3" />
-                      {warning}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2 text-sm">
+              {/* Progress Steps */}
               <div className="flex items-center gap-2">
-                <Battery className="w-4 h-4 text-emerald-400" />
-                <span>
-                  {selectedStation.power} kW {selectedStation.powerType}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                <span>{selectedStation.connectors.join(", ")}</span>
-              </div>
-              {selectedStation.address && (
-                <div className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-emerald-400 mt-0.5" />
-                  <span className="text-slate-400">{selectedStation.address}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
-              <button
-                onClick={() => openDirections(selectedStation)}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
-              >
-                <Navigation className="w-4 h-4" />
-                Yol Tarifi
-              </button>
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Bildir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Vehicle Selection Modal */}
-      {showVehicleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-lg">Aracınızı Seçin</h3>
-              <button onClick={() => setShowVehicleModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Marka Secimi */}
-            <div className="mb-4">
-              <label className="block text-slate-400 text-xs mb-2">Marka</label>
-              <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
-                {brands.map((brand) => (
-                  <button
-                    key={brand}
-                    onClick={() => setSelectedBrand(brand)}
-                    className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                      selectedBrand === brand
-                        ? "bg-emerald-500 text-white"
-                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                    }`}
-                  >
-                    {brand}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Model Listesi */}
-            {selectedBrand && (
-              <div className="flex-1 overflow-y-auto">
-                <label className="block text-slate-400 text-xs mb-2">Model</label>
-                <div className="space-y-2">
-                  {vehiclesByBrand[selectedBrand]?.map((vehicle) => (
-                    <button
-                      key={vehicle.id}
-                      onClick={() => {
-                        setSelectedVehicle(vehicle);
-                        setShowVehicleModal(false);
-                        setToast({
-                          show: true,
-                          message: `${vehicle.brand} ${vehicle.model} seçildi. Haritada uyumluluk skorları gösteriliyor.`,
-                          type: "success",
-                        });
-                        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
-                      }}
-                      className={`w-full p-4 rounded-lg text-left transition ${
-                        selectedVehicle?.id === vehicle.id
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex-1 flex items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        registerStep >= step
                           ? "bg-emerald-500 text-white"
-                          : "bg-slate-700 text-white hover:bg-slate-600"
+                          : "bg-slate-700 text-slate-400"
                       }`}
                     >
-                      <div className="font-medium">{vehicle.model}</div>
-                      <div className="text-sm opacity-75 mt-1">
-                        {vehicle.batteryCapacity} kWh • {vehicle.range} km • DC {vehicle.maxDCPower} kW
-                      </div>
-                      <div className="text-xs opacity-60 mt-1">
-                        {vehicle.connectors.join(", ")}
-                      </div>
-                    </button>
-                  ))}
+                      {registerStep > step ? <Check className="w-4 h-4" /> : step}
+                    </div>
+                    {step < 3 && (
+                      <div
+                        className={`flex-1 h-1 mx-2 rounded ${
+                          registerStep > step ? "bg-emerald-500" : "bg-slate-700"
+                        }`}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-slate-400">
+                <span>Hesap</span>
+                <span>Araç</span>
+                <span>Tercihler</span>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {/* Step 1: Account Info */}
+              {registerStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">
+                      Ad Soyad <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      placeholder="Adınız Soyadınız"
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">
+                      E-posta <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="ornek@email.com"
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">
+                      Şifre <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="En az 6 karakter"
+                        className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">
+                      Şifre Tekrar <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      placeholder="Şifrenizi tekrar girin"
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Telefon</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="05XX XXX XX XX"
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Şehir</label>
+                    <select
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      <option value="">Şehir seçin</option>
+                      {cities.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Secimi Kaldir */}
-            {selectedVehicle && (
-              <button
-                onClick={() => {
-                  setSelectedVehicle(null);
-                  setShowVehicleModal(false);
-                }}
-                className="mt-4 w-full py-3 rounded-full bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 transition"
-              >
-                Araç Seçimini Kaldır
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Report Modal */}
-      {showReportModal && selectedStation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-lg">İstasyon Durumu Bildir</h3>
-              <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-slate-400 text-sm mb-4">{selectedStation.name}</p>
-
-            <div className="space-y-3 mb-4">
-              <label className="block text-slate-300 text-sm font-medium mb-2">Durum</label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setReportStatus("active")}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                    reportStatus === "active"
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  Çalışıyor
-                </button>
-                <button
-                  onClick={() => setReportStatus("busy")}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                    reportStatus === "busy"
-                      ? "bg-yellow-500 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  Dolu
-                </button>
-                <button
-                  onClick={() => setReportStatus("broken")}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                    reportStatus === "broken"
-                      ? "bg-red-500 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  Arızalı
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-slate-300 text-sm font-medium mb-2">Yorum (Opsiyonel)</label>
-              <textarea
-                value={reportComment}
-                onChange={(e) => setReportComment(e.target.value)}
-                placeholder="Ek bilgi ekleyin..."
-                className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
-                rows={3}
-              />
-            </div>
-
-            <button
-              onClick={submitReport}
-              disabled={reportSubmitting}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white py-3 rounded-full font-medium transition flex items-center justify-center gap-2"
-            >
-              {reportSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Gönderiliyor...
-                </>
-              ) : (
-                "Bildirimi Gönder"
               )}
-            </button>
+
+              {/* Step 2: Vehicle Info */}
+              {registerStep === 2 && (
+                <div className="space-y-4">
+                  <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
+                    <p className="text-slate-300 text-sm">
+                      Araç bilgilerinizi girerek size özel şarj istasyonu önerileri alabilirsiniz.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Araç Markası</label>
+                    <select
+                      name="vehicleBrand"
+                      value={formData.vehicleBrand}
+                      onChange={(e) => {
+                        handleInputChange(e);
+                        setFormData((prev) => ({ ...prev, vehicleModel: "" }));
+                      }}
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      <option value="">Marka seçin</option>
+                      {brands.map((brand) => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {formData.vehicleBrand && (
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-2">Araç Modeli</label>
+                      <select
+                        name="vehicleModel"
+                        value={formData.vehicleModel}
+                        onChange={handleInputChange}
+                        className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                      >
+                        <option value="">Model seçin</option>
+                        {vehiclesByBrand[formData.vehicleBrand]?.map((vehicle) => (
+                          <option key={vehicle.id} value={vehicle.model}>{vehicle.model}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Model Yılı</label>
+                    <select
+                      name="vehicleYear"
+                      value={formData.vehicleYear}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      <option value="">Yıl seçin</option>
+                      {years.map((year) => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Aylık Ortalama KM</label>
+                    <input
+                      type="number"
+                      name="monthlyKm"
+                      value={formData.monthlyKm}
+                      onChange={handleInputChange}
+                      placeholder="Örn: 1500"
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Preferences */}
+              {registerStep === 3 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Şarj Sıklığı</label>
+                    <select
+                      name="chargingFrequency"
+                      value={formData.chargingFrequency}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      <option value="">Seçin</option>
+                      {chargingFrequencies.map((freq) => (
+                        <option key={freq.value} value={freq.value}>{freq.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Tercih Ettiğiniz Şarj Tipi</label>
+                    <select
+                      name="preferredChargerType"
+                      value={formData.preferredChargerType}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      <option value="">Seçin</option>
+                      {chargerTypes.map((type) => (
+                        <option key={type.value} value={type.value}>{type.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      name="homeCharging"
+                      checked={formData.homeCharging}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400"
+                    />
+                    <div>
+                      <div className="text-white font-medium">Evde şarj imkanım var</div>
+                      <div className="text-slate-400 text-sm">Evde şarj cihazınız veya priziniz var mı?</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      name="notificationsEnabled"
+                      checked={formData.notificationsEnabled}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400"
+                    />
+                    <div>
+                      <div className="text-white font-medium">Bildirimleri aç</div>
+                      <div className="text-slate-400 text-sm">İstasyon durumları hakkında bildirim alın</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      name="marketingConsent"
+                      checked={formData.marketingConsent}
+                      onChange={handleInputChange}
+                      className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400"
+                    />
+                    <div>
+                      <div className="text-white font-medium">Kampanyalardan haberdar ol</div>
+                      <div className="text-slate-400 text-sm">Fırsatlar ve yenilikler hakkında e-posta alın</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-700 flex gap-3">
+              {registerStep > 1 && (
+                <button
+                  onClick={() => setRegisterStep(registerStep - 1)}
+                  className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-medium transition"
+                >
+                  Geri
+                </button>
+              )}
+              {registerStep < 3 ? (
+                <button
+                  onClick={() => {
+                    if (registerStep === 1 && !validateStep1()) return;
+                    setRegisterStep(registerStep + 1);
+                  }}
+                  className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition"
+                >
+                  Devam Et
+                </button>
+              ) : (
+                <button
+                  onClick={handleRegister}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-full font-medium transition flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Kaydediliyor...
+                    </>
+                  ) : (
+                    "Üyeliği Tamamla"
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Toast Notification */}
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Giriş Yap</h3>
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-2">E-posta</label>
+                <input
+                  type="email"
+                  placeholder="ornek@email.com"
+                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-2">Şifre</label>
+                <input
+                  type="password"
+                  placeholder="Şifreniz"
+                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 text-slate-300">
+                  <input type="checkbox" className="rounded border-slate-600 text-emerald-500" />
+                  Beni hatırla
+                </label>
+                <a href="#" className="text-emerald-400 hover:text-emerald-300">Şifremi unuttum</a>
+              </div>
+              <button className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition">
+                Giriş Yap
+              </button>
+              <p className="text-center text-slate-400 text-sm">
+                Hesabınız yok mu?{" "}
+                <button
+                  onClick={() => {
+                    setShowLoginModal(false);
+                    setShowRegisterModal(true);
+                  }}
+                  className="text-emerald-400 hover:text-emerald-300"
+                >
+                  Üye olun
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
       {toast.show && (
         <div
-          className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 transition-all ${
+          className={`fixed top-24 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 ${
             toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
           }`}
         >
           {toast.type === "success" ? (
-            <CheckCircle className="w-6 h-6 text-white" />
+            <Check className="w-5 h-5 text-white" />
           ) : (
-            <XCircle className="w-6 h-6 text-white" />
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           )}
           <span className="text-white font-medium">{toast.message}</span>
-        </div>
-      )}
-
-      {/* Mobile Station List */}
-      {!loading && (
-        <div className="absolute bottom-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 p-4 md:hidden">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white font-medium">{filteredStations.length} istasyon bulundu</span>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {filteredStations.slice(0, 20).map((station) => (
-              <div
-                key={station.id}
-                onClick={() => {
-                  setSelectedStation(station);
-                  map.current?.flyTo({
-                    center: [station.lng, station.lat],
-                    zoom: 15,
-                  });
-                }}
-                className="flex-shrink-0 bg-slate-800 rounded-xl p-3 min-w-[200px] cursor-pointer hover:bg-slate-700 transition"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: getStatusColor(station.status) }}
-                  ></span>
-                  <span className="text-white font-medium text-sm truncate">{station.name}</span>
-                </div>
-                <div className="text-slate-400 text-xs">
-                  {station.power} kW {station.powerType} - {station.connectors[0]}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
