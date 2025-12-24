@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, Star, X, Navigation, Locate, Filter, ChevronDown, Loader2 } from "lucide-react";
+import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -30,12 +30,6 @@ const connectionTypes: Record<number, string> = {
   30: "Tesla",
   32: "CCS Type 1",
   33: "CCS Type 2",
-};
-
-const currentTypes: Record<number, string> = {
-  10: "AC",
-  20: "AC",
-  30: "DC",
 };
 
 const getStatusColor = (status: string) => {
@@ -75,6 +69,8 @@ export default function HaritaPage() {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
 
   const [filterPowerType, setFilterPowerType] = useState("Tümü");
   const [filterMinPower, setFilterMinPower] = useState(0);
@@ -94,12 +90,14 @@ export default function HaritaPage() {
     return true;
   });
 
-  const fetchStations = async (lat: number, lng: number) => {
+  const fetchStations = async (lat: number, lng: number, searchAll: boolean = false) => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=50&distanceunit=KM&maxresults=100&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
-      );
+      const url = searchAll
+        ? `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&maxresults=500&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
+        : `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=50&distanceunit=KM&maxresults=200&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`;
+
+      const response = await fetch(url);
       const data = await response.json();
 
       const formattedStations: Station[] = data.map((item: any) => {
@@ -132,6 +130,35 @@ export default function HaritaPage() {
       console.error("İstasyonlar yüklenemedi:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    setSearching(true);
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?country=TR&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+      );
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].center;
+
+        map.current?.flyTo({
+          center: [lng, lat],
+          zoom: 12,
+        });
+
+        fetchStations(lat, lng, false);
+      } else {
+        alert("Konum bulunamadı. Lütfen farklı bir arama yapın.");
+      }
+    } catch (error) {
+      console.error("Arama hatası:", error);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -171,13 +198,12 @@ export default function HaritaPage() {
           }
         }
 
-        fetchStations(latitude, longitude);
+        fetchStations(latitude, longitude, false);
         setLocatingUser(false);
       },
       (error) => {
         console.error("Konum alınamadı:", error);
         alert("Konum alınamadı. Varsayılan konum kullanılıyor.");
-        fetchStations(39.9208, 32.8541); // Ankara varsayilan
         setLocatingUser(false);
       },
       { enableHighAccuracy: true }
@@ -227,14 +253,13 @@ export default function HaritaPage() {
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: [32.8541, 39.9208],
-      zoom: 12,
+      zoom: 6,
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.current.on("load", () => {
-      // Varsayilan olarak Ankara'daki istasyonlari yukle
-      fetchStations(39.9208, 32.8541);
+      fetchStations(39.9208, 32.8541, true);
     });
 
     return () => {
@@ -255,21 +280,43 @@ export default function HaritaPage() {
     window.open(url, "_blank");
   };
 
-  const activeFilterCount = [
-    filterPowerType !== "Tümü",
-    filterMinPower > 0,
-  ].filter(Boolean).length;
+  const activeFilterCount = [filterPowerType !== "Tümü", filterMinPower > 0].filter(Boolean).length;
 
   return (
     <div className="h-screen w-full relative">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-white flex items-center gap-2">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-4">
+          <Link href="/" className="text-xl font-bold text-white flex items-center gap-2 flex-shrink-0">
             <Zap className="w-6 h-6 text-emerald-400" />
-            Outa<span className="text-emerald-400">Charge</span>
+            <span className="hidden sm:inline">
+              Outa<span className="text-emerald-400">Charge</span>
+            </span>
           </Link>
-          <div className="flex items-center gap-4">
+
+          {/* Search Box */}
+          <div className="flex-1 max-w-md">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Şehir veya adres ara..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    handleSearch();
+                  }
+                }}
+                className="w-full bg-slate-700 text-white rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              {searching && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400 animate-spin" />
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
@@ -279,14 +326,14 @@ export default function HaritaPage() {
               }`}
             >
               <Filter className="w-4 h-4" />
-              Filtre
+              <span className="hidden sm:inline">Filtre</span>
               {activeFilterCount > 0 && (
                 <span className="bg-white text-emerald-500 px-2 py-0.5 rounded-full text-xs">
                   {activeFilterCount}
                 </span>
               )}
             </button>
-            <div className="hidden sm:flex items-center gap-4 text-sm text-white">
+            <div className="hidden md:flex items-center gap-3 text-sm text-white">
               <span className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
                 Müsait
@@ -318,7 +365,9 @@ export default function HaritaPage() {
                       className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
                     >
                       {powerTypes.map((type) => (
-                        <option key={type} value={type}>{type}</option>
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -335,7 +384,9 @@ export default function HaritaPage() {
                       className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
                     >
                       {powerLevels.map((level) => (
-                        <option key={level.value} value={level.value}>{level.label}</option>
+                        <option key={level.value} value={level.value}>
+                          {level.label}
+                        </option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -349,11 +400,7 @@ export default function HaritaPage() {
                     disabled={locatingUser}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
                   >
-                    {locatingUser ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Locate className="w-4 h-4" />
-                    )}
+                    {locatingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
                     Konumumu Bul
                   </button>
                 </div>
@@ -403,17 +450,14 @@ export default function HaritaPage() {
 
       {/* Station Detail Panel */}
       {selectedStation && (
-  <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-80 z-20">
+        <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-80 z-20">
           <div className="bg-slate-800 text-white p-4 rounded-xl shadow-xl">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="font-bold text-lg">{selectedStation.name}</h3>
                 <p className="text-slate-400 text-sm">{selectedStation.operator}</p>
               </div>
-              <button
-                onClick={() => setSelectedStation(null)}
-                className="text-slate-400 hover:text-white"
-              >
+              <button onClick={() => setSelectedStation(null)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -425,15 +469,15 @@ export default function HaritaPage() {
               >
                 {getStatusText(selectedStation.status)}
               </span>
-              <span className="text-sm text-slate-300">
-                {selectedStation.numberOfPoints} şarj noktası
-              </span>
+              <span className="text-sm text-slate-300">{selectedStation.numberOfPoints} şarj noktası</span>
             </div>
 
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Battery className="w-4 h-4 text-emerald-400" />
-                <span>{selectedStation.power} kW {selectedStation.powerType}</span>
+                <span>
+                  {selectedStation.power} kW {selectedStation.powerType}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-emerald-400" />
@@ -486,7 +530,9 @@ export default function HaritaPage() {
                   ></span>
                   <span className="text-white font-medium text-sm truncate">{station.name}</span>
                 </div>
-                <div className="text-slate-400 text-xs">{station.power} kW {station.powerType} - {station.connectors[0]}</div>
+                <div className="text-slate-400 text-xs">
+                  {station.power} kW {station.powerType} - {station.connectors[0]}
+                </div>
               </div>
             ))}
           </div>
