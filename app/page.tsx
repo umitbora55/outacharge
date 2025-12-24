@@ -1,304 +1,561 @@
 "use client";
 
-import { useState } from "react";
-import { Zap, MapPin, Car, MessageSquare, Route, CheckCircle, Loader2 } from "lucide-react";
-import Header from "./components/Header";
-import AnimatedSection from "./components/AnimatedSection";
+import { useState, useEffect } from "react";
+import { Zap, MapPin, Battery, Bell, Shield, Users, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X } from "lucide-react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { vehicles, vehiclesByBrand, brands } from "@/data/vehicles";
 
-export default function Home() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
+export default function HomePage() {
+  const [showIntro, setShowIntro] = useState(true);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [registerStep, setRegisterStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
+    show: false,
+    message: "",
+    type: "success",
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !email.includes("@")) {
-      setErrorMessage("Lütfen geçerli bir e-posta adresi girin.");
-      setStatus("error");
-      return;
+  // Intro animation timer
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowIntro(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    fullName: "",
+    phone: "",
+    city: "",
+    vehicleBrand: "",
+    vehicleModel: "",
+    vehicleYear: "",
+    chargingFrequency: "",
+    homeCharging: false,
+    monthlyKm: "",
+    preferredChargerType: "",
+    notificationsEnabled: true,
+    marketingConsent: false,
+  });
+
+  const cities = [
+    "İstanbul", "Ankara", "İzmir", "Bursa", "Antalya", "Adana", "Konya", "Gaziantep",
+    "Mersin", "Kayseri", "Eskişehir", "Samsun", "Denizli", "Şanlıurfa", "Trabzon",
+    "Kocaeli", "Tekirdağ", "Muğla", "Aydın", "Balıkesir", "Manisa", "Sakarya", "Diğer"
+  ];
+
+  const chargingFrequencies = [
+    { value: "daily", label: "Her gün" },
+    { value: "weekly", label: "Haftada birkaç kez" },
+    { value: "biweekly", label: "Haftada bir" },
+    { value: "monthly", label: "Ayda birkaç kez" },
+    { value: "rarely", label: "Nadiren" },
+  ];
+
+  const chargerTypes = [
+    { value: "ac", label: "AC (Yavaş şarj)" },
+    { value: "dc", label: "DC (Hızlı şarj)" },
+    { value: "both", label: "Her ikisi de" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 10 }, (_, i) => (currentYear - i).toString());
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
+
+  const validateStep1 = () => {
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.fullName) {
+      setToast({ show: true, message: "Lütfen tüm zorunlu alanları doldurun.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return false;
     }
+    if (formData.password.length < 6) {
+      setToast({ show: true, message: "Şifre en az 6 karakter olmalıdır.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setToast({ show: true, message: "Şifreler eşleşmiyor.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return false;
+    }
+    return true;
+  };
 
-    setStatus("loading");
-    setErrorMessage("");
-
+  const handleRegister = async () => {
+    setLoading(true);
     try {
-      const { error } = await supabase
-        .from("subscribers")
-        .insert([{ email }]);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(formData.password);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      const { error } = await supabase.from("users").insert([
+        {
+          email: formData.email,
+          password_hash: passwordHash,
+          full_name: formData.fullName,
+          phone: formData.phone || null,
+          city: formData.city || null,
+          vehicle_brand: formData.vehicleBrand || null,
+          vehicle_model: formData.vehicleModel || null,
+          vehicle_year: formData.vehicleYear || null,
+          charging_frequency: formData.chargingFrequency || null,
+          home_charging: formData.homeCharging,
+          monthly_km: formData.monthlyKm ? parseInt(formData.monthlyKm) : null,
+          preferred_charger_type: formData.preferredChargerType || null,
+          notifications_enabled: formData.notificationsEnabled,
+          marketing_consent: formData.marketingConsent,
+        },
+      ]);
 
       if (error) {
         if (error.code === "23505") {
-          setErrorMessage("Bu e-posta zaten kayıtlı.");
+          setToast({ show: true, message: "Bu e-posta adresi zaten kayıtlı.", type: "error" });
         } else {
-          setErrorMessage("Bir hata oluştu. Lütfen tekrar deneyin.");
+          setToast({ show: true, message: "Kayıt sırasında bir hata oluştu.", type: "error" });
         }
-        setStatus("error");
-        return;
+        console.error(error);
+      } else {
+        setToast({ show: true, message: "Kayıt başarılı! Hoş geldiniz.", type: "success" });
+        setShowRegisterModal(false);
+        setRegisterStep(1);
+        setFormData({
+          email: "",
+          password: "",
+          confirmPassword: "",
+          fullName: "",
+          phone: "",
+          city: "",
+          vehicleBrand: "",
+          vehicleModel: "",
+          vehicleYear: "",
+          chargingFrequency: "",
+          homeCharging: false,
+          monthlyKm: "",
+          preferredChargerType: "",
+          notificationsEnabled: true,
+          marketingConsent: false,
+        });
       }
-
-      setStatus("success");
-      setEmail("");
-    } catch {
-      setErrorMessage("Bir hata oluştu. Lütfen tekrar deneyin.");
-      setStatus("error");
+    } catch (err) {
+      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
     }
   };
 
+  const features = [
+    { icon: MapPin, title: "500+ Şarj İstasyonu", description: "Türkiye genelinde tüm şarj istasyonlarını haritada görün" },
+    { icon: Car, title: "Araç Uyumluluğu", description: "Aracınıza uygun istasyonları otomatik filtreleyin" },
+    { icon: Battery, title: "Gerçek Zamanlı Durum", description: "İstasyonların anlık durumunu öğrenin" },
+    { icon: Bell, title: "Bildirimler", description: "Favori istasyonlarınız müsait olduğunda haberdar olun" },
+    { icon: TrendingUp, title: "Fiyat Karşılaştırma", description: "En uygun fiyatlı istasyonu bulun" },
+    { icon: Shield, title: "Güvenilir Bilgi", description: "Topluluk tarafından doğrulanmış veriler" },
+  ];
+
+  const stats = [
+    { value: "500+", label: "Şarj İstasyonu" },
+    { value: "35+", label: "Desteklenen Araç" },
+    { value: "81", label: "İl Kapsamı" },
+    { value: "7/24", label: "Erişim" },
+  ];
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Intro Animation */}
+      {showIntro && (
+        <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 blur-3xl opacity-50">
+              <div className="w-32 h-32 bg-emerald-500 rounded-full animate-pulse" />
+            </div>
+            <div className="relative flex items-center gap-3">
+              <div className="relative">
+                <Zap className="w-16 h-16 text-emerald-400 animate-bounce" />
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-600 blur-xl opacity-50 animate-pulse" />
+              </div>
+              <div className="overflow-hidden">
+                <span className="text-4xl font-bold text-white">
+                  Outa<span className="text-emerald-400">Charge</span>
+                </span>
+              </div>
+            </div>
+            <p className="text-slate-400 text-center mt-6">
+              Elektrikli Araç Şarj Platformu
+            </p>
+            <div className="mt-8 w-48 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
+              <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 animate-loading-bar" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-8 h-8 text-emerald-400" />
+            <span className="text-2xl font-bold text-white">
+              Outa<span className="text-emerald-400">Charge</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium"
+            >
+              Giriş Yap
+            </button>
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-medium transition"
+            >
+              Üye Ol
+            </button>
+          </div>
+        </div>
+      </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-6 py-20 text-center">
-        <AnimatedSection>
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-full mb-8">
-            <Zap className="w-10 h-10 text-emerald-400" />
+      <section className="pt-32 pb-20 px-4">
+        <div className="container mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full mb-6">
+            <Star className="w-4 h-4 text-emerald-400" />
+            <span className="text-emerald-400 text-sm font-medium">Türkiye&apos;nin En Kapsamlı EV Şarj Uygulaması</span>
           </div>
-        </AnimatedSection>
-
-        <AnimatedSection delay={0.1}>
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Türkiye&apos;nin Şarj İstasyonlarına
+          
+          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            Elektrikli Aracınız İçin
             <br />
-            <span className="text-emerald-400">Güvenle Gidilen</span> Tek Uygulaması
+            <span className="text-emerald-400">En Yakın Şarj İstasyonu</span>
           </h1>
-        </AnimatedSection>
-
-        <AnimatedSection delay={0.2}>
-          <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-            Gerçek zamanlı kullanıcı bildirimleri, araç bazlı uyumluluk skorları ve akıllı
-            rota planlama ile şarj istasyonuna gitmeden önce durumunu bil.
+          
+          <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
+            500+ şarj istasyonu, gerçek zamanlı durum bilgisi ve aracınıza özel uyumluluk skoru ile şarj deneyiminizi kolaylaştırın.
           </p>
-        </AnimatedSection>
 
-        <AnimatedSection delay={0.3}>
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row sm:items-center gap-4 justify-center max-w-xl mx-auto">
-            <input
-              type="email"
-              placeholder="E-posta adresiniz"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={status === "loading" || status === "success"}
-className="flex-1 px-6 py-3 rounded-full bg-white text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"            />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+            <Link
+              href="/harita"
+              className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-lg font-semibold transition flex items-center gap-2 shadow-lg shadow-emerald-500/25"
+            >
+              <MapPin className="w-5 h-5" />
+              Haritayı Keşfet
+              <ChevronRight className="w-5 h-5" />
+            </Link>
             <button
-              type="submit"
-              disabled={status === "loading" || status === "success"}
-className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white px-8 py-3 rounded-full font-semibold transition flex items-center justify-center gap-2 whitespace-nowrap"            >
-              {status === "loading" ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Kaydediliyor...
-                </>
-              ) : status === "success" ? (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  Kaydedildi!
-                </>
-              ) : (
-                <>
-                  <Zap className="w-5 h-5" />
-                  Erken Erişim İçin Kayıt Ol
-                </>
-              )}
+              onClick={() => setShowRegisterModal(true)}
+              className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-lg font-semibold transition"
+            >
+              Ücretsiz Üye Ol
             </button>
-          </form>
-          {status === "error" && (
-            <p className="text-red-400 mt-4">{errorMessage}</p>
-          )}
-          {status === "success" && (
-            <p className="text-emerald-400 mt-4">Teşekkürler! Lansman öncesi sizi bilgilendireceğiz.</p>
-          )}
-        </AnimatedSection>
-
-        <AnimatedSection delay={0.4}>
-          <div className="mt-6">
-            <a href="/harita" className="border border-slate-500 hover:border-slate-400 text-white px-8 py-4 rounded-full font-semibold text-lg transition inline-block">
-              Haritayı Gör
-            </a>
           </div>
-        </AnimatedSection>
-      </section>
 
-      {/* Problem Section */}
-      <section className="container mx-auto px-6 py-20">
-        <AnimatedSection>
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-            Elektrikli Araç Sahiplerinin <span className="text-emerald-400">Ortak Sorunu</span>
-          </h2>
-        </AnimatedSection>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <AnimatedSection delay={0.1}>
-            <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
-              <div className="text-red-400 text-4xl font-bold mb-4">%67</div>
-              <h3 className="text-xl font-semibold mb-2">Bozuk İstasyon</h3>
-              <p className="text-slate-400">Kullanıcıların çoğu gittikleri istasyonu çalışmaz durumda buluyor.</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.2}>
-            <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
-              <div className="text-yellow-400 text-4xl font-bold mb-4">%45</div>
-              <h3 className="text-xl font-semibold mb-2">Uyumsuz Soket</h3>
-              <p className="text-slate-400">Araçlarına uygun şarj soketi olmayan istasyonlara gidiyorlar.</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.3}>
-            <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
-              <div className="text-orange-400 text-4xl font-bold mb-4">%82</div>
-              <h3 className="text-xl font-semibold mb-2">Güvenilmez Yorum</h3>
-              <p className="text-slate-400">Mevcut uygulamalardaki yorumlar güncel ve güvenilir değil.</p>
-            </div>
-          </AnimatedSection>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            {stats.map((stat, i) => (
+              <div key={i} className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                <div className="text-3xl font-bold text-emerald-400 mb-1">{stat.value}</div>
+                <div className="text-slate-400 text-sm">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="container mx-auto px-6 py-20">
-        <AnimatedSection>
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-            <span className="text-emerald-400">OutaCharge</span> Farkı
-          </h2>
-        </AnimatedSection>
+      <section className="py-20 px-4 bg-slate-800/30">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Neden OutaCharge?</h2>
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+              Elektrikli araç sahipleri için tasarlanmış, kullanımı kolay ve güvenilir platform
+            </p>
+          </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <AnimatedSection delay={0.1}>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 rounded-full mb-6">
-                <MapPin className="w-8 h-8 text-emerald-400" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, i) => (
+              <div
+                key={i}
+                className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8 hover:border-emerald-500/30 transition group"
+              >
+                <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-emerald-500/20 transition">
+                  <feature.icon className="w-7 h-7 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
+                <p className="text-slate-400">{feature.description}</p>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Gerçek Zamanlı Durum</h3>
-              <p className="text-slate-400">Kullanıcı bildirimleriyle anlık istasyon durumu</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.2}>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 rounded-full mb-6">
-                <Car className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Araç Uyumluluğu</h3>
-              <p className="text-slate-400">Aracınıza özel filtrelenmiş istasyonlar</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.3}>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 rounded-full mb-6">
-                <Route className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Akıllı Rota</h3>
-              <p className="text-slate-400">Menzil ve şarj durumuna göre optimum rota</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.4}>
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/20 rounded-full mb-6">
-                <MessageSquare className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Şeffaf Yorumlar</h3>
-              <p className="text-slate-400">Doğrulanmış ve güncel kullanıcı deneyimleri</p>
-            </div>
-          </AnimatedSection>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section id="how-it-works" className="container mx-auto px-6 py-20">
-        <AnimatedSection>
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-            Nasıl <span className="text-emerald-400">Çalışır</span>?
-          </h2>
-        </AnimatedSection>
-
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          <AnimatedSection delay={0.1}>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">1</div>
-              <h3 className="text-xl font-semibold mb-3">Aracınızı Seçin</h3>
-              <p className="text-slate-400">Marka ve model bilgisi ile uyumlu istasyonları görün</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.2}>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">2</div>
-              <h3 className="text-xl font-semibold mb-3">Haritada Görün</h3>
-              <p className="text-slate-400">Yakınınızdaki istasyonları durumlarıyla birlikte görün</p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.3}>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">3</div>
-              <h3 className="text-xl font-semibold mb-3">Bildir ve Kazan</h3>
-              <p className="text-slate-400">İstasyon durumunu bildirin, puan kazanın</p>
-            </div>
-          </AnimatedSection>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section id="contact" className="container mx-auto px-6 py-20">
-        <AnimatedSection>
+      <section className="py-20 px-4">
+        <div className="container mx-auto">
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-3xl p-12 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              Erken Erişim İçin Kayıt Olun
-            </h2>
-            <p className="text-emerald-100 text-lg mb-8 max-w-2xl mx-auto">
-              Lansman öncesi haberdar olun ve ilk kullanıcılar arasında yerinizi alın.
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Hemen Üye Olun</h2>
+            <p className="text-emerald-100 text-lg mb-8 max-w-xl mx-auto">
+              Ücretsiz üyelik ile tüm özelliklere erişin, favori istasyonlarınızı kaydedin ve bildirim alın.
             </p>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-              <input
-                type="email"
-                placeholder="E-posta adresiniz"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={status === "loading" || status === "success"}
-                className="flex-1 px-6 py-4 rounded-full bg-white text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={status === "loading" || status === "success"}
-                className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-900/50 text-white px-8 py-4 rounded-full font-semibold transition flex items-center justify-center gap-2"
-              >
-                {status === "loading" ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : status === "success" ? (
-                  <CheckCircle className="w-5 h-5" />
-                ) : (
-                  "Kayıt Ol"
-                )}
-              </button>
-            </form>
-            {status === "error" && (
-              <p className="text-red-200 mt-4">{errorMessage}</p>
-            )}
-            {status === "success" && (
-              <p className="text-white mt-4">Teşekkürler! Lansman öncesi sizi bilgilendireceğiz.</p>
-            )}
+            <button
+              onClick={() => setShowRegisterModal(true)}
+              className="px-8 py-4 bg-white text-emerald-600 rounded-full text-lg font-semibold hover:bg-emerald-50 transition shadow-lg"
+            >
+              Ücretsiz Başla
+            </button>
           </div>
-        </AnimatedSection>
+        </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-700 py-12">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-2xl font-bold text-white flex items-center gap-2 mb-6 md:mb-0">
-              <Zap className="w-8 h-8 text-emerald-400" />
-              Outa<span className="text-emerald-400">Charge</span>
+      <footer className="py-12 px-4 border-t border-slate-800">
+        <div className="container mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <Zap className="w-6 h-6 text-emerald-400" />
+              <span className="text-xl font-bold text-white">
+                Outa<span className="text-emerald-400">Charge</span>
+              </span>
             </div>
-            <div className="text-slate-400 text-sm">
-              &copy; 2025 OutaCharge. Tüm hakları saklıdır.
+            <div className="flex items-center gap-6 text-slate-400 text-sm">
+              <a href="#" className="hover:text-white transition">Hakkımızda</a>
+              <a href="#" className="hover:text-white transition">Gizlilik</a>
+              <a href="#" className="hover:text-white transition">Kullanım Şartları</a>
+              <a href="#" className="hover:text-white transition">İletişim</a>
             </div>
+            <div className="text-slate-500 text-sm">© 2025 OutaCharge. Tüm hakları saklıdır.</div>
           </div>
         </div>
       </footer>
-    </main>
+
+      {/* Register Modal */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-slate-700">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-bold text-white">Üye Ol</h3>
+                <button onClick={() => { setShowRegisterModal(false); setRegisterStep(1); }} className="text-slate-400 hover:text-white">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex-1 flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${registerStep >= step ? "bg-emerald-500 text-white" : "bg-slate-700 text-slate-400"}`}>
+                      {registerStep > step ? <Check className="w-4 h-4" /> : step}
+                    </div>
+                    {step < 3 && <div className={`flex-1 h-1 mx-2 rounded ${registerStep > step ? "bg-emerald-500" : "bg-slate-700"}`} />}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-slate-400">
+                <span>Hesap</span>
+                <span>Araç</span>
+                <span>Tercihler</span>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {registerStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Ad Soyad <span className="text-red-400">*</span></label>
+                    <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="Adınız Soyadınız" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">E-posta <span className="text-red-400">*</span></label>
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="ornek@email.com" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Şifre <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} placeholder="En az 6 karakter" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Şifre Tekrar <span className="text-red-400">*</span></label>
+                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Şifrenizi tekrar girin" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Telefon</label>
+                    <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="05XX XXX XX XX" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Şehir</label>
+                    <select name="city" value={formData.city} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                      <option value="">Şehir seçin</option>
+                      {cities.map((city) => (<option key={city} value={city}>{city}</option>))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {registerStep === 2 && (
+                <div className="space-y-4">
+                  <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
+                    <p className="text-slate-300 text-sm">Araç bilgilerinizi girerek size özel şarj istasyonu önerileri alabilirsiniz.</p>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Araç Markası</label>
+                    <select name="vehicleBrand" value={formData.vehicleBrand} onChange={(e) => { handleInputChange(e); setFormData((prev) => ({ ...prev, vehicleModel: "" })); }} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                      <option value="">Marka seçin</option>
+                      {brands.map((brand) => (<option key={brand} value={brand}>{brand}</option>))}
+                    </select>
+                  </div>
+                  {formData.vehicleBrand && (
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-2">Araç Modeli</label>
+                      <select name="vehicleModel" value={formData.vehicleModel} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                        <option value="">Model seçin</option>
+                        {vehiclesByBrand[formData.vehicleBrand]?.map((vehicle) => (<option key={vehicle.id} value={vehicle.model}>{vehicle.model}</option>))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Model Yılı</label>
+                    <select name="vehicleYear" value={formData.vehicleYear} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                      <option value="">Yıl seçin</option>
+                      {years.map((year) => (<option key={year} value={year}>{year}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Aylık Ortalama KM</label>
+                    <input type="number" name="monthlyKm" value={formData.monthlyKm} onChange={handleInputChange} placeholder="Örn: 1500" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                  </div>
+                </div>
+              )}
+
+              {registerStep === 3 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Şarj Sıklığı</label>
+                    <select name="chargingFrequency" value={formData.chargingFrequency} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                      <option value="">Seçin</option>
+                      {chargingFrequencies.map((freq) => (<option key={freq.value} value={freq.value}>{freq.label}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-2">Tercih Ettiğiniz Şarj Tipi</label>
+                    <select name="preferredChargerType" value={formData.preferredChargerType} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                      <option value="">Seçin</option>
+                      {chargerTypes.map((type) => (<option key={type.value} value={type.value}>{type.label}</option>))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input type="checkbox" name="homeCharging" checked={formData.homeCharging} onChange={handleInputChange} className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400" />
+                    <div>
+                      <div className="text-white font-medium">Evde şarj imkanım var</div>
+                      <div className="text-slate-400 text-sm">Evde şarj cihazınız veya priziniz var mı?</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input type="checkbox" name="notificationsEnabled" checked={formData.notificationsEnabled} onChange={handleInputChange} className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400" />
+                    <div>
+                      <div className="text-white font-medium">Bildirimleri aç</div>
+                      <div className="text-slate-400 text-sm">İstasyon durumları hakkında bildirim alın</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input type="checkbox" name="marketingConsent" checked={formData.marketingConsent} onChange={handleInputChange} className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400" />
+                    <div>
+                      <div className="text-white font-medium">Kampanyalardan haberdar ol</div>
+                      <div className="text-slate-400 text-sm">Fırsatlar ve yenilikler hakkında e-posta alın</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-700 flex gap-3">
+              {registerStep > 1 && (
+                <button onClick={() => setRegisterStep(registerStep - 1)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-medium transition">
+                  Geri
+                </button>
+              )}
+              {registerStep < 3 ? (
+                <button onClick={() => { if (registerStep === 1 && !validateStep1()) return; setRegisterStep(registerStep + 1); }} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition">
+                  Devam Et
+                </button>
+              ) : (
+                <button onClick={handleRegister} disabled={loading} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-full font-medium transition flex items-center justify-center gap-2">
+                  {loading ? (<><Loader2 className="w-5 h-5 animate-spin" />Kaydediliyor...</>) : "Üyeliği Tamamla"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Giriş Yap</h3>
+              <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-2">E-posta</label>
+                <input type="email" placeholder="ornek@email.com" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-2">Şifre</label>
+                <input type="password" placeholder="Şifreniz" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex items-center gap-2 text-slate-300">
+                  <input type="checkbox" className="rounded border-slate-600 text-emerald-500" />
+                  Beni hatırla
+                </label>
+                <a href="#" className="text-emerald-400 hover:text-emerald-300">Şifremi unuttum</a>
+              </div>
+              <button className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition">
+                Giriş Yap
+              </button>
+              <p className="text-center text-slate-400 text-sm">
+                Hesabınız yok mu?{" "}
+                <button onClick={() => { setShowLoginModal(false); setShowRegisterModal(true); }} className="text-emerald-400 hover:text-emerald-300">
+                  Üye olun
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast.show && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 ${toast.type === "success" ? "bg-emerald-500" : "bg-red-500"}`}>
+          {toast.type === "success" ? <Check className="w-5 h-5 text-white" /> : <X className="w-5 h-5 text-white" />}
+          <span className="text-white font-medium">{toast.message}</span>
+        </div>
+      )}
+    </div>
   );
 }
