@@ -1,15 +1,25 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "latin-ext"],
-});
+const inter = Inter({ subsets: ["latin", "latin-ext"] });
 
 export const metadata: Metadata = {
-  title: "OutaCharge - Turkiye'nin Guvenilir Sarj Istasyonu Uygulamasi",
-  description: "Gercek zamanli kullanici bildirimleri, arac bazli uyumluluk skorlari ve akilli rota planlama ile sarj istasyonuna gitmeden once durumunu bil.",
+  title: "OutaCharge - Türkiye'nin Şarj İstasyonları",
+  description: "Türkiye'nin şarj istasyonlarına güvenle gidilen tek uygulaması. Gerçek zamanlı durum, araç uyumluluğu ve akıllı rota planlama.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "OutaCharge",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#10b981",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -19,9 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
-      </body>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
