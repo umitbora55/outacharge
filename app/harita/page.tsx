@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search } from "lucide-react";
+import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { supabase } from "@/lib/supabase";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -74,6 +75,17 @@ export default function HaritaPage() {
 
   const [filterPowerType, setFilterPowerType] = useState("Tümü");
   const [filterMinPower, setFilterMinPower] = useState(0);
+
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportStatus, setReportStatus] = useState<"active" | "broken" | "busy">("active");
+  const [reportComment, setReportComment] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
+    show: false,
+    message: "",
+    type: "success",
+  });
 
   const powerTypes = ["Tümü", "AC", "DC"];
   const powerLevels = [
@@ -159,6 +171,42 @@ export default function HaritaPage() {
       console.error("Arama hatası:", error);
     } finally {
       setSearching(false);
+    }
+  };
+
+  const submitReport = async () => {
+    if (!selectedStation) return;
+
+    setReportSubmitting(true);
+    try {
+      const { error } = await supabase.from("reports").insert([
+        {
+          station_id: selectedStation.id,
+          station_name: selectedStation.name,
+          status: reportStatus,
+          comment: reportComment,
+        },
+      ]);
+
+      if (error) {
+        setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
+        console.error(error);
+      } else {
+        setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
+        setShowReportModal(false);
+        setReportComment("");
+
+        setStations((prev) =>
+          prev.map((s) => (s.id === selectedStation.id ? { ...s, status: reportStatus } : s))
+        );
+        setSelectedStation({ ...selectedStation, status: reportStatus });
+      }
+    } catch (err) {
+      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
+      console.error(err);
+    } finally {
+      setReportSubmitting(false);
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
     }
   };
 
@@ -294,7 +342,6 @@ export default function HaritaPage() {
             </span>
           </Link>
 
-          {/* Search Box */}
           <div className="flex-1 max-w-md">
             <div className="relative">
               <input
@@ -350,12 +397,10 @@ export default function HaritaPage() {
           </div>
         </div>
 
-        {/* Filter Panel */}
         {showFilters && (
           <div className="border-t border-slate-700 bg-slate-800/95 backdrop-blur-sm">
             <div className="container mx-auto px-4 py-4">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {/* Power Type Filter */}
                 <div>
                   <label className="block text-slate-400 text-xs mb-1">Şarj Tipi</label>
                   <div className="relative">
@@ -374,7 +419,6 @@ export default function HaritaPage() {
                   </div>
                 </div>
 
-                {/* Power Level Filter */}
                 <div>
                   <label className="block text-slate-400 text-xs mb-1">Minimum Güç</label>
                   <div className="relative">
@@ -393,7 +437,6 @@ export default function HaritaPage() {
                   </div>
                 </div>
 
-                {/* Locate Button */}
                 <div className="flex items-end">
                   <button
                     onClick={locateUser}
@@ -491,16 +534,117 @@ export default function HaritaPage() {
               )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-700">
+            <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
               <button
                 onClick={() => openDirections(selectedStation)}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
+                className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
               >
                 <Navigation className="w-4 h-4" />
-                Yol Tarifi Al
+                Yol Tarifi
+              </button>
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Bildir
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && selectedStation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">İstasyon Durumu Bildir</h3>
+              <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-slate-400 text-sm mb-4">{selectedStation.name}</p>
+
+            <div className="space-y-3 mb-4">
+              <label className="block text-slate-300 text-sm font-medium mb-2">Durum</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setReportStatus("active")}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
+                    reportStatus === "active"
+                      ? "bg-emerald-500 text-white"
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  }`}
+                >
+                  Çalışıyor
+                </button>
+                <button
+                  onClick={() => setReportStatus("busy")}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
+                    reportStatus === "busy"
+                      ? "bg-yellow-500 text-white"
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  }`}
+                >
+                  Dolu
+                </button>
+                <button
+                  onClick={() => setReportStatus("broken")}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
+                    reportStatus === "broken"
+                      ? "bg-red-500 text-white"
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  }`}
+                >
+                  Arızalı
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-slate-300 text-sm font-medium mb-2">Yorum (Opsiyonel)</label>
+              <textarea
+                value={reportComment}
+                onChange={(e) => setReportComment(e.target.value)}
+                placeholder="Ek bilgi ekleyin..."
+                className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+                rows={3}
+              />
+            </div>
+
+            <button
+              onClick={submitReport}
+              disabled={reportSubmitting}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white py-3 rounded-full font-medium transition flex items-center justify-center gap-2"
+            >
+              {reportSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Gönderiliyor...
+                </>
+              ) : (
+                "Bildirimi Gönder"
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 transition-all ${
+            toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle className="w-6 h-6 text-white" />
+          ) : (
+            <XCircle className="w-6 h-6 text-white" />
+          )}
+          <span className="text-white font-medium">{toast.message}</span>
         </div>
       )}
 
