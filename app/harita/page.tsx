@@ -10,6 +10,23 @@ import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } fr
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
+// Debounce helper
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 interface Station {
   id: number;
   name: string;
@@ -92,6 +109,10 @@ export default function HaritaPage() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
 
+  // Debounced values for performance
+  const debouncedFilterPowerType = useDebounce(filterPowerType, 150);
+  const debouncedFilterMinPower = useDebounce(filterMinPower, 150);
+
   const powerTypes = ["Tümü", "AC", "DC"];
   const powerLevels = [
     { label: "Tümü", value: 0 },
@@ -105,7 +126,6 @@ export default function HaritaPage() {
     if (filterPowerType !== "Tümü" && station.powerType !== filterPowerType) return false;
     if (station.power < filterMinPower) return false;
     
-    // Arac seciliyse uyumluluk kontrolu
     if (selectedVehicle) {
       const compatibility = calculateCompatibility(
         selectedVehicle,
@@ -209,10 +229,7 @@ export default function HaritaPage() {
         setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
         console.error(error);
       } else {
-        console.log("Bildirim basarili, reportStatus:", reportStatus);
-        // Ariza bildirimi ise mail gonder
         if (reportStatus === "broken") {
-          console.log("Mail gonderiliyor...");
           await fetch("/api/report", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -295,86 +312,88 @@ export default function HaritaPage() {
     );
   };
 
-const updateMarkers = () => {
-  markersRef.current.forEach((marker) => marker.remove());
-  markersRef.current = [];
-
-  if (!map.current) return;
-
-  filteredStations.forEach((station) => {
-    // Uyumluluk skoru hesapla
-    let compatibilityScore = 100;
-    let markerColor = getStatusColor(station.status);
-    
-if (selectedVehicle) {
-  const compatibility = calculateCompatibility(
-    selectedVehicle,
-    station.connectors,
-    station.power,
-    station.powerType
-  );
-  compatibilityScore = compatibility.score;
-  
-  // Arac seciliyse uyumluluk skoruna gore renk (gradient)
-  if (compatibilityScore >= 90) {
-    markerColor = "#059669"; // Koyu yesil - Mukemmel
-  } else if (compatibilityScore >= 80) {
-    markerColor = "#10b981"; // Yesil - Cok iyi
-  } else if (compatibilityScore >= 70) {
-    markerColor = "#34d399"; // Acik yesil - Iyi
-  } else if (compatibilityScore >= 60) {
-    markerColor = "#fbbf24"; // Sari - Orta
-  } else if (compatibilityScore >= 50) {
-    markerColor = "#f97316"; // Turuncu - Dusuk
-  } else if (compatibilityScore > 0) {
-    markerColor = "#ef4444"; // Kirmizi - Cok dusuk
-  } else {
-    markerColor = "#6b7280"; // Gri - Uyumsuz
-  }
-}
-
-    const el = document.createElement("div");
-    el.className = "marker";
-    el.style.width = selectedVehicle ? "40px" : "36px";
-    el.style.height = selectedVehicle ? "40px" : "36px";
-    el.style.borderRadius = "50%";
-    el.style.backgroundColor = markerColor;
-    el.style.display = "flex";
-    el.style.alignItems = "center";
-    el.style.justifyContent = "center";
-    el.style.cursor = "pointer";
-    el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.3)";
-    el.style.border = selectedVehicle ? "3px solid white" : "none";
-    el.style.transition = "all 0.3s ease";
-    
-    // Uyumluluk skoru dusukse opakligi azalt
-    if (selectedVehicle && compatibilityScore < 40) {
-      el.style.opacity = "0.6";
-      el.style.transform = "scale(0.8)";
-    }
-    
-    // Ikon - arac seciliyse skor goster
-    if (selectedVehicle && compatibilityScore > 0) {
-      el.innerHTML = `<span style="color: white; font-size: 12px; font-weight: bold;">${compatibilityScore}</span>`;
-    } else {
-      el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+  const updateMarkers = () => {
+    if (markersRef.current.length > 0) {
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
     }
 
-    el.addEventListener("click", () => {
-      setSelectedStation(station);
-      map.current?.flyTo({
-        center: [station.lng, station.lat],
-        zoom: 15,
+    if (!map.current) return;
+
+    const newMarkers: mapboxgl.Marker[] = [];
+
+    filteredStations.forEach((station) => {
+      let compatibilityScore = 100;
+      let markerColor = getStatusColor(station.status);
+
+      if (selectedVehicle) {
+        const compatibility = calculateCompatibility(
+          selectedVehicle,
+          station.connectors,
+          station.power,
+          station.powerType
+        );
+        compatibilityScore = compatibility.score;
+
+        if (compatibilityScore >= 90) {
+          markerColor = "#059669";
+        } else if (compatibilityScore >= 80) {
+          markerColor = "#10b981";
+        } else if (compatibilityScore >= 70) {
+          markerColor = "#34d399";
+        } else if (compatibilityScore >= 60) {
+          markerColor = "#fbbf24";
+        } else if (compatibilityScore >= 50) {
+          markerColor = "#f97316";
+        } else if (compatibilityScore > 0) {
+          markerColor = "#ef4444";
+        } else {
+          markerColor = "#6b7280";
+        }
+      }
+
+      const el = document.createElement("div");
+      el.className = "station-marker";
+
+      Object.assign(el.style, {
+        width: selectedVehicle ? "40px" : "36px",
+        height: selectedVehicle ? "40px" : "36px",
+        borderRadius: "50%",
+        backgroundColor: markerColor,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+        border: selectedVehicle ? "3px solid white" : "none",
+        opacity: selectedVehicle && compatibilityScore < 40 ? "0.6" : "1",
+        transform: selectedVehicle && compatibilityScore < 40 ? "scale(0.8)" : "scale(1)",
       });
+
+      if (selectedVehicle && compatibilityScore > 0) {
+        el.innerHTML = `<span style="color:white;font-size:11px;font-weight:bold">${compatibilityScore}</span>`;
+      } else {
+        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+      }
+
+      el.onclick = () => {
+        setSelectedStation(station);
+        map.current?.flyTo({
+          center: [station.lng, station.lat],
+          zoom: 15,
+        });
+      };
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([station.lng, station.lat])
+        .addTo(map.current!);
+
+      newMarkers.push(marker);
     });
 
-    const marker = new mapboxgl.Marker(el)
-      .setLngLat([station.lng, station.lat])
-      .addTo(map.current!);
+    markersRef.current = newMarkers;
+  };
 
-    markersRef.current.push(marker);
-  });
-};
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
@@ -400,7 +419,7 @@ if (selectedVehicle) {
     if (map.current && stations.length > 0) {
       updateMarkers();
     }
-  }, [stations, filterPowerType, filterMinPower, selectedVehicle]);
+  }, [stations, debouncedFilterPowerType, debouncedFilterMinPower, selectedVehicle]);
 
   const openDirections = (station: Station) => {
     const url = userLocation
@@ -411,7 +430,6 @@ if (selectedVehicle) {
 
   const activeFilterCount = [filterPowerType !== "Tümü", filterMinPower > 0].filter(Boolean).length;
 
-  // Secili istasyon icin uyumluluk hesapla
   const stationCompatibility = selectedStation && selectedVehicle
     ? calculateCompatibility(selectedVehicle, selectedStation.connectors, selectedStation.power, selectedStation.powerType)
     : null;
@@ -463,15 +481,17 @@ if (selectedVehicle) {
               {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Araç Seç"}
             </span>
           </button>
-{/* Selected Vehicle Info Badge */}
-{selectedVehicle && (
-  <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
-    <CheckCircle className="w-3 h-3 text-emerald-400" />
-    <span className="text-emerald-400 text-xs">
-      Uyumluluk modu aktif
-    </span>
-  </div>
-)}
+
+          {/* Selected Vehicle Info Badge */}
+          {selectedVehicle && (
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
+              <CheckCircle className="w-3 h-3 text-emerald-400" />
+              <span className="text-emerald-400 text-xs">
+                Uyumluluk modu aktif
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -509,6 +529,16 @@ if (selectedVehicle) {
         {showFilters && (
           <div className="border-t border-slate-700 bg-slate-800/95 backdrop-blur-sm">
             <div className="container mx-auto px-4 py-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-white font-medium">Filtreler</span>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="text-slate-400 hover:text-white p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-slate-400 text-xs mb-1">Şarj Tipi</label>
@@ -714,7 +744,7 @@ if (selectedVehicle) {
             {/* Marka Secimi */}
             <div className="mb-4">
               <label className="block text-slate-400 text-xs mb-2">Marka</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
                 {brands.map((brand) => (
                   <button
                     key={brand}
@@ -740,15 +770,15 @@ if (selectedVehicle) {
                     <button
                       key={vehicle.id}
                       onClick={() => {
-  setSelectedVehicle(vehicle);
-  setShowVehicleModal(false);
-  setToast({
-    show: true,
-    message: `${vehicle.brand} ${vehicle.model} seçildi. Haritada uyumluluk skorları gösteriliyor.`,
-    type: "success",
-  });
-  setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
-}}
+                        setSelectedVehicle(vehicle);
+                        setShowVehicleModal(false);
+                        setToast({
+                          show: true,
+                          message: `${vehicle.brand} ${vehicle.model} seçildi. Haritada uyumluluk skorları gösteriliyor.`,
+                          type: "success",
+                        });
+                        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
+                      }}
                       className={`w-full p-4 rounded-lg text-left transition ${
                         selectedVehicle?.id === vehicle.id
                           ? "bg-emerald-500 text-white"
