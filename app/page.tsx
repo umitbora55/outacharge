@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MapPin, Battery, Bell, Shield, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X } from "lucide-react";
+// Calculator eklendi
+import { MapPin, Battery, Bell, Shield, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X, Calculator } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands } from "@/data/vehicles";
@@ -169,12 +170,13 @@ export default function HomePage() {
     }
   };
 
+  // GÜNCELLENEN BÖLÜM: Features listesi
   const features = [
     { icon: MapPin, title: "500+ Şarj İstasyonu", description: "Türkiye genelinde tüm şarj istasyonlarını haritada görün" },
     { icon: Car, title: "Araç Uyumluluğu", description: "Aracınıza uygun istasyonları otomatik filtreleyin" },
     { icon: Battery, title: "Gerçek Zamanlı Durum", description: "İstasyonların anlık durumunu öğrenin" },
     { icon: Bell, title: "Bildirimler", description: "Favori istasyonlarınız müsait olduğunda haberdar olun" },
-    { icon: TrendingUp, title: "Fiyat Karşılaştırma", description: "En uygun fiyatlı istasyonu bulun" },
+    { icon: Calculator, title: "Şarj Hesaplayıcı", description: "14 operatörün fiyatlarını karşılaştırın", link: "/hesaplayici" }, // Güncellendi
     { icon: Shield, title: "Güvenilir Bilgi", description: "Topluluk tarafından doğrulanmış veriler" },
   ];
 
@@ -248,6 +250,11 @@ export default function HomePage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {/* GÜNCELLENEN BÖLÜM: Hesaplayıcı Linki */}
+            <Link href="/hesaplayici" className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium">
+              Hesaplayıcı
+            </Link>
+            
             <button
               onClick={() => setShowLoginModal(true)}
               className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium"
