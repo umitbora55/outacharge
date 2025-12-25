@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car } from "lucide-react";
+import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car, DollarSign, Calculator } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } from "@/data/vehicles";
+import { operators, getOperatorById, ChargingOperator } from "@/data/operators";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -74,6 +75,81 @@ const getStatusText = (status: string) => {
       return "Arızalı";
     default:
       return "Bilinmiyor";
+  }
+};
+
+// Helper function to match operator name from API to our database
+// GÜNCELLENDİ: Artık stationName parametresi de alıyor ve aramayı genişletiyor.
+const matchOperator = (operatorName: string, stationName: string = ""): ChargingOperator | null => {
+  const lowerName = operatorName.toLowerCase();
+  const lowerStationName = stationName.toLowerCase();
+  const searchText = lowerName + " " + lowerStationName;
+  
+  // Direct matches - check both operator name and station name
+  if (searchText.includes("zes") || searchText.includes("zorlu")) {
+    return getOperatorById("zes") || null;
+  }
+  if (searchText.includes("eşarj") || searchText.includes("esarj") || searchText.includes("enerjisa")) {
+    return getOperatorById("esarj") || null;
+  }
+  if (searchText.includes("trugo") || searchText.includes("togg")) {
+    return getOperatorById("trugo") || null;
+  }
+  if (searchText.includes("tesla") || searchText.includes("supercharger")) {
+    return getOperatorById("tesla") || null;
+  }
+  if (searchText.includes("voltrun")) {
+    return getOperatorById("voltrun") || null;
+  }
+  if (searchText.includes("petrol ofisi") || searchText.includes("e-power") || searchText.includes("epower") || searchText.includes("po ")) {
+    return getOperatorById("epower") || null;
+  }
+  if (searchText.includes("beefull") || searchText.includes("bee full")) {
+    return getOperatorById("beefull") || null;
+  }
+  if (searchText.includes("aksa")) {
+    return getOperatorById("aksasarj") || null;
+  }
+  if (searchText.includes("sharz")) {
+    return getOperatorById("sharz") || null;
+  }
+  if (searchText.includes("astor")) {
+    return getOperatorById("astor") || null;
+  }
+  if (searchText.includes("gersan") || searchText.includes("g-charge") || searchText.includes("gcharge")) {
+    return getOperatorById("gcharge") || null;
+  }
+  if (searchText.includes("oncharge") || searchText.includes("on charge")) {
+    return getOperatorById("oncharge") || null;
+  }
+  if (searchText.includes("wat ") || searchText.includes("wat mobilite")) {
+    return getOperatorById("wat") || null;
+  }
+  if (searchText.includes("enyakıt") || searchText.includes("enyakit") || searchText.includes("en yakıt")) {
+    return getOperatorById("enyakit") || null;
+  }
+  if (searchText.includes("shell") && !searchText.includes("trugo")) {
+    return getOperatorById("trugo") || null; // Shell Recharge = Trugo
+  }
+  
+  return null;
+};
+
+// Get price for a station based on power type and level
+const getStationPrice = (operator: ChargingOperator | null, power: number, powerType: string): number | null => {
+  if (!operator) return null;
+  
+  if (powerType === "AC") {
+    return operator.pricing.ac || null;
+  }
+  
+  // DC pricing based on power level
+  if (power >= 180) {
+    return operator.pricing.dcHigh || operator.pricing.dcMid || null;
+  } else if (power >= 100) {
+    return operator.pricing.dcMid || operator.pricing.dcLow || null;
+  } else {
+    return operator.pricing.dcLow || null;
   }
 };
 
@@ -434,6 +510,18 @@ export default function HaritaPage() {
     ? calculateCompatibility(selectedVehicle, selectedStation.connectors, selectedStation.power, selectedStation.powerType)
     : null;
 
+  // Get operator info for selected station
+  // GÜNCELLENDİ: matchOperator artık ikinci parametre (name) alıyor
+  const selectedStationOperator = selectedStation ? matchOperator(selectedStation.operator, selectedStation.name) : null;
+  const selectedStationPrice = selectedStation && selectedStationOperator 
+    ? getStationPrice(selectedStationOperator, selectedStation.power, selectedStation.powerType)
+    : null;
+
+  // Calculate estimated cost if vehicle is selected
+  const estimatedChargeCost = selectedVehicle && selectedStationPrice
+    ? (selectedVehicle.batteryCapacity * 0.6 * selectedStationPrice) // Assuming 60% charge (20% to 80%)
+    : null;
+
   return (
     <div className="h-screen w-full relative">
       {/* Header */}
@@ -481,6 +569,15 @@ export default function HaritaPage() {
               {selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Araç Seç"}
             </span>
           </button>
+
+          {/* Calculator Link */}
+          <Link
+            href="/hesaplayici"
+            className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm font-medium transition"
+          >
+            <Calculator className="w-4 h-4" />
+            <span>Hesaplayıcı</span>
+          </Link>
 
           {/* Selected Vehicle Info Badge */}
           {selectedVehicle && (
@@ -638,7 +735,15 @@ export default function HaritaPage() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="font-bold text-lg">{selectedStation.name}</h3>
-                <p className="text-slate-400 text-sm">{selectedStation.operator}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-slate-400 text-sm">{selectedStation.operator}</p>
+                  {selectedStationOperator && (
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: selectedStationOperator.color }}
+                    />
+                  )}
+                </div>
               </div>
               <button onClick={() => setSelectedStation(null)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -654,6 +759,49 @@ export default function HaritaPage() {
               </span>
               <span className="text-sm text-slate-300">{selectedStation.numberOfPoints} şarj noktası</span>
             </div>
+
+            {/* Fiyat Bilgisi */}
+            {selectedStationPrice ? (
+              <div className="mb-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm text-slate-300">Tahmini Fiyat</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-emerald-400">{selectedStationPrice.toFixed(2)} ₺</span>
+                    <span className="text-slate-400 text-sm">/kWh</span>
+                  </div>
+                </div>
+                {estimatedChargeCost && selectedVehicle && (
+                  <div className="mt-2 pt-2 border-t border-emerald-500/20 flex items-center justify-between">
+                    <span className="text-xs text-slate-400">
+                      %20 → %80 şarj ({(selectedVehicle.batteryCapacity * 0.6).toFixed(0)} kWh)
+                    </span>
+                    <span className="text-sm font-medium text-white">
+                      ≈ {estimatedChargeCost.toFixed(0)} ₺
+                    </span>
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-slate-500">
+                  * {selectedStationOperator?.name} tarifesi, güncel fiyatlar farklılık gösterebilir.
+                </div>
+              </div>
+            ) : (
+              <div className="mb-3 p-3 rounded-lg bg-slate-700/50">
+                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                  <DollarSign className="w-4 h-4" />
+                  <span>Fiyat bilgisi mevcut değil</span>
+                </div>
+                <Link 
+                  href="/hesaplayici" 
+                  className="mt-2 text-emerald-400 text-xs hover:text-emerald-300 flex items-center gap-1"
+                >
+                  <Calculator className="w-3 h-3" />
+                  Tüm operatör fiyatlarını karşılaştır →
+                </Link>
+              </div>
+            )}
 
             {/* Uyumluluk Skoru */}
             {stationCompatibility && selectedVehicle && (
@@ -913,32 +1061,47 @@ export default function HaritaPage() {
         <div className="absolute bottom-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 p-4 md:hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-white font-medium">{filteredStations.length} istasyon bulundu</span>
+            <Link href="/hesaplayici" className="text-emerald-400 text-sm flex items-center gap-1">
+              <Calculator className="w-3 h-3" />
+              Fiyat Hesapla
+            </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {filteredStations.slice(0, 20).map((station) => (
-              <div
-                key={station.id}
-                onClick={() => {
-                  setSelectedStation(station);
-                  map.current?.flyTo({
-                    center: [station.lng, station.lat],
-                    zoom: 15,
-                  });
-                }}
-                className="flex-shrink-0 bg-slate-800 rounded-xl p-3 min-w-[200px] cursor-pointer hover:bg-slate-700 transition"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: getStatusColor(station.status) }}
-                  ></span>
-                  <span className="text-white font-medium text-sm truncate">{station.name}</span>
+            {filteredStations.slice(0, 20).map((station) => {
+              // GÜNCELLENDİ: matchOperator artık ikinci parametre (name) alıyor
+              const operator = matchOperator(station.operator, station.name);
+              const price = operator ? getStationPrice(operator, station.power, station.powerType) : null;
+              
+              return (
+                <div
+                  key={station.id}
+                  onClick={() => {
+                    setSelectedStation(station);
+                    map.current?.flyTo({
+                      center: [station.lng, station.lat],
+                      zoom: 15,
+                    });
+                  }}
+                  className="flex-shrink-0 bg-slate-800 rounded-xl p-3 min-w-[200px] cursor-pointer hover:bg-slate-700 transition"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: getStatusColor(station.status) }}
+                    ></span>
+                    <span className="text-white font-medium text-sm truncate">{station.name}</span>
+                  </div>
+                  <div className="text-slate-400 text-xs">
+                    {station.power} kW {station.powerType} - {station.connectors[0]}
+                  </div>
+                  {price && (
+                    <div className="text-emerald-400 text-xs mt-1 font-medium">
+                      {price.toFixed(2)} ₺/kWh
+                    </div>
+                  )}
                 </div>
-                <div className="text-slate-400 text-xs">
-                  {station.power} kW {station.powerType} - {station.connectors[0]}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
