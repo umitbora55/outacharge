@@ -1,25 +1,20 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth";
 
-const inter = Inter({ subsets: ["latin", "latin-ext"] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "OutaCharge - Türkiye'nin Şarj İstasyonları",
-  description: "Türkiye'nin şarj istasyonlarına güvenle gidilen tek uygulaması. Gerçek zamanlı durum, araç uyumluluğu ve akıllı rota planlama.",
+  title: "OutaCharge - Elektrikli Araç Şarj İstasyonları",
+  description: "Türkiye genelinde elektrikli araç şarj istasyonlarını bulun, fiyatları karşılaştırın ve şarj maliyetinizi hesaplayın.",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "OutaCharge",
-  },
-};
-
-export const viewport: Viewport = {
   themeColor: "#10b981",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({
@@ -29,10 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-      </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

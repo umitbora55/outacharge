@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuth } from "@/lib/auth";
+import UserMenu from "./components/UserMenu";
 import { useState, useEffect } from "react";
 // Calculator eklendi
 import { MapPin, Battery, Bell, Shield, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X, Calculator } from "lucide-react";
@@ -16,6 +18,10 @@ export default function HomePage() {
   const [registerStep, setRegisterStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { user, login, loading: authLoading } = useAuth();
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
     show: false,
     message: "",
@@ -240,36 +246,37 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FluxLogo size={40} animated={false} />
-            <span className="text-2xl font-bold text-white">
-              Outa<span className="text-emerald-400">Charge</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* GÜNCELLENEN BÖLÜM: Hesaplayıcı Linki */}
-            <Link href="/hesaplayici" className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium">
-              Hesaplayıcı
-            </Link>
-            
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium"
-            >
-              Giriş Yap
-            </button>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-medium transition"
-            >
-              Üye Ol
-            </button>
-          </div>
-        </div>
-      </header>
+{/* Header */}
+<header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
+  <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <FluxLogo size={40} animated={false} />
+      <span className="text-2xl font-bold text-white">
+        Outa<span className="text-emerald-400">Charge</span>
+      </span>
+    </div>
+    <div className="flex items-center gap-3">
+      {user ? (
+        <UserMenu />
+      ) : (
+        <>
+          <button
+            onClick={() => setShowLoginModal(true)}
+            className="px-4 py-2 text-white hover:text-emerald-400 transition text-sm font-medium"
+          >
+            Giriş Yap
+          </button>
+          <button
+            onClick={() => setShowRegisterModal(true)}
+            className="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full text-sm font-medium transition"
+          >
+            Üye Ol
+          </button>
+        </>
+      )}
+    </div>
+  </div>
+</header>
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4">
@@ -384,207 +391,276 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Register Modal */}
-      {showRegisterModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-slate-700">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xl font-bold text-white">Üye Ol</h3>
-                <button onClick={() => { setShowRegisterModal(false); setRegisterStep(1); }} className="text-slate-400 hover:text-white">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3].map((step) => (
-                  <div key={step} className="flex-1 flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${registerStep >= step ? "bg-emerald-500 text-white" : "bg-slate-700 text-slate-400"}`}>
-                      {registerStep > step ? <Check className="w-4 h-4" /> : step}
-                    </div>
-                    {step < 3 && <div className={`flex-1 h-1 mx-2 rounded ${registerStep > step ? "bg-emerald-500" : "bg-slate-700"}`} />}
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-2 text-xs text-slate-400">
-                <span>Hesap</span>
-                <span>Araç</span>
-                <span>Tercihler</span>
-              </div>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {registerStep === 1 && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Ad Soyad <span className="text-red-400">*</span></label>
-                    <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="Adınız Soyadınız" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">E-posta <span className="text-red-400">*</span></label>
-                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="ornek@email.com" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Şifre <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} placeholder="En az 6 karakter" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Şifre Tekrar <span className="text-red-400">*</span></label>
-                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Şifrenizi tekrar girin" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Telefon</label>
-                    <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="05XX XXX XX XX" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Şehir</label>
-                    <select name="city" value={formData.city} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                      <option value="">Şehir seçin</option>
-                      {cities.map((city) => (<option key={city} value={city}>{city}</option>))}
-                    </select>
-                  </div>
+{/* Register Modal */}
+{showRegisterModal && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+      <div className="p-6 border-b border-slate-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-white">Üye Ol</h3>
+          <button onClick={() => { setShowRegisterModal(false); setRegisterStep(1); }} className="text-slate-400 hover:text-white">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        
+        {/* Step Indicator */}
+        <div className="flex items-center">
+          {[
+            { step: 1, label: "Hesap" },
+            { step: 2, label: "Araç" },
+            { step: 3, label: "Tercihler" }
+          ].map((item, index) => (
+            <div key={item.step} className="flex items-center flex-1">
+              <div className="flex flex-col items-center w-full">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                  registerStep >= item.step 
+                    ? "bg-emerald-500 text-white" 
+                    : "bg-slate-700 text-slate-400"
+                }`}>
+                  {registerStep > item.step ? <Check className="w-5 h-5" /> : item.step}
                 </div>
-              )}
-
-              {registerStep === 2 && (
-                <div className="space-y-4">
-                  <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
-                    <p className="text-slate-300 text-sm">Araç bilgilerinizi girerek size özel şarj istasyonu önerileri alabilirsiniz.</p>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Araç Markası</label>
-                    <select name="vehicleBrand" value={formData.vehicleBrand} onChange={(e) => { handleInputChange(e); setFormData((prev) => ({ ...prev, vehicleModel: "" })); }} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                      <option value="">Marka seçin</option>
-                      {brands.map((brand) => (<option key={brand} value={brand}>{brand}</option>))}
-                    </select>
-                  </div>
-                  {formData.vehicleBrand && (
-                    <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-2">Araç Modeli</label>
-                      <select name="vehicleModel" value={formData.vehicleModel} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                        <option value="">Model seçin</option>
-                        {vehiclesByBrand[formData.vehicleBrand]?.map((vehicle) => (<option key={vehicle.id} value={vehicle.model}>{vehicle.model}</option>))}
-                      </select>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Model Yılı</label>
-                    <select name="vehicleYear" value={formData.vehicleYear} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                      <option value="">Yıl seçin</option>
-                      {years.map((year) => (<option key={year} value={year}>{year}</option>))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Aylık Ortalama KM</label>
-                    <input type="number" name="monthlyKm" value={formData.monthlyKm} onChange={handleInputChange} placeholder="Örn: 1500" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-                  </div>
-                </div>
-              )}
-
-              {registerStep === 3 && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Şarj Sıklığı</label>
-                    <select name="chargingFrequency" value={formData.chargingFrequency} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                      <option value="">Seçin</option>
-                      {chargingFrequencies.map((freq) => (<option key={freq.value} value={freq.value}>{freq.label}</option>))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-slate-300 text-sm font-medium mb-2">Tercih Ettiğiniz Şarj Tipi</label>
-                    <select name="preferredChargerType" value={formData.preferredChargerType} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                      <option value="">Seçin</option>
-                      {chargerTypes.map((type) => (<option key={type.value} value={type.value}>{type.label}</option>))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
-                    <input type="checkbox" name="homeCharging" checked={formData.homeCharging} onChange={handleInputChange} className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400" />
-                    <div>
-                      <div className="text-white font-medium">Evde şarj imkanım var</div>
-                      <div className="text-slate-400 text-sm">Evde şarj cihazınız veya priziniz var mı?</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
-                    <input type="checkbox" name="notificationsEnabled" checked={formData.notificationsEnabled} onChange={handleInputChange} className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400" />
-                    <div>
-                      <div className="text-white font-medium">Bildirimleri aç</div>
-                      <div className="text-slate-400 text-sm">İstasyon durumları hakkında bildirim alın</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
-                    <input type="checkbox" name="marketingConsent" checked={formData.marketingConsent} onChange={handleInputChange} className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-400" />
-                    <div>
-                      <div className="text-white font-medium">Kampanyalardan haberdar ol</div>
-                      <div className="text-slate-400 text-sm">Fırsatlar ve yenilikler hakkında e-posta alın</div>
-                    </div>
-                  </div>
-                </div>
+                <span className={`mt-2 text-xs ${
+                  registerStep >= item.step ? "text-emerald-400" : "text-slate-400"
+                }`}>
+                  {item.label}
+                </span>
+              </div>
+              {index < 2 && (
+                <div className={`h-1 flex-1 -mt-6 mx-1 rounded transition-all ${
+                  registerStep > item.step ? "bg-emerald-500" : "bg-slate-700"
+                }`} />
               )}
             </div>
+          ))}
+        </div>
+      </div>
 
-            <div className="p-6 border-t border-slate-700 flex gap-3">
-              {registerStep > 1 && (
-                <button onClick={() => setRegisterStep(registerStep - 1)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-medium transition">
-                  Geri
+      <div className="p-6 overflow-y-auto max-h-[60vh]">
+        {registerStep === 1 && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Ad Soyad <span className="text-red-400">*</span></label>
+              <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="Adınız Soyadınız" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">E-posta <span className="text-red-400">*</span></label>
+              <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="ornek@email.com" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Şifre <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} placeholder="En az 6 karakter" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
-              )}
-              {registerStep < 3 ? (
-                <button onClick={() => { if (registerStep === 1 && !validateStep1()) return; setRegisterStep(registerStep + 1); }} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition">
-                  Devam Et
-                </button>
-              ) : (
-                <button onClick={handleRegister} disabled={loading} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-full font-medium transition flex items-center justify-center gap-2">
-                  {loading ? (<><Loader2 className="w-5 h-5 animate-spin" />Kaydediliyor...</>) : "Üyeliği Tamamla"}
-                </button>
-              )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Şifre Tekrar <span className="text-red-400">*</span></label>
+              <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Şifrenizi tekrar girin" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Telefon</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="05XX XXX XX XX" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Şehir</label>
+              <select name="city" value={formData.city} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <option value="">Şehir seçin</option>
+                {cities.map((city) => (<option key={city} value={city}>{city}</option>))}
+              </select>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Login Modal */}
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Giriş Yap</h3>
-              <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
+        {registerStep === 2 && (
+          <div className="space-y-4">
+            <div className="bg-slate-700/50 rounded-lg p-4 mb-4">
+              <p className="text-slate-300 text-sm">Araç bilgilerinizi girerek size özel şarj istasyonu önerileri alabilirsiniz.</p>
             </div>
-            <div className="space-y-4">
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Araç Markası</label>
+              <select name="vehicleBrand" value={formData.vehicleBrand} onChange={(e) => { handleInputChange(e); setFormData((prev) => ({ ...prev, vehicleModel: "" })); }} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <option value="">Marka seçin</option>
+                {brands.map((brand) => (<option key={brand} value={brand}>{brand}</option>))}
+              </select>
+            </div>
+            {formData.vehicleBrand && (
               <div>
-                <label className="block text-slate-300 text-sm font-medium mb-2">E-posta</label>
-                <input type="email" placeholder="ornek@email.com" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
+                <label className="block text-slate-300 text-sm font-medium mb-2">Araç Modeli</label>
+                <select name="vehicleModel" value={formData.vehicleModel} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                  <option value="">Model seçin</option>
+                  {vehiclesByBrand[formData.vehicleBrand]?.map((vehicle) => (<option key={vehicle.id} value={vehicle.model}>{vehicle.model}</option>))}
+                </select>
               </div>
-              <div>
-                <label className="block text-slate-300 text-sm font-medium mb-2">Şifre</label>
-                <input type="password" placeholder="Şifreniz" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 text-slate-300">
-                  <input type="checkbox" className="rounded border-slate-600 text-emerald-500" />
-                  Beni hatırla
-                </label>
-                <a href="#" className="text-emerald-400 hover:text-emerald-300">Şifremi unuttum</a>
-              </div>
-              <button className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition">
-                Giriş Yap
-              </button>
-              <p className="text-center text-slate-400 text-sm">
-                Hesabınız yok mu?{" "}
-                <button onClick={() => { setShowLoginModal(false); setShowRegisterModal(true); }} className="text-emerald-400 hover:text-emerald-300">
-                  Üye olun
-                </button>
-              </p>
+            )}
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Model Yılı</label>
+              <select name="vehicleYear" value={formData.vehicleYear} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <option value="">Yıl seçin</option>
+                {years.map((year) => (<option key={year} value={year}>{year}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Aylık Ortalama KM</label>
+              <input type="number" name="monthlyKm" value={formData.monthlyKm} onChange={handleInputChange} placeholder="Örn: 1500" className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" />
             </div>
           </div>
+        )}
+
+        {registerStep === 3 && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Şarj Sıklığı</label>
+              <select name="chargingFrequency" value={formData.chargingFrequency} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <option value="">Seçin</option>
+                {chargingFrequencies.map((freq) => (<option key={freq.value} value={freq.value}>{freq.label}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Tercih Ettiğiniz Şarj Tipi</label>
+              <select name="preferredChargerType" value={formData.preferredChargerType} onChange={handleInputChange} className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <option value="">Seçin</option>
+                {chargerTypes.map((type) => (<option key={type.value} value={type.value}>{type.label}</option>))}
+              </select>
+            </div>
+            
+            {/* Custom Checkboxes */}
+            <div 
+              onClick={() => setFormData(prev => ({ ...prev, homeCharging: !prev.homeCharging }))}
+              className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700/70 transition"
+            >
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
+                formData.homeCharging 
+                  ? "bg-emerald-500" 
+                  : "bg-slate-600 border-2 border-slate-500"
+              }`}>
+                {formData.homeCharging && <Check className="w-4 h-4 text-white" />}
+              </div>
+              <div>
+                <div className="text-white font-medium">Evde şarj imkanım var</div>
+                <div className="text-slate-400 text-sm">Evde şarj cihazınız veya priziniz var mı?</div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setFormData(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
+              className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700/70 transition"
+            >
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
+                formData.notificationsEnabled 
+                  ? "bg-emerald-500" 
+                  : "bg-slate-600 border-2 border-slate-500"
+              }`}>
+                {formData.notificationsEnabled && <Check className="w-4 h-4 text-white" />}
+              </div>
+              <div>
+                <div className="text-white font-medium">Bildirimleri aç</div>
+                <div className="text-slate-400 text-sm">İstasyon durumları hakkında bildirim alın</div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setFormData(prev => ({ ...prev, marketingConsent: !prev.marketingConsent }))}
+              className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700/70 transition"
+            >
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
+                formData.marketingConsent 
+                  ? "bg-emerald-500" 
+                  : "bg-slate-600 border-2 border-slate-500"
+              }`}>
+                {formData.marketingConsent && <Check className="w-4 h-4 text-white" />}
+              </div>
+              <div>
+                <div className="text-white font-medium">Kampanyalardan haberdar ol</div>
+                <div className="text-slate-400 text-sm">Fırsatlar ve yenilikler hakkında e-posta alın</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-6 border-t border-slate-700 flex gap-3">
+        {registerStep > 1 && (
+          <button onClick={() => setRegisterStep(registerStep - 1)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-medium transition">
+            Geri
+          </button>
+        )}
+        {registerStep < 3 ? (
+          <button onClick={() => { if (registerStep === 1 && !validateStep1()) return; setRegisterStep(registerStep + 1); }} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition">
+            Devam Et
+          </button>
+        ) : (
+          <button onClick={handleRegister} disabled={loading} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-full font-medium transition flex items-center justify-center gap-2">
+            {loading ? (<><Loader2 className="w-5 h-5 animate-spin" />Kaydediliyor...</>) : "Üyeliği Tamamla"}
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Login Modal */}
+{showLoginModal && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-slate-800 rounded-2xl w-full max-w-md p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold text-white">Giriş Yap</h3>
+        <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white">
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-slate-300 text-sm font-medium mb-2">E-posta</label>
+          <input 
+            type="email" 
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="ornek@email.com" 
+            className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" 
+          />
         </div>
-      )}
+        <div>
+          <label className="block text-slate-300 text-sm font-medium mb-2">Şifre</label>
+          <input 
+            type="password" 
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            placeholder="Şifreniz" 
+            className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400" 
+          />
+        </div>
+        <button 
+          onClick={async () => {
+            setLoginLoading(true);
+            const result = await login(loginEmail, loginPassword);
+            setLoginLoading(false);
+            if (result.success) {
+              setShowLoginModal(false);
+              setLoginEmail("");
+              setLoginPassword("");
+              setToast({ show: true, message: "Giriş başarılı! Hoş geldiniz.", type: "success" });
+            } else {
+              setToast({ show: true, message: result.error || "Giriş başarısız.", type: "error" });
+            }
+            setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+          }}
+          disabled={loginLoading}
+          className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-full font-medium transition flex items-center justify-center gap-2"
+        >
+          {loginLoading ? <><Loader2 className="w-5 h-5 animate-spin" />Giriş yapılıyor...</> : "Giriş Yap"}
+        </button>
+        <p className="text-center text-slate-400 text-sm">
+          Hesabınız yok mu?{" "}
+          <button onClick={() => { setShowLoginModal(false); setShowRegisterModal(true); }} className="text-emerald-400 hover:text-emerald-300">
+            Üye olun
+          </button>
+        </p>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Toast */}
       {toast.show && (
