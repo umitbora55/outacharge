@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Zap, MapPin, Battery, Bell, Shield, Users, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X } from "lucide-react";
+import { MapPin, Battery, Bell, Shield, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands } from "@/data/vehicles";
+import FluxLogo from "./components/FluxLogo";
 
 export default function HomePage() {
   const [showIntro, setShowIntro] = useState(true);
+  const [introPhase, setIntroPhase] = useState(1); // 1: logo appears, 2: electric flows, 3: text appears
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
@@ -19,12 +21,17 @@ export default function HomePage() {
     type: "success",
   });
 
-  // Intro animation timer
+  // Intro animation phases
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowIntro(false);
-    }, 2500);
-    return () => clearTimeout(timer);
+    const phase2 = setTimeout(() => setIntroPhase(2), 800);
+    const phase3 = setTimeout(() => setIntroPhase(3), 1600);
+    const hideIntro = setTimeout(() => setShowIntro(false), 3000);
+    
+    return () => {
+      clearTimeout(phase2);
+      clearTimeout(phase3);
+      clearTimeout(hideIntro);
+    };
   }, []);
 
   // Form state
@@ -182,37 +189,60 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Intro Animation */}
       {showIntro && (
-        <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center">
-          <div className="relative">
-            <div className="absolute inset-0 blur-3xl opacity-50">
-              <div className="w-32 h-32 bg-emerald-500 rounded-full animate-pulse" />
+        <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center overflow-hidden">
+          {/* Background electric grid effect */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `
+                linear-gradient(rgba(52, 211, 153, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(52, 211, 153, 0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px'
+            }} />
+          </div>
+
+          <div className="relative flex flex-col items-center">
+            {/* Flux Capacitor Logo */}
+            <div className={`transition-all duration-700 ${introPhase >= 1 ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+              <FluxLogo size={120} animated={introPhase >= 2} />
             </div>
-            <div className="relative flex items-center gap-3">
-              <div className="relative">
-                <Zap className="w-16 h-16 text-emerald-400 animate-bounce" />
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-600 blur-xl opacity-50 animate-pulse" />
-              </div>
-              <div className="overflow-hidden">
-                <span className="text-4xl font-bold text-white">
-                  Outa<span className="text-emerald-400">Charge</span>
-                </span>
-              </div>
+
+            {/* Brand Text */}
+            <div className={`mt-8 overflow-hidden transition-all duration-700 ${introPhase >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <h1 className="text-5xl font-bold">
+                <span className="text-white">Outa</span>
+                <span className="text-emerald-400"> Charge</span>
+              </h1>
             </div>
-            <p className="text-slate-400 text-center mt-6">
-              Elektrikli Araç Şarj Platformu
+
+            {/* Tagline */}
+            <p className={`text-slate-400 text-center mt-4 transition-all duration-500 delay-300 ${introPhase >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+              Geleceğin Şarj Deneyimi
             </p>
-            <div className="mt-8 w-48 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 animate-loading-bar" />
+
+            {/* Loading Bar */}
+            <div className={`mt-8 w-48 h-1 bg-slate-800 rounded-full overflow-hidden transition-opacity duration-500 ${introPhase >= 2 ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="h-full bg-gradient-to-r from-emerald-500 via-blue-500 to-emerald-500 animate-loading-bar" />
             </div>
           </div>
+
+          {/* Electric sparks in background */}
+          {introPhase >= 2 && (
+            <>
+              <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+              <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-blue-400 rounded-full animate-ping delay-300" />
+              <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-emerald-300 rounded-full animate-ping delay-500" />
+              <div className="absolute bottom-1/4 right-1/3 w-1 h-1 bg-blue-300 rounded-full animate-ping delay-700" />
+            </>
+          )}
         </div>
       )}
 
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="w-8 h-8 text-emerald-400" />
+          <div className="flex items-center gap-3">
+            <FluxLogo size={40} animated={false} />
             <span className="text-2xl font-bold text-white">
               Outa<span className="text-emerald-400">Charge</span>
             </span>
@@ -330,8 +360,8 @@ export default function HomePage() {
       <footer className="py-12 px-4 border-t border-slate-800">
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <Zap className="w-6 h-6 text-emerald-400" />
+            <div className="flex items-center gap-3">
+              <FluxLogo size={32} animated={false} />
               <span className="text-xl font-bold text-white">
                 Outa<span className="text-emerald-400">Charge</span>
               </span>
