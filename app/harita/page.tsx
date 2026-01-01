@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } from "@/data/vehicles";
 import { operators, getOperatorById, ChargingOperator } from "@/data/operators";
 import { useAuth } from "@/lib/auth";
+import StationReviews from "../components/StationReviews";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -903,7 +904,8 @@ export default function HaritaPage() {
                 </div>
               )}
             </div>
-
+            {/* Reviews */}
+            <StationReviews stationId={selectedStation.id} stationName={selectedStation.name} />  
             <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
               <button
                 onClick={() => toggleFavorite(selectedStation)}
