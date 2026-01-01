@@ -2,14 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-// 1. ADIM: Heart import edildi
 import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car, DollarSign, Calculator, Heart } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } from "@/data/vehicles";
 import { operators, getOperatorById, ChargingOperator } from "@/data/operators";
-// 1. ADIM: useAuth import edildi
 import { useAuth } from "@/lib/auth";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -127,7 +125,6 @@ export default function HaritaPage() {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
   
-  // 2. ADIM: Auth ve Favori State'leri eklendi
   const { user } = useAuth();
   const [favorites, setFavorites] = useState<number[]>([]);
   const [togglingFavorite, setTogglingFavorite] = useState(false);
@@ -163,10 +160,29 @@ export default function HaritaPage() {
   const debouncedFilterPowerType = useDebounce(filterPowerType, 150);
   const debouncedFilterMinPower = useDebounce(filterMinPower, 150);
 
-  // 3. ADIM: Favori fonksiyonları eklendi
   useEffect(() => {
     if (user) {
       fetchUserFavorites();
+    }
+  }, [user]);
+
+  // YENİ EKLENEN KISIM: Kullanıcı giriş yaptığında aracı varsa otomatik seç
+  useEffect(() => {
+    // @ts-ignore - user objesinde bu propertylerin oldugunu varsayıyoruz
+    if (user && user.vehicleBrand && user.vehicleModel && !selectedVehicle) {
+      const userVehicle = vehicles.find(
+        // @ts-ignore
+        v => v.brand === user.vehicleBrand && v.model === user.vehicleModel
+      );
+      if (userVehicle) {
+        setSelectedVehicle(userVehicle);
+        setToast({
+          show: true,
+          message: `Kayıtlı aracınız (${userVehicle.brand} ${userVehicle.model}) yüklendi.`,
+          type: "success",
+        });
+        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
+      }
     }
   }, [user]);
 
@@ -888,7 +904,6 @@ export default function HaritaPage() {
               )}
             </div>
 
-            {/* 4. ADIM: Buton Grubu Güncellendi */}
             <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
               <button
                 onClick={() => toggleFavorite(selectedStation)}
