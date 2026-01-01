@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car, DollarSign, Calculator } from "lucide-react";
+// 1. ADIM: Heart import edildi
+import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car, DollarSign, Calculator, Heart } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } from "@/data/vehicles";
 import { operators, getOperatorById, ChargingOperator } from "@/data/operators";
+// 1. ADIM: useAuth import edildi
+import { useAuth } from "@/lib/auth";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -78,64 +81,30 @@ const getStatusText = (status: string) => {
   }
 };
 
-// Helper function to match operator name from API to our database
-// GÜNCELLENDİ: Artık stationName parametresi de alıyor ve aramayı genişletiyor.
 const matchOperator = (operatorName: string, stationName: string = ""): ChargingOperator | null => {
   const lowerName = operatorName.toLowerCase();
   const lowerStationName = stationName.toLowerCase();
   const searchText = lowerName + " " + lowerStationName;
   
-  // Direct matches - check both operator name and station name
-  if (searchText.includes("zes") || searchText.includes("zorlu")) {
-    return getOperatorById("zes") || null;
-  }
-  if (searchText.includes("eşarj") || searchText.includes("esarj") || searchText.includes("enerjisa")) {
-    return getOperatorById("esarj") || null;
-  }
-  if (searchText.includes("trugo") || searchText.includes("togg")) {
-    return getOperatorById("trugo") || null;
-  }
-  if (searchText.includes("tesla") || searchText.includes("supercharger")) {
-    return getOperatorById("tesla") || null;
-  }
-  if (searchText.includes("voltrun")) {
-    return getOperatorById("voltrun") || null;
-  }
-  if (searchText.includes("petrol ofisi") || searchText.includes("e-power") || searchText.includes("epower") || searchText.includes("po ")) {
-    return getOperatorById("epower") || null;
-  }
-  if (searchText.includes("beefull") || searchText.includes("bee full")) {
-    return getOperatorById("beefull") || null;
-  }
-  if (searchText.includes("aksa")) {
-    return getOperatorById("aksasarj") || null;
-  }
-  if (searchText.includes("sharz")) {
-    return getOperatorById("sharz") || null;
-  }
-  if (searchText.includes("astor")) {
-    return getOperatorById("astor") || null;
-  }
-  if (searchText.includes("gersan") || searchText.includes("g-charge") || searchText.includes("gcharge")) {
-    return getOperatorById("gcharge") || null;
-  }
-  if (searchText.includes("oncharge") || searchText.includes("on charge")) {
-    return getOperatorById("oncharge") || null;
-  }
-  if (searchText.includes("wat ") || searchText.includes("wat mobilite")) {
-    return getOperatorById("wat") || null;
-  }
-  if (searchText.includes("enyakıt") || searchText.includes("enyakit") || searchText.includes("en yakıt")) {
-    return getOperatorById("enyakit") || null;
-  }
-  if (searchText.includes("shell") && !searchText.includes("trugo")) {
-    return getOperatorById("trugo") || null; // Shell Recharge = Trugo
-  }
+  if (searchText.includes("zes") || searchText.includes("zorlu")) return getOperatorById("zes") || null;
+  if (searchText.includes("eşarj") || searchText.includes("esarj") || searchText.includes("enerjisa")) return getOperatorById("esarj") || null;
+  if (searchText.includes("trugo") || searchText.includes("togg")) return getOperatorById("trugo") || null;
+  if (searchText.includes("tesla") || searchText.includes("supercharger")) return getOperatorById("tesla") || null;
+  if (searchText.includes("voltrun")) return getOperatorById("voltrun") || null;
+  if (searchText.includes("petrol ofisi") || searchText.includes("e-power") || searchText.includes("epower") || searchText.includes("po ")) return getOperatorById("epower") || null;
+  if (searchText.includes("beefull") || searchText.includes("bee full")) return getOperatorById("beefull") || null;
+  if (searchText.includes("aksa")) return getOperatorById("aksasarj") || null;
+  if (searchText.includes("sharz")) return getOperatorById("sharz") || null;
+  if (searchText.includes("astor")) return getOperatorById("astor") || null;
+  if (searchText.includes("gersan") || searchText.includes("g-charge") || searchText.includes("gcharge")) return getOperatorById("gcharge") || null;
+  if (searchText.includes("oncharge") || searchText.includes("on charge")) return getOperatorById("oncharge") || null;
+  if (searchText.includes("wat ") || searchText.includes("wat mobilite")) return getOperatorById("wat") || null;
+  if (searchText.includes("enyakıt") || searchText.includes("enyakit") || searchText.includes("en yakıt")) return getOperatorById("enyakit") || null;
+  if (searchText.includes("shell") && !searchText.includes("trugo")) return getOperatorById("trugo") || null;
   
   return null;
 };
 
-// Get price for a station based on power type and level
 const getStationPrice = (operator: ChargingOperator | null, power: number, powerType: string): number | null => {
   if (!operator) return null;
   
@@ -143,7 +112,6 @@ const getStationPrice = (operator: ChargingOperator | null, power: number, power
     return operator.pricing.ac || null;
   }
   
-  // DC pricing based on power level
   if (power >= 180) {
     return operator.pricing.dcHigh || operator.pricing.dcMid || null;
   } else if (power >= 100) {
@@ -158,6 +126,12 @@ export default function HaritaPage() {
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarker = useRef<mapboxgl.Marker | null>(null);
+  
+  // 2. ADIM: Auth ve Favori State'leri eklendi
+  const { user } = useAuth();
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [locatingUser, setLocatingUser] = useState(false);
@@ -185,9 +159,71 @@ export default function HaritaPage() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
 
-  // Debounced values for performance
+  // Debounced values
   const debouncedFilterPowerType = useDebounce(filterPowerType, 150);
   const debouncedFilterMinPower = useDebounce(filterMinPower, 150);
+
+  // 3. ADIM: Favori fonksiyonları eklendi
+  useEffect(() => {
+    if (user) {
+      fetchUserFavorites();
+    }
+  }, [user]);
+
+  const fetchUserFavorites = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("favorites")
+      .select("station_id")
+      .eq("user_id", user.id);
+    if (data) {
+      setFavorites(data.map(f => f.station_id));
+    }
+  };
+
+  const toggleFavorite = async (station: Station) => {
+    if (!user) {
+      setToast({ show: true, message: "Favorilere eklemek için giriş yapın.", type: "error" });
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+      return;
+    }
+
+    setTogglingFavorite(true);
+    const isFavorite = favorites.includes(station.id);
+
+    try {
+      if (isFavorite) {
+        await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("station_id", station.id);
+        setFavorites(prev => prev.filter(id => id !== station.id));
+        setToast({ show: true, message: "Favorilerden kaldırıldı.", type: "success" });
+      } else {
+        await supabase
+          .from("favorites")
+          .insert({
+            user_id: user.id,
+            station_id: station.id,
+            station_name: station.name,
+            station_operator: station.operator,
+            station_address: station.address,
+            station_lat: station.lat,
+            station_lng: station.lng,
+            station_power: station.power,
+            station_power_type: station.powerType,
+          });
+        setFavorites(prev => [...prev, station.id]);
+        setToast({ show: true, message: "Favorilere eklendi!", type: "success" });
+      }
+    } catch (err) {
+      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
+    } finally {
+      setTogglingFavorite(false);
+      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+    }
+  };
 
   const powerTypes = ["Tümü", "AC", "DC"];
   const powerLevels = [
@@ -510,16 +546,13 @@ export default function HaritaPage() {
     ? calculateCompatibility(selectedVehicle, selectedStation.connectors, selectedStation.power, selectedStation.powerType)
     : null;
 
-  // Get operator info for selected station
-  // GÜNCELLENDİ: matchOperator artık ikinci parametre (name) alıyor
   const selectedStationOperator = selectedStation ? matchOperator(selectedStation.operator, selectedStation.name) : null;
   const selectedStationPrice = selectedStation && selectedStationOperator 
     ? getStationPrice(selectedStationOperator, selectedStation.power, selectedStation.powerType)
     : null;
 
-  // Calculate estimated cost if vehicle is selected
   const estimatedChargeCost = selectedVehicle && selectedStationPrice
-    ? (selectedVehicle.batteryCapacity * 0.6 * selectedStationPrice) // Assuming 60% charge (20% to 80%)
+    ? (selectedVehicle.batteryCapacity * 0.6 * selectedStationPrice)
     : null;
 
   return (
@@ -555,7 +588,6 @@ export default function HaritaPage() {
             </div>
           </div>
 
-          {/* Vehicle Select Button */}
           <button
             onClick={() => setShowVehicleModal(true)}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition flex-shrink-0 ${
@@ -570,7 +602,6 @@ export default function HaritaPage() {
             </span>
           </button>
 
-          {/* Calculator Link */}
           <Link
             href="/hesaplayici"
             className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-sm font-medium transition"
@@ -579,7 +610,6 @@ export default function HaritaPage() {
             <span>Hesaplayıcı</span>
           </Link>
 
-          {/* Selected Vehicle Info Badge */}
           {selectedVehicle && (
             <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
               <CheckCircle className="w-3 h-3 text-emerald-400" />
@@ -858,7 +888,19 @@ export default function HaritaPage() {
               )}
             </div>
 
+            {/* 4. ADIM: Buton Grubu Güncellendi */}
             <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
+              <button
+                onClick={() => toggleFavorite(selectedStation)}
+                disabled={togglingFavorite}
+                className={`p-2 rounded-full transition ${
+                  favorites.includes(selectedStation.id)
+                    ? "bg-red-500 text-white"
+                    : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${favorites.includes(selectedStation.id) ? "fill-current" : ""}`} />
+              </button>
               <button
                 onClick={() => openDirections(selectedStation)}
                 className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-medium transition flex items-center justify-center gap-2"
@@ -1068,7 +1110,6 @@ export default function HaritaPage() {
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {filteredStations.slice(0, 20).map((station) => {
-              // GÜNCELLENDİ: matchOperator artık ikinci parametre (name) alıyor
               const operator = matchOperator(station.operator, station.name);
               const price = operator ? getStationPrice(operator, station.power, station.powerType) : null;
               
