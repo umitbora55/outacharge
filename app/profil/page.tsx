@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { brands, vehiclesByBrand } from "@/data/vehicles";
+import { BarChart3 } from "lucide-react";
 
 const cities = [
   "Adana", "Ankara", "Antalya", "Bursa", "Denizli", "Diyarbakır", "Eskişehir",
@@ -540,6 +541,15 @@ export default function ProfilPage() {
         </div>
 
         {/* Quick Links */}
+        <Link href="/istatistikler" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition border-b border-slate-700">
+  <div className="flex items-center gap-3">
+    <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
+      <BarChart3 className="w-5 h-5 text-emerald-400" />
+    </div>
+    <span className="text-white font-medium">İstatistiklerim</span>
+  </div>
+  <ChevronRight className="w-5 h-5 text-slate-400" />
+</Link>
         <div className="bg-slate-800 rounded-2xl overflow-hidden mb-6">
           <Link href="/favoriler" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition border-b border-slate-700">
             <div className="flex items-center gap-3">

@@ -851,7 +851,13 @@ export default function HaritaPage() {
               </div>
             )}
             {/* Check-in */}
-            <StationCheckIn stationId={selectedStation.id} stationName={selectedStation.name} />
+            <StationCheckIn 
+  stationId={selectedStation.id} 
+  stationName={selectedStation.name}
+  stationOperator={selectedStation.operator}
+  stationPower={selectedStation.power}
+  stationPowerType={selectedStation.powerType}
+/>
 
             {/* Uyumluluk Skoru */}
             {stationCompatibility && selectedVehicle && (

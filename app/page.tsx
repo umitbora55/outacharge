@@ -8,7 +8,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands } from "@/data/vehicles";
 import FluxLogo from "./components/FluxLogo";
-
+import { BarChart3 } from "lucide-react";
 
 export default function HomePage() {
   const [showIntro, setShowIntro] = useState(true);
@@ -192,6 +192,8 @@ export default function HomePage() {
     { icon: Calculator, title: "Şarj Hesaplayıcı", description: "14 operatörün fiyatlarını karşılaştırın", link: "/hesaplayici" },
     { icon: Route, title: "Rota Planlayıcı", description: "Seyahatinizi planlayın, şarj duraklarını görün", link: "/rota-planla" },
     { icon: Shield, title: "Güvenilir Bilgi", description: "Topluluk tarafından doğrulanmış veriler" },
+    { icon: BarChart3, title: "İstatistikler", description: "Şarj geçmişi, CO₂ tasarrufu ve harcamalar",link: "/istatistikler",
+},
   ];
 
   const stats = [
