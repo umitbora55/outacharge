@@ -12,25 +12,25 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
+    console.log("Reset password request for:", email);
 
-    // Check if email exists
-    const { data: user } = await supabase
+    const { data: user, error: userError } = await supabase
       .from("users")
       .select("id, full_name")
       .eq("email", email.toLowerCase().trim())
       .single();
 
+    console.log("User lookup result:", { user, userError });
+
     if (!user) {
-      // Don't reveal if email exists or not for security
+      console.log("User not found, returning success anyway");
       return NextResponse.json({ success: true });
     }
 
-    // Generate reset token and expiry
     const resetToken = crypto.randomUUID() + "-" + Date.now();
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-    // Save token to database
-    await supabase
+    const { error: updateError } = await supabase
       .from("users")
       .update({ 
         reset_token: resetToken,
@@ -38,11 +38,13 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", user.id);
 
-    // Send email
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://outacharge.vercel.app"}/sifre-sifirla?token=${resetToken}`;
+    console.log("Token update result:", { updateError });
 
-    await resend.emails.send({
-      from: "OutaCharge <noreply@outacharge.com>",
+    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/sifre-sifirla?token=${resetToken}`;
+    console.log("Reset URL:", resetUrl);
+
+    const emailResult = await resend.emails.send({
+      from: "OutaCharge <onboarding@resend.dev>",
       to: email,
       subject: "Şifre Sıfırlama - OutaCharge",
       html: `
@@ -54,16 +56,15 @@ export async function POST(request: NextRequest) {
             Şifremi Sıfırla
           </a>
           <p style="color: #666; font-size: 14px;">Bu link 1 saat geçerlidir.</p>
-          <p style="color: #666; font-size: 14px;">Eğer bu isteği siz yapmadıysanız, bu e-postayı görmezden gelebilirsiniz.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="color: #999; font-size: 12px;">OutaCharge - Türkiye'nin EV Şarj Platformu</p>
         </div>
       `,
     });
 
+    console.log("Email send result:", emailResult);
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Reset password error:", error);
-    return NextResponse.json({ success: false, error: "Bir hata oluştu" }, { status: 500 });
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }
