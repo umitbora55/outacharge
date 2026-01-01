@@ -10,6 +10,7 @@ import { vehicles, vehiclesByBrand, brands, calculateCompatibility, Vehicle } fr
 import { operators, getOperatorById, ChargingOperator } from "@/data/operators";
 import { useAuth } from "@/lib/auth";
 import StationReviews from "../components/StationReviews";
+import StationCheckIn from "../components/StationCheckIn";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -849,6 +850,8 @@ export default function HaritaPage() {
                 </Link>
               </div>
             )}
+            {/* Check-in */}
+            <StationCheckIn stationId={selectedStation.id} stationName={selectedStation.name} />
 
             {/* Uyumluluk Skoru */}
             {stationCompatibility && selectedVehicle && (
