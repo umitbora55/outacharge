@@ -3,7 +3,7 @@
 import { useAuth } from "@/lib/auth";
 import UserMenu from "./components/UserMenu";
 import { useState, useEffect } from "react";
-import { MapPin, Battery, Bell, Shield, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X, Calculator, Mail } from "lucide-react";
+import { MapPin, Battery, Bell, Shield, ChevronRight, Check, Eye, EyeOff, Car, Loader2, Star, TrendingUp, X, Calculator, Mail, Route } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { vehicles, vehiclesByBrand, brands } from "@/data/vehicles";
@@ -190,6 +190,7 @@ export default function HomePage() {
     { icon: Battery, title: "Gerçek Zamanlı Durum", description: "İstasyonların anlık durumunu öğrenin" },
     { icon: Bell, title: "Bildirimler", description: "Favori istasyonlarınız müsait olduğunda haberdar olun" },
     { icon: Calculator, title: "Şarj Hesaplayıcı", description: "14 operatörün fiyatlarını karşılaştırın", link: "/hesaplayici" },
+    { icon: Route, title: "Rota Planlayıcı", description: "Seyahatinizi planlayın, şarj duraklarını görün", link: "/rota-planla" },
     { icon: Shield, title: "Güvenilir Bilgi", description: "Topluluk tarafından doğrulanmış veriler" },
   ];
 
