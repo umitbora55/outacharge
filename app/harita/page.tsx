@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, CheckCircle, XCircle, Car, DollarSign, Calculator, Heart } from "lucide-react";
+import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, MessageCircle, CheckCircle, XCircle, Car, DollarSign, Calculator, Heart } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/lib/supabase";
@@ -11,7 +11,7 @@ import { operators, getOperatorById, ChargingOperator } from "@/data/operators";
 import { useAuth } from "@/lib/auth";
 import StationReviews from "../components/StationReviews";
 import StationCheckIn from "../components/StationCheckIn";
-import StationChat from "../components/StationChat";
+import StationChatAdvanced from "../components/StationChatAdvanced";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -148,6 +148,7 @@ export default function HaritaPage() {
   const [reportStatus, setReportStatus] = useState<"active" | "broken" | "busy">("active");
   const [reportComment, setReportComment] = useState("");
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [showChat, setShowChat] = useState(false);
 
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
     show: false,
@@ -914,8 +915,14 @@ export default function HaritaPage() {
                 </div>
               )}
             </div>
-            {/* Chat */}
-<StationChat stationId={selectedStation.id} stationName={selectedStation.name} />
+            {/* Chat Button */}
+            <button
+              onClick={() => setShowChat(true)}
+              className="w-full mt-3 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-5 h-5 text-emerald-400" />
+              İstasyon Sohbetine Katıl
+            </button>
             {/* Reviews */}
             <StationReviews stationId={selectedStation.id} stationName={selectedStation.name} />  
             <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
@@ -1174,6 +1181,16 @@ export default function HaritaPage() {
             })}
           </div>
         </div>
+      )}
+      {/* Advanced Chat */}
+      {selectedStation && (
+        <StationChatAdvanced
+          stationId={selectedStation.id}
+          stationName={selectedStation.name}
+          stationOperator={selectedStation.operator}
+          isOpen={showChat}
+          onClose={() => setShowChat(false)}
+        />
       )}
     </div>
   );
