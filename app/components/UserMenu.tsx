@@ -3,14 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { User, LogOut, Settings, Car, Heart, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { useAuth, User as UserType } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 
 interface UserMenuProps {
   onLogout?: () => void;
 }
 
 export default function UserMenu({ onLogout }: UserMenuProps) {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +29,7 @@ export default function UserMenu({ onLogout }: UserMenuProps) {
   if (!user) return null;
 
   const handleLogout = () => {
-    logout();
+    signOut();
     setIsOpen(false);
     onLogout?.();
   };

@@ -9,14 +9,25 @@ interface UserProfile {
   id: string;
   email: string;
   fullName: string;
+  phone?: string;
+  city?: string;
   vehicleBrand?: string;
   vehicleModel?: string;
+  vehicleYear?: number;
+  monthlyKm?: number;
   chargingPreference?: string;
+  chargingFrequency?: string;
+  preferredChargerType?: string;
   preferredConnectors?: string[];
+  homeCharging?: boolean;
   notifyPriceChanges?: boolean;
   notifyNewStations?: boolean;
   notifyChargingComplete?: boolean;
+  notificationsEnabled?: boolean;
+  marketingConsent?: boolean;
   isAdmin?: boolean;
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 interface AuthContextType {
@@ -55,20 +66,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select("*")
             .eq("id", userId)
             .single();
-          
+
           if (retryData) {
             setUser({
               id: retryData.id,
               email: email,
               fullName: retryData.full_name || "",
+              phone: retryData.phone,
+              city: retryData.city,
               vehicleBrand: retryData.vehicle_brand,
               vehicleModel: retryData.vehicle_model,
+              vehicleYear: retryData.vehicle_year,
+              monthlyKm: retryData.monthly_km,
               chargingPreference: retryData.charging_preference,
+              chargingFrequency: retryData.charging_frequency,
+              preferredChargerType: retryData.preferred_charger_type,
               preferredConnectors: retryData.preferred_connectors,
+              homeCharging: retryData.home_charging,
               notifyPriceChanges: retryData.notify_price_changes,
               notifyNewStations: retryData.notify_new_stations,
               notifyChargingComplete: retryData.notify_charging_complete,
+              notificationsEnabled: retryData.notifications_enabled,
+              marketingConsent: retryData.marketing_consent,
               isAdmin: retryData.is_admin || false,
+              createdAt: retryData.created_at,
+              lastLogin: retryData.last_login,
             });
           }
         }
@@ -80,14 +102,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.id,
           email: email,
           fullName: data.full_name || "",
+          phone: data.phone,
+          city: data.city,
           vehicleBrand: data.vehicle_brand,
           vehicleModel: data.vehicle_model,
+          vehicleYear: data.vehicle_year,
+          monthlyKm: data.monthly_km,
           chargingPreference: data.charging_preference,
+          chargingFrequency: data.charging_frequency,
+          preferredChargerType: data.preferred_charger_type,
           preferredConnectors: data.preferred_connectors,
+          homeCharging: data.home_charging,
           notifyPriceChanges: data.notify_price_changes,
           notifyNewStations: data.notify_new_stations,
           notifyChargingComplete: data.notify_charging_complete,
+          notificationsEnabled: data.notifications_enabled,
+          marketingConsent: data.marketing_consent,
           isAdmin: data.is_admin || false,
+          createdAt: data.created_at,
+          lastLogin: data.last_login,
         });
       }
     } catch (err) {
@@ -153,12 +186,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-const signOut = async () => {
-  await supabase.auth.signOut();
-  setUser(null);
-  setSession(null);
-  window.location.href = "/";
-};
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    window.location.href = "/";
+  };
 
   const updateUser = async (updates: Partial<UserProfile>) => {
     if (!user) return { error: "Kullanıcı oturum açmamış" };
@@ -166,13 +199,22 @@ const signOut = async () => {
     try {
       const dbUpdates: any = {};
       if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+      if (updates.city !== undefined) dbUpdates.city = updates.city;
       if (updates.vehicleBrand !== undefined) dbUpdates.vehicle_brand = updates.vehicleBrand;
       if (updates.vehicleModel !== undefined) dbUpdates.vehicle_model = updates.vehicleModel;
+      if (updates.vehicleYear !== undefined) dbUpdates.vehicle_year = updates.vehicleYear;
+      if (updates.monthlyKm !== undefined) dbUpdates.monthly_km = updates.monthlyKm;
       if (updates.chargingPreference !== undefined) dbUpdates.charging_preference = updates.chargingPreference;
+      if (updates.chargingFrequency !== undefined) dbUpdates.charging_frequency = updates.chargingFrequency;
+      if (updates.preferredChargerType !== undefined) dbUpdates.preferred_charger_type = updates.preferredChargerType;
       if (updates.preferredConnectors !== undefined) dbUpdates.preferred_connectors = updates.preferredConnectors;
+      if (updates.homeCharging !== undefined) dbUpdates.home_charging = updates.homeCharging;
       if (updates.notifyPriceChanges !== undefined) dbUpdates.notify_price_changes = updates.notifyPriceChanges;
       if (updates.notifyNewStations !== undefined) dbUpdates.notify_new_stations = updates.notifyNewStations;
       if (updates.notifyChargingComplete !== undefined) dbUpdates.notify_charging_complete = updates.notifyChargingComplete;
+      if (updates.notificationsEnabled !== undefined) dbUpdates.notifications_enabled = updates.notificationsEnabled;
+      if (updates.marketingConsent !== undefined) dbUpdates.marketing_consent = updates.marketingConsent;
 
       const { error } = await supabase
         .from("users")

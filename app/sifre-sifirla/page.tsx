@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Zap, Lock, Eye, EyeOff, Check, X, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export default function SifreSifirlaPage() {
+function SifreSifirlaContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -242,5 +242,13 @@ export default function SifreSifirlaPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SifreSifirlaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center"><div className="text-white">Yükleniyor...</div></div>}>
+      <SifreSifirlaContent />
+    </Suspense>
   );
 }

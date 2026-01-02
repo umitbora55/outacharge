@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  User, Mail, Phone, MapPin, Car, Calendar, Zap, Battery, 
+import {
+  User, Mail, Phone, MapPin, Car, Calendar, Zap, Battery,
   Bell, Tag, Save, ArrowLeft, Edit2, Check, X, Loader2,
   ChevronRight, Shield, LogOut
 } from "lucide-react";
@@ -35,8 +35,9 @@ type EditingSection = "personal" | "vehicle" | "charging" | "notifications" | nu
 
 export default function ProfilPage() {
   const router = useRouter();
-  const { user, loading: authLoading, updateUser, logout } = useAuth();
-  
+  const { user, loading: authLoading, updateUser, signOut } = useAuth();
+
+
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
@@ -71,7 +72,7 @@ export default function ProfilPage() {
         city: user.city || "",
         vehicleBrand: user.vehicleBrand || "",
         vehicleModel: user.vehicleModel || "",
-        vehicleYear: user.vehicleYear || "",
+        vehicleYear: user.vehicleYear?.toString() || "",
         monthlyKm: user.monthlyKm?.toString() || "",
         chargingFrequency: user.chargingFrequency || "",
         preferredChargerType: user.preferredChargerType || "",
@@ -96,14 +97,14 @@ export default function ProfilPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    
+
     const result = await updateUser({
       fullName: formData.fullName,
       phone: formData.phone,
       city: formData.city,
       vehicleBrand: formData.vehicleBrand,
       vehicleModel: formData.vehicleModel,
-      vehicleYear: formData.vehicleYear,
+      vehicleYear: formData.vehicleYear ? parseInt(formData.vehicleYear) : undefined,
       monthlyKm: formData.monthlyKm ? parseInt(formData.monthlyKm) : undefined,
       chargingFrequency: formData.chargingFrequency,
       preferredChargerType: formData.preferredChargerType,
@@ -113,14 +114,14 @@ export default function ProfilPage() {
     });
 
     setSaving(false);
-    
-    if (result.success) {
+
+    if (!result.error) {
       setEditingSection(null);
       setToast({ show: true, message: "Bilgiler başarıyla güncellendi!", type: "success" });
     } else {
       setToast({ show: true, message: result.error || "Güncelleme başarısız.", type: "error" });
     }
-    
+
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
   };
 
@@ -133,7 +134,7 @@ export default function ProfilPage() {
         city: user.city || "",
         vehicleBrand: user.vehicleBrand || "",
         vehicleModel: user.vehicleModel || "",
-        vehicleYear: user.vehicleYear || "",
+        vehicleYear: user.vehicleYear?.toString() || "",
         monthlyKm: user.monthlyKm?.toString() || "",
         chargingFrequency: user.chargingFrequency || "",
         preferredChargerType: user.preferredChargerType || "",
@@ -166,13 +167,13 @@ export default function ProfilPage() {
       .slice(0, 2);
   };
 
-  const SectionHeader = ({ 
-    title, 
-    icon: Icon, 
-    section 
-  }: { 
-    title: string; 
-    icon: any; 
+  const SectionHeader = ({
+    title,
+    icon: Icon,
+    section
+  }: {
+    title: string;
+    icon: any;
     section: EditingSection;
   }) => (
     <div className="flex items-center justify-between mb-4">
@@ -245,7 +246,7 @@ export default function ProfilPage() {
         {/* Personal Information */}
         <div className="bg-slate-800 rounded-2xl p-6 mb-6">
           <SectionHeader title="Kişisel Bilgiler" icon={User} section="personal" />
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-slate-400 text-sm mb-1">Ad Soyad</label>
@@ -317,7 +318,7 @@ export default function ProfilPage() {
         {/* Vehicle Information */}
         <div className="bg-slate-800 rounded-2xl p-6 mb-6">
           <SectionHeader title="Araç Bilgileri" icon={Car} section="vehicle" />
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-slate-400 text-sm mb-1">Araç Markası</label>
@@ -406,7 +407,7 @@ export default function ProfilPage() {
         {/* Charging Preferences */}
         <div className="bg-slate-800 rounded-2xl p-6 mb-6">
           <SectionHeader title="Şarj Tercihleri" icon={Zap} section="charging" />
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-slate-400 text-sm mb-1">Şarj Sıklığı</label>
@@ -451,15 +452,14 @@ export default function ProfilPage() {
               )}
             </div>
 
-            <div 
+            <div
               onClick={() => editingSection === "charging" && setFormData(prev => ({ ...prev, homeCharging: !prev.homeCharging }))}
               className={`flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg ${editingSection === "charging" ? "cursor-pointer hover:bg-slate-700/70" : ""} transition`}
             >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
-                (editingSection === "charging" ? formData.homeCharging : user.homeCharging)
-                  ? "bg-emerald-500" 
-                  : "bg-slate-600 border-2 border-slate-500"
-              }`}>
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${(editingSection === "charging" ? formData.homeCharging : user.homeCharging)
+                ? "bg-emerald-500"
+                : "bg-slate-600 border-2 border-slate-500"
+                }`}>
                 {(editingSection === "charging" ? formData.homeCharging : user.homeCharging) && <Check className="w-4 h-4 text-white" />}
               </div>
               <div>
@@ -473,17 +473,16 @@ export default function ProfilPage() {
         {/* Notification Preferences */}
         <div className="bg-slate-800 rounded-2xl p-6 mb-6">
           <SectionHeader title="Bildirim Tercihleri" icon={Bell} section="notifications" />
-          
+
           <div className="space-y-3">
-            <div 
+            <div
               onClick={() => editingSection === "notifications" && setFormData(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
               className={`flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg ${editingSection === "notifications" ? "cursor-pointer hover:bg-slate-700/70" : ""} transition`}
             >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
-                (editingSection === "notifications" ? formData.notificationsEnabled : user.notificationsEnabled)
-                  ? "bg-emerald-500" 
-                  : "bg-slate-600 border-2 border-slate-500"
-              }`}>
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${(editingSection === "notifications" ? formData.notificationsEnabled : user.notificationsEnabled)
+                ? "bg-emerald-500"
+                : "bg-slate-600 border-2 border-slate-500"
+                }`}>
                 {(editingSection === "notifications" ? formData.notificationsEnabled : user.notificationsEnabled) && <Check className="w-4 h-4 text-white" />}
               </div>
               <div>
@@ -492,15 +491,14 @@ export default function ProfilPage() {
               </div>
             </div>
 
-            <div 
+            <div
               onClick={() => editingSection === "notifications" && setFormData(prev => ({ ...prev, marketingConsent: !prev.marketingConsent }))}
               className={`flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg ${editingSection === "notifications" ? "cursor-pointer hover:bg-slate-700/70" : ""} transition`}
             >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${
-                (editingSection === "notifications" ? formData.marketingConsent : user.marketingConsent)
-                  ? "bg-emerald-500" 
-                  : "bg-slate-600 border-2 border-slate-500"
-              }`}>
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${(editingSection === "notifications" ? formData.marketingConsent : user.marketingConsent)
+                ? "bg-emerald-500"
+                : "bg-slate-600 border-2 border-slate-500"
+                }`}>
                 {(editingSection === "notifications" ? formData.marketingConsent : user.marketingConsent) && <Check className="w-4 h-4 text-white" />}
               </div>
               <div>
@@ -517,7 +515,7 @@ export default function ProfilPage() {
             <Shield className="w-5 h-5 text-emerald-400" />
             Hesap Bilgileri
           </h3>
-          
+
           <div className="space-y-3 text-sm">
             <div className="flex justify-between items-center py-2 border-b border-slate-700">
               <span className="text-slate-400">Üyelik Tarihi</span>
@@ -542,14 +540,14 @@ export default function ProfilPage() {
 
         {/* Quick Links */}
         <Link href="/istatistikler" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition border-b border-slate-700">
-  <div className="flex items-center gap-3">
-    <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
-      <BarChart3 className="w-5 h-5 text-emerald-400" />
-    </div>
-    <span className="text-white font-medium">İstatistiklerim</span>
-  </div>
-  <ChevronRight className="w-5 h-5 text-slate-400" />
-</Link>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-emerald-400" />
+            </div>
+            <span className="text-white font-medium">İstatistiklerim</span>
+          </div>
+          <ChevronRight className="w-5 h-5 text-slate-400" />
+        </Link>
         <div className="bg-slate-800 rounded-2xl overflow-hidden mb-6">
           <Link href="/favoriler" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition border-b border-slate-700">
             <div className="flex items-center gap-3">
@@ -574,7 +572,7 @@ export default function ProfilPage() {
         {/* Logout Button */}
         <button
           onClick={() => {
-            logout();
+            signOut();
             router.push("/");
           }}
           className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-medium transition flex items-center justify-center gap-2"
@@ -587,9 +585,8 @@ export default function ProfilPage() {
       {/* Toast Notification */}
       {toast.show && (
         <div
-          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 transition-all ${
-            toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
-          }`}
+          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 transition-all ${toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
+            }`}
         >
           {toast.type === "success" ? (
             <Check className="w-6 h-6 text-white" />
