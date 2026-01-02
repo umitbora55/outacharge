@@ -178,3 +178,47 @@ body {
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
 }
+/* Mapbox Marker Styles */
+.marker-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  cursor: pointer;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.marker-cluster:hover {
+  transform: scale(1.1);
+  z-index: 50;
+}
+
+.marker-cluster-small { width: 40px; height: 40px; font-size: 13px; }
+.marker-cluster-medium { width: 48px; height: 48px; font-size: 14px; }
+.marker-cluster-large { width: 56px; height: 56px; font-size: 15px; }
+
+.marker-station {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+}
+
+.marker-station:hover {
+  transform: scale(1.15);
+  z-index: 50;
+}
+
+.marker-station.selected {
+  border: 4px solid #fbbf24 !important;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.7) !important;
+  z-index: 100;
+}

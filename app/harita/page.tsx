@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import mapboxgl from "mapbox-gl";
+import Supercluster from "supercluster";
 import { Zap, Battery, Clock, X, Navigation, Locate, Filter, ChevronDown, Loader2, Search, MessageSquare, MessageCircle, CheckCircle, XCircle, Car, DollarSign, Calculator, Heart } from "lucide-react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -15,23 +16,33 @@ import StationChatAdvanced from "../components/StationChatAdvanced";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-// Debounce helper
+// ============================================
+// PERFORMANCE: Debounce hook
+// ============================================
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
   }, [value, delay]);
-
   return debouncedValue;
 }
 
+// ============================================
+// PERFORMANCE: Station cache to avoid re-fetching
+// ============================================
+const stationCache = new Map<string, { data: Station[]; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCacheKey(bounds: mapboxgl.LngLatBounds): string {
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  return `${sw.lat.toFixed(2)},${sw.lng.toFixed(2)},${ne.lat.toFixed(2)},${ne.lng.toFixed(2)}`;
+}
+
+// ============================================
+// TYPES
+// ============================================
 interface Station {
   id: number;
   name: string;
@@ -46,6 +57,21 @@ interface Station {
   numberOfPoints: number;
 }
 
+interface GeoJSONFeature {
+  type: "Feature";
+  properties: {
+    cluster?: boolean;
+    cluster_id?: number;
+    point_count?: number;
+    point_count_abbreviated?: string;
+    station?: Station;
+  };
+  geometry: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+}
+
 const connectionTypes: Record<number, string> = {
   1: "Type 1",
   2: "CHAdeMO",
@@ -58,27 +84,19 @@ const connectionTypes: Record<number, string> = {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "active":
-      return "#10b981";
-    case "busy":
-      return "#eab308";
-    case "broken":
-      return "#ef4444";
-    default:
-      return "#6b7280";
+    case "active": return "#10b981";
+    case "busy": return "#eab308";
+    case "broken": return "#ef4444";
+    default: return "#6b7280";
   }
 };
 
 const getStatusText = (status: string) => {
   switch (status) {
-    case "active":
-      return "Müsait";
-    case "busy":
-      return "Dolu";
-    case "broken":
-      return "Arızalı";
-    default:
-      return "Bilinmiyor";
+    case "active": return "Müsait";
+    case "busy": return "Dolu";
+    case "broken": return "Arızalı";
+    default: return "Bilinmiyor";
   }
 };
 
@@ -108,25 +126,19 @@ const matchOperator = (operatorName: string, stationName: string = ""): Charging
 
 const getStationPrice = (operator: ChargingOperator | null, power: number, powerType: string): number | null => {
   if (!operator) return null;
-  
-  if (powerType === "AC") {
-    return operator.pricing.ac || null;
-  }
-  
-  if (power >= 180) {
-    return operator.pricing.dcHigh || operator.pricing.dcMid || null;
-  } else if (power >= 100) {
-    return operator.pricing.dcMid || operator.pricing.dcLow || null;
-  } else {
-    return operator.pricing.dcLow || null;
-  }
+  if (powerType === "AC") return operator.pricing.ac || null;
+  if (power >= 180) return operator.pricing.dcHigh || operator.pricing.dcMid || null;
+  if (power >= 100) return operator.pricing.dcMid || operator.pricing.dcLow || null;
+  return operator.pricing.dcLow || null;
 };
 
 export default function HaritaPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const userMarker = useRef<mapboxgl.Marker | null>(null);
+  const superclusterRef = useRef<Supercluster | null>(null);
+  const isInitialLoadRef = useRef(true);
   
   const { user } = useAuth();
   const [favorites, setFavorites] = useState<number[]>([]);
@@ -160,90 +172,13 @@ export default function HaritaPage() {
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
 
+  // Map state for triggering updates
+  const [mapBounds, setMapBounds] = useState<mapboxgl.LngLatBounds | null>(null);
+  const [mapZoom, setMapZoom] = useState(6);
+
   // Debounced values
   const debouncedFilterPowerType = useDebounce(filterPowerType, 150);
   const debouncedFilterMinPower = useDebounce(filterMinPower, 150);
-
-  useEffect(() => {
-    if (user) {
-      fetchUserFavorites();
-    }
-  }, [user]);
-
-  // YENİ EKLENEN KISIM: Kullanıcı giriş yaptığında aracı varsa otomatik seç
-  useEffect(() => {
-    // @ts-ignore - user objesinde bu propertylerin oldugunu varsayıyoruz
-    if (user && user.vehicleBrand && user.vehicleModel && !selectedVehicle) {
-      const userVehicle = vehicles.find(
-        // @ts-ignore
-        v => v.brand === user.vehicleBrand && v.model === user.vehicleModel
-      );
-      if (userVehicle) {
-        setSelectedVehicle(userVehicle);
-        setToast({
-          show: true,
-          message: `Kayıtlı aracınız (${userVehicle.brand} ${userVehicle.model}) yüklendi.`,
-          type: "success",
-        });
-        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
-      }
-    }
-  }, [user]);
-
-  const fetchUserFavorites = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("favorites")
-      .select("station_id")
-      .eq("user_id", user.id);
-    if (data) {
-      setFavorites(data.map(f => f.station_id));
-    }
-  };
-
-  const toggleFavorite = async (station: Station) => {
-    if (!user) {
-      setToast({ show: true, message: "Favorilere eklemek için giriş yapın.", type: "error" });
-      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
-      return;
-    }
-
-    setTogglingFavorite(true);
-    const isFavorite = favorites.includes(station.id);
-
-    try {
-      if (isFavorite) {
-        await supabase
-          .from("favorites")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("station_id", station.id);
-        setFavorites(prev => prev.filter(id => id !== station.id));
-        setToast({ show: true, message: "Favorilerden kaldırıldı.", type: "success" });
-      } else {
-        await supabase
-          .from("favorites")
-          .insert({
-            user_id: user.id,
-            station_id: station.id,
-            station_name: station.name,
-            station_operator: station.operator,
-            station_address: station.address,
-            station_lat: station.lat,
-            station_lng: station.lng,
-            station_power: station.power,
-            station_power_type: station.powerType,
-          });
-        setFavorites(prev => [...prev, station.id]);
-        setToast({ show: true, message: "Favorilere eklendi!", type: "success" });
-      }
-    } catch (err) {
-      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
-    } finally {
-      setTogglingFavorite(false);
-      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
-    }
-  };
 
   const powerTypes = ["Tümü", "AC", "DC"];
   const powerLevels = [
@@ -254,30 +189,204 @@ export default function HaritaPage() {
     { label: "150 kW+", value: 150 },
   ];
 
-  const filteredStations = stations.filter((station) => {
-    if (filterPowerType !== "Tümü" && station.powerType !== filterPowerType) return false;
-    if (station.power < filterMinPower) return false;
-    
-    if (selectedVehicle) {
-      const compatibility = calculateCompatibility(
-        selectedVehicle,
-        station.connectors,
-        station.power,
-        station.powerType
-      );
-      if (compatibility.score === 0) return false;
-    }
-    
-    return true;
-  });
+  // ============================================
+  // PERFORMANCE: Memoized filtered stations
+  // ============================================
+  const filteredStations = useMemo(() => {
+    return stations.filter((station) => {
+      if (filterPowerType !== "Tümü" && station.powerType !== filterPowerType) return false;
+      if (station.power < filterMinPower) return false;
+      
+      if (selectedVehicle) {
+        const compatibility = calculateCompatibility(
+          selectedVehicle,
+          station.connectors,
+          station.power,
+          station.powerType
+        );
+        if (compatibility.score === 0) return false;
+      }
+      
+      return true;
+    });
+  }, [stations, filterPowerType, filterMinPower, selectedVehicle]);
 
-  const fetchStations = async (lat: number, lng: number, searchAll: boolean = false) => {
+  // ============================================
+  // PERFORMANCE: Convert stations to GeoJSON for Supercluster
+  // ============================================
+  const stationsGeoJSON = useMemo((): GeoJSONFeature[] => {
+    return filteredStations.map((station) => ({
+      type: "Feature" as const,
+      properties: { station },
+      geometry: {
+        type: "Point" as const,
+        coordinates: [station.lng, station.lat] as [number, number],
+      },
+    }));
+  }, [filteredStations]);
+
+  // ============================================
+  // PERFORMANCE: Initialize Supercluster
+  // ============================================
+  useEffect(() => {
+    superclusterRef.current = new Supercluster({
+      radius: 60,
+      maxZoom: 16,
+      minZoom: 0,
+    });
+    
+    if (stationsGeoJSON.length > 0) {
+      superclusterRef.current.load(stationsGeoJSON as any);
+    }
+  }, [stationsGeoJSON]);
+
+  // ============================================
+  // Favorites
+  // ============================================
+  useEffect(() => {
+    if (user) fetchUserFavorites();
+  }, [user]);
+
+  useEffect(() => {
+    // @ts-ignore
+    if (user && user.vehicleBrand && user.vehicleModel && !selectedVehicle) {
+      const userVehicle = vehicles.find(
+        // @ts-ignore
+        v => v.brand === user.vehicleBrand && v.model === user.vehicleModel
+      );
+      if (userVehicle) {
+        setSelectedVehicle(userVehicle);
+        showToast(`Kayıtlı aracınız (${userVehicle.brand} ${userVehicle.model}) yüklendi.`, "success");
+      }
+    }
+  }, [user]);
+
+  const fetchUserFavorites = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("favorites")
+      .select("station_id")
+      .eq("user_id", user.id);
+    if (data) setFavorites(data.map(f => f.station_id));
+  };
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+  };
+
+  const toggleFavorite = async (station: Station) => {
+    if (!user) {
+      showToast("Favorilere eklemek için giriş yapın.", "error");
+      return;
+    }
+
+    setTogglingFavorite(true);
+    const isFavorite = favorites.includes(station.id);
+
+    try {
+      if (isFavorite) {
+        await supabase.from("favorites").delete().eq("user_id", user.id).eq("station_id", station.id);
+        setFavorites(prev => prev.filter(id => id !== station.id));
+        showToast("Favorilerden kaldırıldı.", "success");
+      } else {
+        await supabase.from("favorites").insert({
+          user_id: user.id,
+          station_id: station.id,
+          station_name: station.name,
+          station_operator: station.operator,
+          station_address: station.address,
+          station_lat: station.lat,
+          station_lng: station.lng,
+          station_power: station.power,
+          station_power_type: station.powerType,
+        });
+        setFavorites(prev => [...prev, station.id]);
+        showToast("Favorilere eklendi!", "success");
+      }
+    } catch (err) {
+      showToast("Bir hata oluştu.", "error");
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
+
+  // ============================================
+  // PERFORMANCE: Fetch stations with bounding box
+  // ============================================
+  const fetchStationsInBounds = useCallback(async (bounds: mapboxgl.LngLatBounds) => {
+    const cacheKey = getCacheKey(bounds);
+    const cached = stationCache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      setStations(prev => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newStations = cached.data.filter(s => !existingIds.has(s.id));
+        return newStations.length > 0 ? [...prev, ...newStations] : prev;
+      });
+      return;
+    }
+
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    const center = bounds.getCenter();
+    
+    const distance = Math.max(
+      Math.abs(ne.lat - sw.lat) * 111,
+      Math.abs(ne.lng - sw.lng) * 85
+    ) / 2;
+
+    try {
+      const url = `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${center.lat}&longitude=${center.lng}&distance=${Math.ceil(distance)}&distanceunit=KM&maxresults=200&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const formattedStations: Station[] = data.map((item: any) => {
+        const connections = item.Connections || [];
+        const maxPower = Math.max(...connections.map((c: any) => c.PowerKW || 0), 0);
+        const powerType = connections.some((c: any) => c.CurrentTypeID === 30) ? "DC" : "AC";
+        const connectorTypes = [...new Set(connections.map((c: any) => connectionTypes[c.ConnectionTypeID] || "Diğer"))];
+
+        let status = "active";
+        if (item.StatusTypeID === 30 || item.StatusTypeID === 100) status = "broken";
+        else if (item.StatusTypeID === 20) status = "busy";
+
+        return {
+          id: item.ID,
+          name: item.AddressInfo?.Title || "Bilinmeyen İstasyon",
+          lat: item.AddressInfo?.Latitude,
+          lng: item.AddressInfo?.Longitude,
+          operator: item.OperatorInfo?.Title || "Bilinmeyen Operatör",
+          power: maxPower,
+          powerType,
+          status,
+          connectors: connectorTypes,
+          address: item.AddressInfo?.AddressLine1 || "",
+          numberOfPoints: item.NumberOfPoints || 1,
+        };
+      });
+
+      stationCache.set(cacheKey, { data: formattedStations, timestamp: Date.now() });
+
+      setStations(prev => {
+        const existingIds = new Set(prev.map(s => s.id));
+        const newStations = formattedStations.filter(s => !existingIds.has(s.id));
+        return newStations.length > 0 ? [...prev, ...newStations] : prev;
+      });
+
+    } catch (error) {
+      console.error("İstasyonlar yüklenemedi:", error);
+    }
+  }, []);
+
+  // ============================================
+  // Initial fetch for Turkey
+  // ============================================
+  const fetchInitialStations = useCallback(async () => {
     setLoading(true);
     try {
-      const url = searchAll
-        ? `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&maxresults=500&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
-        : `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=50&distanceunit=KM&maxresults=200&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`;
-
+      const url = `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&maxresults=500&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`;
       const response = await fetch(url);
       const data = await response.json();
 
@@ -312,8 +421,277 @@ export default function HaritaPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // ============================================
+  // PERFORMANCE: Update clusters on map move - NO FLICKER
+  // ============================================
+  const updateClusters = useCallback(() => {
+    if (!map.current || !superclusterRef.current || stationsGeoJSON.length === 0) return;
+
+    const bounds = map.current.getBounds();
+    if (!bounds) return;
+    
+    const zoom = Math.floor(map.current.getZoom());
+
+    const clusters = superclusterRef.current.getClusters(
+      [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()],
+      zoom
+    );
+
+    const currentMarkerIds = new Set<string>();
+
+    clusters.forEach((cluster: any) => {
+      const [lng, lat] = cluster.geometry.coordinates;
+      const isCluster = cluster.properties.cluster;
+      const markerId = isCluster
+        ? `cluster-${cluster.properties.cluster_id}` 
+        : `station-${cluster.properties.station.id}`;
+
+      currentMarkerIds.add(markerId);
+
+      // Check if marker already exists
+      const existingMarker = markersRef.current.get(markerId);
+      
+      if (existingMarker) {
+        // Just update position if needed (for smooth movement)
+        const currentPos = existingMarker.getLngLat();
+        if (currentPos.lng !== lng || currentPos.lat !== lat) {
+          existingMarker.setLngLat([lng, lat]);
+        }
+        
+        // Update selected state for station markers
+        if (!isCluster) {
+          const station = cluster.properties.station;
+          const el = existingMarker.getElement();
+          const isSelected = selectedStation?.id === station.id;
+          
+          if (isSelected) {
+            el.style.border = "4px solid #fbbf24";
+            el.style.boxShadow = "0 0 20px rgba(251, 191, 36, 0.7)";
+            el.style.zIndex = "1000";
+          } else {
+            el.style.border = selectedVehicle ? "3px solid white" : "2px solid white";
+            el.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+            el.style.zIndex = "1";
+          }
+        }
+        return;
+      }
+
+      // Create new marker
+      const el = document.createElement("div");
+      el.className = "station-marker";
+
+      if (isCluster) {
+        // ============================================
+        // CLUSTER MARKER
+        // ============================================
+        const count = cluster.properties.point_count;
+        const size = count < 10 ? 40 : count < 50 ? 48 : 56;
+
+        Object.assign(el.style, {
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: "0 4px 15px rgba(16, 185, 129, 0.4)",
+          border: "3px solid white",
+          transition: "box-shadow 0.2s ease",
+        });
+
+        el.innerHTML = `<span style="color:white;font-weight:bold;font-size:${size < 44 ? 13 : 15}px;text-shadow:0 1px 2px rgba(0,0,0,0.3)">${count}</span>`;
+
+        // Tooltip
+        el.title = `${count} istasyon - Yakınlaştırmak için tıklayın`;
+
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const expansionZoom = superclusterRef.current!.getClusterExpansionZoom(cluster.properties.cluster_id);
+          map.current?.flyTo({
+            center: [lng, lat],
+            zoom: Math.min(expansionZoom, 16),
+            duration: 500,
+          });
+        };
+
+      } else {
+        // ============================================
+        // STATION MARKER
+        // ============================================
+        const station = cluster.properties.station;
+        let compatibilityScore = 100;
+        let markerColor = getStatusColor(station.status);
+
+        if (selectedVehicle) {
+          const compatibility = calculateCompatibility(
+            selectedVehicle,
+            station.connectors,
+            station.power,
+            station.powerType
+          );
+          compatibilityScore = compatibility.score;
+
+          if (compatibilityScore >= 90) markerColor = "#059669";
+          else if (compatibilityScore >= 80) markerColor = "#10b981";
+          else if (compatibilityScore >= 70) markerColor = "#34d399";
+          else if (compatibilityScore >= 60) markerColor = "#fbbf24";
+          else if (compatibilityScore >= 50) markerColor = "#f97316";
+          else if (compatibilityScore > 0) markerColor = "#ef4444";
+          else markerColor = "#6b7280";
+        }
+
+        const isSelected = selectedStation?.id === station.id;
+        const size = selectedVehicle ? 42 : 38;
+
+        Object.assign(el.style, {
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: "50%",
+          backgroundColor: markerColor,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: isSelected 
+            ? "0 0 20px rgba(251, 191, 36, 0.7)" 
+            : "0 2px 8px rgba(0,0,0,0.3)",
+          border: isSelected 
+            ? "4px solid #fbbf24" 
+            : selectedVehicle ? "3px solid white" : "2px solid white",
+          opacity: selectedVehicle && compatibilityScore < 40 ? "0.5" : "1",
+          transition: "box-shadow 0.2s ease, border 0.2s ease",
+          zIndex: isSelected ? "1000" : "1",
+        });
+
+        if (selectedVehicle && compatibilityScore > 0) {
+          el.innerHTML = `<span style="color:white;font-size:12px;font-weight:bold;text-shadow:0 1px 2px rgba(0,0,0,0.5)">${compatibilityScore}</span>`;
+        } else {
+          el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+        }
+
+        // Tooltip with station info
+        const operator = matchOperator(station.operator, station.name);
+        const price = operator ? getStationPrice(operator, station.power, station.powerType) : null;
+        el.title = `${station.name}\n${station.power} kW ${station.powerType}\n${station.operator}${price ? `\n${price.toFixed(2)} ₺/kWh` : ''}`;
+
+        el.onclick = (e) => {
+          e.stopPropagation();
+          setSelectedStation(station);
+          map.current?.flyTo({ 
+            center: [station.lng, station.lat], 
+            zoom: Math.max(map.current.getZoom(), 14),
+            duration: 500,
+          });
+        };
+      }
+
+      const marker = new mapboxgl.Marker({ 
+        element: el,
+        anchor: "center",
+      })
+        .setLngLat([lng, lat])
+        .addTo(map.current!);
+
+      markersRef.current.set(markerId, marker);
+    });
+
+    // Remove markers that are no longer visible - with requestAnimationFrame to prevent flicker
+    requestAnimationFrame(() => {
+      markersRef.current.forEach((marker, id) => {
+        if (!currentMarkerIds.has(id)) {
+          marker.remove();
+          markersRef.current.delete(id);
+        }
+      });
+    });
+  }, [stationsGeoJSON, selectedVehicle, selectedStation]);
+
+  // ============================================
+  // Initialize Map
+  // ============================================
+  useEffect(() => {
+    if (map.current || !mapContainer.current) return;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: [32.8541, 39.9208],
+      zoom: 6,
+      pitchWithRotate: false,
+      dragRotate: false,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+
+    map.current.on("load", () => {
+      fetchInitialStations();
+      setMapBounds(map.current!.getBounds());
+      setMapZoom(map.current!.getZoom());
+    });
+
+    // PERFORMANCE: Debounced map move handler - increased to 400ms
+    let moveTimeout: NodeJS.Timeout;
+    map.current.on("moveend", () => {
+      clearTimeout(moveTimeout);
+      moveTimeout = setTimeout(() => {
+        if (!map.current) return;
+        
+        const bounds = map.current.getBounds();
+        const zoom = map.current.getZoom();
+        
+        if (bounds) {
+          setMapBounds(bounds);
+          setMapZoom(zoom);
+
+          if (zoom >= 10 && !isInitialLoadRef.current) {
+            fetchStationsInBounds(bounds);
+          }
+        }
+        
+        isInitialLoadRef.current = false;
+      }, 400);
+    });
+
+    // Close station panel when clicking on map
+    map.current.on("click", (e) => {
+      // Check if click was on a marker
+      const target = e.originalEvent.target as HTMLElement;
+      if (!target.closest(".station-marker")) {
+        setSelectedStation(null);
+      }
+    });
+
+    return () => {
+      clearTimeout(moveTimeout);
+      map.current?.remove();
+    };
+  }, [fetchInitialStations, fetchStationsInBounds]);
+
+  // ============================================
+  // Update clusters when data or view changes
+  // ============================================
+  useEffect(() => {
+    if (map.current && stationsGeoJSON.length > 0) {
+      superclusterRef.current?.load(stationsGeoJSON as any);
+      updateClusters();
+    }
+  }, [stationsGeoJSON, mapBounds, mapZoom, updateClusters]);
+
+  // ============================================
+  // Update markers when selection changes
+  // ============================================
+  useEffect(() => {
+    updateClusters();
+  }, [selectedStation, updateClusters]);
+
+  // ============================================
+  // Search
+  // ============================================
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
@@ -326,23 +704,70 @@ export default function HaritaPage() {
 
       if (data.features && data.features.length > 0) {
         const [lng, lat] = data.features[0].center;
-
-        map.current?.flyTo({
-          center: [lng, lat],
-          zoom: 12,
-        });
-
-        fetchStations(lat, lng, false);
+        map.current?.flyTo({ center: [lng, lat], zoom: 12, duration: 1000 });
       } else {
-        alert("Konum bulunamadı. Lütfen farklı bir arama yapın.");
+        showToast("Konum bulunamadı.", "error");
       }
     } catch (error) {
       console.error("Arama hatası:", error);
+      showToast("Arama yapılırken hata oluştu.", "error");
     } finally {
       setSearching(false);
     }
   };
 
+  // ============================================
+  // Locate User
+  // ============================================
+  const locateUser = () => {
+    if (!navigator.geolocation) {
+      showToast("Tarayıcınız konum özelliğini desteklemiyor.", "error");
+      return;
+    }
+
+    setLocatingUser(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+
+        if (map.current) {
+          map.current.flyTo({ center: [longitude, latitude], zoom: 13, duration: 1000 });
+
+          if (userMarker.current) {
+            userMarker.current.setLngLat([longitude, latitude]);
+          } else {
+            const el = document.createElement("div");
+            Object.assign(el.style, {
+              width: "24px",
+              height: "24px",
+              borderRadius: "50%",
+              backgroundColor: "#3b82f6",
+              border: "4px solid white",
+              boxShadow: "0 0 15px rgba(59,130,246,0.6)",
+            });
+
+            userMarker.current = new mapboxgl.Marker(el)
+              .setLngLat([longitude, latitude])
+              .addTo(map.current);
+          }
+        }
+
+        setLocatingUser(false);
+        showToast("Konumunuz bulundu!", "success");
+      },
+      (error) => {
+        console.error("Konum alınamadı:", error);
+        showToast("Konum alınamadı.", "error");
+        setLocatingUser(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // ============================================
+  // Report
+  // ============================================
   const submitReport = async () => {
     if (!selectedStation) return;
 
@@ -358,8 +783,7 @@ export default function HaritaPage() {
       ]);
 
       if (error) {
-        setToast({ show: true, message: "Bildirim gönderilemedi. Lütfen tekrar deneyin.", type: "error" });
-        console.error(error);
+        showToast("Bildirim gönderilemedi.", "error");
       } else {
         if (reportStatus === "broken") {
           await fetch("/api/report", {
@@ -378,7 +802,7 @@ export default function HaritaPage() {
           });
         }
 
-        setToast({ show: true, message: "Teşekkürler! Bildiriminiz kaydedildi.", type: "success" });
+        showToast("Bildiriminiz kaydedildi!", "success");
         setShowReportModal(false);
         setReportComment("");
 
@@ -388,170 +812,11 @@ export default function HaritaPage() {
         setSelectedStation({ ...selectedStation, status: reportStatus });
       }
     } catch (err) {
-      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
-      console.error(err);
+      showToast("Bir hata oluştu.", "error");
     } finally {
       setReportSubmitting(false);
-      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
     }
   };
-
-  const locateUser = () => {
-    if (!navigator.geolocation) {
-      alert("Tarayıcınız konum özelliğini desteklemiyor.");
-      return;
-    }
-
-    setLocatingUser(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setUserLocation({ lat: latitude, lng: longitude });
-
-        if (map.current) {
-          map.current.flyTo({
-            center: [longitude, latitude],
-            zoom: 13,
-          });
-
-          if (userMarker.current) {
-            userMarker.current.setLngLat([longitude, latitude]);
-          } else {
-            const el = document.createElement("div");
-            el.className = "user-marker";
-            el.style.width = "20px";
-            el.style.height = "20px";
-            el.style.borderRadius = "50%";
-            el.style.backgroundColor = "#3b82f6";
-            el.style.border = "3px solid white";
-            el.style.boxShadow = "0 2px 10px rgba(59,130,246,0.5)";
-
-            userMarker.current = new mapboxgl.Marker(el)
-              .setLngLat([longitude, latitude])
-              .addTo(map.current);
-          }
-        }
-
-        fetchStations(latitude, longitude, false);
-        setLocatingUser(false);
-      },
-      (error) => {
-        console.error("Konum alınamadı:", error);
-        alert("Konum alınamadı. Varsayılan konum kullanılıyor.");
-        setLocatingUser(false);
-      },
-      { enableHighAccuracy: true }
-    );
-  };
-
-  const updateMarkers = () => {
-    if (markersRef.current.length > 0) {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-    }
-
-    if (!map.current) return;
-
-    const newMarkers: mapboxgl.Marker[] = [];
-
-    filteredStations.forEach((station) => {
-      let compatibilityScore = 100;
-      let markerColor = getStatusColor(station.status);
-
-      if (selectedVehicle) {
-        const compatibility = calculateCompatibility(
-          selectedVehicle,
-          station.connectors,
-          station.power,
-          station.powerType
-        );
-        compatibilityScore = compatibility.score;
-
-        if (compatibilityScore >= 90) {
-          markerColor = "#059669";
-        } else if (compatibilityScore >= 80) {
-          markerColor = "#10b981";
-        } else if (compatibilityScore >= 70) {
-          markerColor = "#34d399";
-        } else if (compatibilityScore >= 60) {
-          markerColor = "#fbbf24";
-        } else if (compatibilityScore >= 50) {
-          markerColor = "#f97316";
-        } else if (compatibilityScore > 0) {
-          markerColor = "#ef4444";
-        } else {
-          markerColor = "#6b7280";
-        }
-      }
-
-      const el = document.createElement("div");
-      el.className = "station-marker";
-
-      Object.assign(el.style, {
-        width: selectedVehicle ? "40px" : "36px",
-        height: selectedVehicle ? "40px" : "36px",
-        borderRadius: "50%",
-        backgroundColor: markerColor,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-        border: selectedVehicle ? "3px solid white" : "none",
-        opacity: selectedVehicle && compatibilityScore < 40 ? "0.6" : "1",
-        transform: selectedVehicle && compatibilityScore < 40 ? "scale(0.8)" : "scale(1)",
-      });
-
-      if (selectedVehicle && compatibilityScore > 0) {
-        el.innerHTML = `<span style="color:white;font-size:11px;font-weight:bold">${compatibilityScore}</span>`;
-      } else {
-        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
-      }
-
-      el.onclick = () => {
-        setSelectedStation(station);
-        map.current?.flyTo({
-          center: [station.lng, station.lat],
-          zoom: 15,
-        });
-      };
-
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([station.lng, station.lat])
-        .addTo(map.current!);
-
-      newMarkers.push(marker);
-    });
-
-    markersRef.current = newMarkers;
-  };
-
-  useEffect(() => {
-    if (map.current || !mapContainer.current) return;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [32.8541, 39.9208],
-      zoom: 6,
-    });
-
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    map.current.on("load", () => {
-      fetchStations(39.9208, 32.8541, true);
-    });
-
-    return () => {
-      map.current?.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (map.current && stations.length > 0) {
-      updateMarkers();
-    }
-  }, [stations, debouncedFilterPowerType, debouncedFilterMinPower, selectedVehicle]);
 
   const openDirections = (station: Station) => {
     const url = userLocation
@@ -595,9 +860,7 @@ export default function HaritaPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && searchQuery.trim()) {
-                    handleSearch();
-                  }
+                  if (e.key === "Enter" && searchQuery.trim()) handleSearch();
                 }}
                 className="w-full bg-slate-700 text-white rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
@@ -633,9 +896,7 @@ export default function HaritaPage() {
           {selectedVehicle && (
             <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
               <CheckCircle className="w-3 h-3 text-emerald-400" />
-              <span className="text-emerald-400 text-xs">
-                Uyumluluk modu aktif
-              </span>
+              <span className="text-emerald-400 text-xs">Uyumluluk aktif</span>
             </div>
           )}
 
@@ -678,10 +939,7 @@ export default function HaritaPage() {
             <div className="container mx-auto px-4 py-4">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-white font-medium">Filtreler</span>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="text-slate-400 hover:text-white p-1"
-                >
+                <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-white p-1">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -696,9 +954,7 @@ export default function HaritaPage() {
                       className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
                     >
                       {powerTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
+                        <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -714,9 +970,7 @@ export default function HaritaPage() {
                       className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm appearance-none cursor-pointer"
                     >
                       {powerLevels.map((level) => (
-                        <option key={level.value} value={level.value}>
-                          {level.label}
-                        </option>
+                        <option key={level.value} value={level.value}>{level.label}</option>
                       ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -737,7 +991,7 @@ export default function HaritaPage() {
 
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700">
                 <span className="text-slate-400 text-sm">
-                  {loading ? "Yükleniyor..." : `${filteredStations.length} istasyon bulundu`}
+                  {loading ? "Yükleniyor..." : `${filteredStations.length} istasyon`}
                 </span>
                 <button
                   onClick={() => {
@@ -747,7 +1001,7 @@ export default function HaritaPage() {
                   }}
                   className="text-emerald-400 text-sm hover:text-emerald-300 transition"
                 >
-                  Filtreleri Temizle
+                  Temizle
                 </button>
               </div>
             </div>
@@ -760,8 +1014,8 @@ export default function HaritaPage() {
 
       {/* Loading Overlay */}
       {loading && (
-        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-30">
-          <div className="bg-slate-800 rounded-xl p-6 flex items-center gap-4">
+        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center z-30 pointer-events-none">
+          <div className="bg-slate-800 rounded-xl p-6 flex items-center gap-4 shadow-2xl">
             <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
             <span className="text-white font-medium">İstasyonlar yükleniyor...</span>
           </div>
@@ -780,8 +1034,8 @@ export default function HaritaPage() {
 
       {/* Station Detail Panel */}
       {selectedStation && (
-        <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-96 z-20">
-          <div className="bg-slate-800 text-white p-4 rounded-xl shadow-xl">
+        <div className="absolute bottom-32 md:bottom-8 left-4 right-4 md:right-auto md:left-4 md:w-96 z-20 animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-slate-800 text-white p-4 rounded-xl shadow-2xl max-h-[60vh] overflow-y-auto border border-slate-700">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="font-bold text-lg">{selectedStation.name}</h3>
@@ -795,7 +1049,10 @@ export default function HaritaPage() {
                   )}
                 </div>
               </div>
-              <button onClick={() => setSelectedStation(null)} className="text-slate-400 hover:text-white">
+              <button 
+                onClick={() => setSelectedStation(null)} 
+                className="text-slate-400 hover:text-white p-1 hover:bg-slate-700 rounded-lg transition"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -834,7 +1091,7 @@ export default function HaritaPage() {
                   </div>
                 )}
                 <div className="mt-2 text-xs text-slate-500">
-                  * {selectedStationOperator?.name} tarifesi, güncel fiyatlar farklılık gösterebilir.
+                  * {selectedStationOperator?.name} tarifesi
                 </div>
               </div>
             ) : (
@@ -848,18 +1105,19 @@ export default function HaritaPage() {
                   className="mt-2 text-emerald-400 text-xs hover:text-emerald-300 flex items-center gap-1"
                 >
                   <Calculator className="w-3 h-3" />
-                  Tüm operatör fiyatlarını karşılaştır →
+                  Fiyatları karşılaştır →
                 </Link>
               </div>
             )}
+
             {/* Check-in */}
             <StationCheckIn 
-  stationId={selectedStation.id} 
-  stationName={selectedStation.name}
-  stationOperator={selectedStation.operator}
-  stationPower={selectedStation.power}
-  stationPowerType={selectedStation.powerType}
-/>
+              stationId={selectedStation.id} 
+              stationName={selectedStation.name}
+              stationOperator={selectedStation.operator}
+              stationPower={selectedStation.power}
+              stationPowerType={selectedStation.powerType}
+            />
 
             {/* Uyumluluk Skoru */}
             {stationCompatibility && selectedVehicle && (
@@ -870,7 +1128,7 @@ export default function HaritaPage() {
               }`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">
-                    {selectedVehicle.brand} {selectedVehicle.model} Uyumluluğu
+                    {selectedVehicle.brand} {selectedVehicle.model}
                   </span>
                   <span className={`text-lg font-bold ${
                     stationCompatibility.score >= 70 ? "text-emerald-400" :
@@ -883,13 +1141,13 @@ export default function HaritaPage() {
                 <div className="space-y-1">
                   {stationCompatibility.reasons.map((reason, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-emerald-300">
-                      <CheckCircle className="w-3 h-3" />
+                      <CheckCircle className="w-3 h-3 flex-shrink-0" />
                       {reason}
                     </div>
                   ))}
                   {stationCompatibility.warnings.map((warning, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-yellow-300">
-                      <XCircle className="w-3 h-3" />
+                      <XCircle className="w-3 h-3 flex-shrink-0" />
                       {warning}
                     </div>
                   ))}
@@ -900,9 +1158,7 @@ export default function HaritaPage() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Battery className="w-4 h-4 text-emerald-400" />
-                <span>
-                  {selectedStation.power} kW {selectedStation.powerType}
-                </span>
+                <span>{selectedStation.power} kW {selectedStation.powerType}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-emerald-400" />
@@ -915,16 +1171,19 @@ export default function HaritaPage() {
                 </div>
               )}
             </div>
+
             {/* Chat Button */}
             <button
               onClick={() => setShowChat(true)}
               className="w-full mt-3 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
             >
               <MessageCircle className="w-5 h-5 text-emerald-400" />
-              İstasyon Sohbetine Katıl
+              İstasyon Sohbeti
             </button>
+
             {/* Reviews */}
-            <StationReviews stationId={selectedStation.id} stationName={selectedStation.name} />  
+            <StationReviews stationId={selectedStation.id} stationName={selectedStation.name} />
+
             <div className="mt-4 pt-3 border-t border-slate-700 flex gap-2">
               <button
                 onClick={() => toggleFavorite(selectedStation)}
@@ -959,7 +1218,7 @@ export default function HaritaPage() {
       {/* Vehicle Selection Modal */}
       {showVehicleModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-white font-bold text-lg">Aracınızı Seçin</h3>
               <button onClick={() => setShowVehicleModal(false)} className="text-slate-400 hover:text-white">
@@ -967,7 +1226,6 @@ export default function HaritaPage() {
               </button>
             </div>
 
-            {/* Marka Secimi */}
             <div className="mb-4">
               <label className="block text-slate-400 text-xs mb-2">Marka</label>
               <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
@@ -987,7 +1245,6 @@ export default function HaritaPage() {
               </div>
             </div>
 
-            {/* Model Listesi */}
             {selectedBrand && (
               <div className="flex-1 overflow-y-auto">
                 <label className="block text-slate-400 text-xs mb-2">Model</label>
@@ -998,12 +1255,7 @@ export default function HaritaPage() {
                       onClick={() => {
                         setSelectedVehicle(vehicle);
                         setShowVehicleModal(false);
-                        setToast({
-                          show: true,
-                          message: `${vehicle.brand} ${vehicle.model} seçildi. Haritada uyumluluk skorları gösteriliyor.`,
-                          type: "success",
-                        });
-                        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 4000);
+                        showToast(`${vehicle.brand} ${vehicle.model} seçildi.`, "success");
                       }}
                       className={`w-full p-4 rounded-lg text-left transition ${
                         selectedVehicle?.id === vehicle.id
@@ -1024,7 +1276,6 @@ export default function HaritaPage() {
               </div>
             )}
 
-            {/* Secimi Kaldir */}
             {selectedVehicle && (
               <button
                 onClick={() => {
@@ -1043,9 +1294,9 @@ export default function HaritaPage() {
       {/* Report Modal */}
       {showReportModal && selectedStation && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-lg">İstasyon Durumu Bildir</h3>
+              <h3 className="text-white font-bold text-lg">Durum Bildir</h3>
               <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
@@ -1056,36 +1307,21 @@ export default function HaritaPage() {
             <div className="space-y-3 mb-4">
               <label className="block text-slate-300 text-sm font-medium mb-2">Durum</label>
               <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setReportStatus("active")}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                    reportStatus === "active"
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  Çalışıyor
-                </button>
-                <button
-                  onClick={() => setReportStatus("busy")}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                    reportStatus === "busy"
-                      ? "bg-yellow-500 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  Dolu
-                </button>
-                <button
-                  onClick={() => setReportStatus("broken")}
-                  className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
-                    reportStatus === "broken"
-                      ? "bg-red-500 text-white"
-                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                  }`}
-                >
-                  Arızalı
-                </button>
+                {(["active", "busy", "broken"] as const).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setReportStatus(status)}
+                    className={`py-2 px-3 rounded-lg text-sm font-medium transition ${
+                      reportStatus === status
+                        ? status === "active" ? "bg-emerald-500 text-white" :
+                          status === "busy" ? "bg-yellow-500 text-white" :
+                          "bg-red-500 text-white"
+                        : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                    }`}
+                  >
+                    {status === "active" ? "Çalışıyor" : status === "busy" ? "Dolu" : "Arızalı"}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1094,7 +1330,7 @@ export default function HaritaPage() {
               <textarea
                 value={reportComment}
                 onChange={(e) => setReportComment(e.target.value)}
-                placeholder="Ek bilgi ekleyin..."
+                placeholder="Ek bilgi..."
                 className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
                 rows={3}
               />
@@ -1111,7 +1347,7 @@ export default function HaritaPage() {
                   Gönderiliyor...
                 </>
               ) : (
-                "Bildirimi Gönder"
+                "Gönder"
               )}
             </button>
           </div>
@@ -1121,14 +1357,14 @@ export default function HaritaPage() {
       {/* Toast Notification */}
       {toast.show && (
         <div
-          className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 transition-all ${
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${
             toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
           }`}
         >
           {toast.type === "success" ? (
-            <CheckCircle className="w-6 h-6 text-white" />
+            <CheckCircle className="w-5 h-5 text-white" />
           ) : (
-            <XCircle className="w-6 h-6 text-white" />
+            <XCircle className="w-5 h-5 text-white" />
           )}
           <span className="text-white font-medium">{toast.message}</span>
         </div>
@@ -1138,34 +1374,36 @@ export default function HaritaPage() {
       {!loading && (
         <div className="absolute bottom-0 left-0 right-0 z-10 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 p-4 md:hidden">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white font-medium">{filteredStations.length} istasyon bulundu</span>
+            <span className="text-white font-medium">{filteredStations.length} istasyon</span>
             <Link href="/hesaplayici" className="text-emerald-400 text-sm flex items-center gap-1">
               <Calculator className="w-3 h-3" />
               Fiyat Hesapla
             </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {filteredStations.slice(0, 20).map((station) => {
               const operator = matchOperator(station.operator, station.name);
               const price = operator ? getStationPrice(operator, station.power, station.powerType) : null;
+              const isSelected = selectedStation?.id === station.id;
               
               return (
                 <div
                   key={station.id}
                   onClick={() => {
                     setSelectedStation(station);
-                    map.current?.flyTo({
-                      center: [station.lng, station.lat],
-                      zoom: 15,
-                    });
+                    map.current?.flyTo({ center: [station.lng, station.lat], zoom: 15, duration: 500 });
                   }}
-                  className="flex-shrink-0 bg-slate-800 rounded-xl p-3 min-w-[200px] cursor-pointer hover:bg-slate-700 transition"
+                  className={`flex-shrink-0 rounded-xl p-3 min-w-[200px] cursor-pointer transition ${
+                    isSelected 
+                      ? "bg-emerald-500/20 border-2 border-emerald-500" 
+                      : "bg-slate-800 hover:bg-slate-700 border-2 border-transparent"
+                  }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span
-                      className="w-2 h-2 rounded-full"
+                      className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: getStatusColor(station.status) }}
-                    ></span>
+                    />
                     <span className="text-white font-medium text-sm truncate">{station.name}</span>
                   </div>
                   <div className="text-slate-400 text-xs">
@@ -1182,6 +1420,7 @@ export default function HaritaPage() {
           </div>
         </div>
       )}
+
       {/* Advanced Chat */}
       {selectedStation && (
         <StationChatAdvanced
