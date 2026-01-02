@@ -26,7 +26,7 @@ export default function HomePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { user, login, loading: authLoading } = useAuth();
+  const { user, signIn, signUp, loading: authLoading } = useAuth();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -118,71 +118,44 @@ export default function HomePage() {
     return true;
   };
 
-  const handleRegister = async () => {
-    setLoading(true);
-    try {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(formData.password);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const passwordHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+const handleRegister = async () => {
+  setLoading(true);
+  try {
+    const { error } = await signUp(formData.email, formData.password, formData.fullName);
 
-      const { error } = await supabase.from("users").insert([
-        {
-          email: formData.email,
-          password_hash: passwordHash,
-          full_name: formData.fullName,
-          phone: formData.phone || null,
-          city: formData.city || null,
-          vehicle_brand: formData.vehicleBrand || null,
-          vehicle_model: formData.vehicleModel || null,
-          vehicle_year: formData.vehicleYear || null,
-          charging_frequency: formData.chargingFrequency || null,
-          home_charging: formData.homeCharging,
-          monthly_km: formData.monthlyKm ? parseInt(formData.monthlyKm) : null,
-          preferred_charger_type: formData.preferredChargerType || null,
-          notifications_enabled: formData.notificationsEnabled,
-          marketing_consent: formData.marketingConsent,
-        },
-      ]);
-
-      if (error) {
-        if (error.code === "23505") {
-          setToast({ show: true, message: "Bu e-posta adresi zaten kayıtlı.", type: "error" });
-        } else {
-          setToast({ show: true, message: "Kayıt sırasında bir hata oluştu.", type: "error" });
-        }
-        console.error(error);
-      } else {
-        setToast({ show: true, message: "Kayıt başarılı! Hoş geldiniz.", type: "success" });
-        setShowRegisterModal(false);
-        setRegisterStep(1);
-        setFormData({
-          email: "",
-          password: "",
-          confirmPassword: "",
-          fullName: "",
-          phone: "",
-          city: "",
-          vehicleBrand: "",
-          vehicleModel: "",
-          vehicleYear: "",
-          chargingFrequency: "",
-          homeCharging: false,
-          monthlyKm: "",
-          preferredChargerType: "",
-          notificationsEnabled: true,
-          marketingConsent: false,
-        });
-      }
-    } catch (err) {
-      setToast({ show: true, message: "Bir hata oluştu.", type: "error" });
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+    if (error) {
+      setToast({ show: true, message: error, type: "error" });
+      console.error("Register error:", error);
+    } else {
+      setToast({ show: true, message: "Kayıt başarılı! Hoş geldiniz.", type: "success" });
+      setShowRegisterModal(false);
+      setRegisterStep(1);
+      setFormData({
+        email: "",
+        password: "",
+        confirmPassword: "",
+        fullName: "",
+        phone: "",
+        city: "",
+        vehicleBrand: "",
+        vehicleModel: "",
+        vehicleYear: "",
+        chargingFrequency: "",
+        homeCharging: false,
+        monthlyKm: "",
+        preferredChargerType: "",
+        notificationsEnabled: true,
+        marketingConsent: false,
+      });
     }
-  };
+  } catch (err: any) {
+    setToast({ show: true, message: "Kayıt sırasında bir hata oluştu.", type: "error" });
+    console.error("Register catch:", err);
+  } finally {
+    setLoading(false);
+    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+  }
+};
 
   const features = [
     { icon: MapPin, title: "500+ Şarj İstasyonu", description: "Türkiye genelinde tüm şarj istasyonlarını haritada görün" },
@@ -642,20 +615,20 @@ export default function HomePage() {
                 />
               </div>
               <button 
-                onClick={async () => {
-                  setLoginLoading(true);
-                  const result = await login(loginEmail, loginPassword);
-                  setLoginLoading(false);
-                  if (result.success) {
-                    setShowLoginModal(false);
-                    setLoginEmail("");
-                    setLoginPassword("");
-                    setToast({ show: true, message: "Giriş başarılı! Hoş geldiniz.", type: "success" });
-                  } else {
-                    setToast({ show: true, message: result.error || "Giriş başarısız.", type: "error" });
-                  }
-                  setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
-                }}
+onClick={async () => {
+  setLoginLoading(true);
+  const { error } = await signIn(loginEmail, loginPassword);
+  setLoginLoading(false);
+  if (!error) {
+    setShowLoginModal(false);
+    setLoginEmail("");
+    setLoginPassword("");
+    setToast({ show: true, message: "Giriş başarılı! Hoş geldiniz.", type: "success" });
+  } else {
+    setToast({ show: true, message: error, type: "error" });
+  }
+  setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
+}}
                 disabled={loginLoading}
                 className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-full font-medium transition flex items-center justify-center gap-2"
               >

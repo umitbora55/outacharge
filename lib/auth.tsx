@@ -1,167 +1,195 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "./supabase";
+import { Session } from "@supabase/supabase-js";
 
-export interface User {
+// Kullanıcı profil verisi (public.users tablosundan)
+interface UserProfile {
   id: string;
   email: string;
   fullName: string;
-  phone?: string;
-  city?: string;
   vehicleBrand?: string;
   vehicleModel?: string;
-  vehicleYear?: string;
-  chargingFrequency?: string;
-  homeCharging?: boolean;
-  monthlyKm?: number;
-  preferredChargerType?: string;
-  notificationsEnabled?: boolean;
-  marketingConsent?: boolean;
-  createdAt?: string;
-  lastLogin?: string;
+  chargingPreference?: string;
+  preferredConnectors?: string[];
+  notifyPriceChanges?: boolean;
+  notifyNewStations?: boolean;
+  notifyChargingComplete?: boolean;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
+  session: Session | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  updateUser: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
+  updateUser: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("outacharge_user");
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } catch (e) {
-        localStorage.removeItem("outacharge_user");
-      }
-    }
-    setLoading(false);
-  }, []);
-
-  // Hash password function
-  const hashPassword = async (password: string): Promise<string> => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  };
-
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  // Kullanıcı profilini public.users tablosundan çek
+  const fetchProfile = useCallback(async (userId: string, email: string) => {
     try {
-      // Hash the password
-      const passwordHash = await hashPassword(password);
-
-      // Query the database
       const { data, error } = await supabase
         .from("users")
         .select("*")
-        .eq("email", email.toLowerCase().trim())
-        .eq("password_hash", passwordHash)
+        .eq("id", userId)
         .single();
 
-      if (error || !data) {
-        return { success: false, error: "E-posta veya şifre hatalı." };
+      if (error) {
+        console.error("Profile fetch error:", error);
+        // Profil bulunamadıysa, trigger henüz çalışmamış olabilir - biraz bekle ve tekrar dene
+        if (error.code === "PGRST116") {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const { data: retryData } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", userId)
+            .single();
+          
+          if (retryData) {
+            setUser({
+              id: retryData.id,
+              email: email,
+              fullName: retryData.full_name || "",
+              vehicleBrand: retryData.vehicle_brand,
+              vehicleModel: retryData.vehicle_model,
+              chargingPreference: retryData.charging_preference,
+              preferredConnectors: retryData.preferred_connectors,
+              notifyPriceChanges: retryData.notify_price_changes,
+              notifyNewStations: retryData.notify_new_stations,
+              notifyChargingComplete: retryData.notify_charging_complete,
+              isAdmin: retryData.is_admin || false,
+            });
+          }
+        }
+        return;
       }
 
-      // Map database fields to User interface
-      const userData: User = {
-        id: data.id,
-        email: data.email,
-        fullName: data.full_name,
-        phone: data.phone,
-        city: data.city,
-        vehicleBrand: data.vehicle_brand,
-        vehicleModel: data.vehicle_model,
-        vehicleYear: data.vehicle_year,
-        chargingFrequency: data.charging_frequency,
-        homeCharging: data.home_charging,
-        monthlyKm: data.monthly_km,
-        preferredChargerType: data.preferred_charger_type,
-        notificationsEnabled: data.notifications_enabled,
-        marketingConsent: data.marketing_consent,
-        createdAt: data.created_at,
-        lastLogin: data.last_login,
-      };
-
-      // Update last login
-      await supabase
-        .from("users")
-        .update({ last_login: new Date().toISOString() })
-        .eq("id", data.id);
-
-      // Store in localStorage
-      localStorage.setItem("outacharge_user", JSON.stringify(userData));
-      setUser(userData);
-
-      return { success: true };
+      if (data) {
+        setUser({
+          id: data.id,
+          email: email,
+          fullName: data.full_name || "",
+          vehicleBrand: data.vehicle_brand,
+          vehicleModel: data.vehicle_model,
+          chargingPreference: data.charging_preference,
+          preferredConnectors: data.preferred_connectors,
+          notifyPriceChanges: data.notify_price_changes,
+          notifyNewStations: data.notify_new_stations,
+          notifyChargingComplete: data.notify_charging_complete,
+          isAdmin: data.is_admin || false,
+        });
+      }
     } catch (err) {
-      console.error("Login error:", err);
-      return { success: false, error: "Bir hata oluştu. Lütfen tekrar deneyin." };
+      console.error("Profile fetch error:", err);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // 1. Mevcut oturumu kontrol et
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchProfile(session.user.id, session.user.email!);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // 2. Oturum değişikliklerini dinle
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        setLoading(true);
+        await fetchProfile(session.user.id, session.user.email!);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error: error?.message || null };
+    } catch (err: any) {
+      return { error: err.message || "Giriş yapılırken bir hata oluştu" };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("outacharge_user");
-    setUser(null);
+  const signUp = async (email: string, password: string, fullName: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+      return { error: error?.message || null };
+    } catch (err: any) {
+      return { error: err.message || "Kayıt olurken bir hata oluştu" };
+    }
   };
 
-  const updateUser = async (userData: Partial<User>): Promise<{ success: boolean; error?: string }> => {
-    if (!user) {
-      return { success: false, error: "Kullanıcı oturumu bulunamadı." };
-    }
+const signOut = async () => {
+  await supabase.auth.signOut();
+  setUser(null);
+  setSession(null);
+  window.location.href = "/";
+};
+
+  const updateUser = async (updates: Partial<UserProfile>) => {
+    if (!user) return { error: "Kullanıcı oturum açmamış" };
 
     try {
-      // Map User interface to database fields
-      const dbData: any = {};
-      if (userData.fullName) dbData.full_name = userData.fullName;
-      if (userData.phone !== undefined) dbData.phone = userData.phone;
-      if (userData.city !== undefined) dbData.city = userData.city;
-      if (userData.vehicleBrand !== undefined) dbData.vehicle_brand = userData.vehicleBrand;
-      if (userData.vehicleModel !== undefined) dbData.vehicle_model = userData.vehicleModel;
-      if (userData.vehicleYear !== undefined) dbData.vehicle_year = userData.vehicleYear;
-      if (userData.chargingFrequency !== undefined) dbData.charging_frequency = userData.chargingFrequency;
-      if (userData.homeCharging !== undefined) dbData.home_charging = userData.homeCharging;
-      if (userData.monthlyKm !== undefined) dbData.monthly_km = userData.monthlyKm;
-      if (userData.preferredChargerType !== undefined) dbData.preferred_charger_type = userData.preferredChargerType;
-      if (userData.notificationsEnabled !== undefined) dbData.notifications_enabled = userData.notificationsEnabled;
-      if (userData.marketingConsent !== undefined) dbData.marketing_consent = userData.marketingConsent;
+      const dbUpdates: any = {};
+      if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
+      if (updates.vehicleBrand !== undefined) dbUpdates.vehicle_brand = updates.vehicleBrand;
+      if (updates.vehicleModel !== undefined) dbUpdates.vehicle_model = updates.vehicleModel;
+      if (updates.chargingPreference !== undefined) dbUpdates.charging_preference = updates.chargingPreference;
+      if (updates.preferredConnectors !== undefined) dbUpdates.preferred_connectors = updates.preferredConnectors;
+      if (updates.notifyPriceChanges !== undefined) dbUpdates.notify_price_changes = updates.notifyPriceChanges;
+      if (updates.notifyNewStations !== undefined) dbUpdates.notify_new_stations = updates.notifyNewStations;
+      if (updates.notifyChargingComplete !== undefined) dbUpdates.notify_charging_complete = updates.notifyChargingComplete;
 
       const { error } = await supabase
         .from("users")
-        .update(dbData)
+        .update(dbUpdates)
         .eq("id", user.id);
 
-      if (error) {
-        return { success: false, error: "Güncelleme başarısız oldu." };
-      }
+      if (error) throw error;
 
-      // Update local state
-      const updatedUser = { ...user, ...userData };
-      localStorage.setItem("outacharge_user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
-
-      return { success: true };
-    } catch (err) {
-      console.error("Update error:", err);
-      return { success: false, error: "Bir hata oluştu." };
+      setUser({ ...user, ...updates });
+      return { error: null };
+    } catch (err: any) {
+      return { error: err.message || "Güncelleme sırasında bir hata oluştu" };
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
