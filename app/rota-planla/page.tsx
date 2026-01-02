@@ -6,11 +6,12 @@ import mapboxgl from "mapbox-gl";
 import { 
   ArrowLeft, MapPin, Navigation, Zap, Battery, Clock, Car,
   ChevronRight, Loader2, Route, AlertCircle, Check, X,
-  Circle, Flag, Plus, Trash2
+  Circle, Flag
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { vehicles, vehiclesByBrand, brands, Vehicle } from "@/data/vehicles";
-import { operators, getOperatorById } from "@/data/operators";
+import { operators } from "@/data/operators";
+import RouteWeatherAnalysis from "../components/RouteWeatherAnalysis";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -168,7 +169,7 @@ export default function RotaPlanlaPage() {
     for (let i = 1; i < coordinates.length; i++) {
       const [lng1, lat1] = coordinates[i - 1];
       const [lng2, lat2] = coordinates[i];
-      const dist = Math.sqrt(Math.pow(lng2 - lng1, 2) + Math.pow(lat2 - lat1, 2)) * 111; // Approximate km
+      const dist = Math.sqrt(Math.pow(lng2 - lng1, 2) + Math.pow(lat2 - lat1, 2)) * 111;
       totalDist += dist;
       
       if (totalDist >= 50) {
@@ -178,7 +179,7 @@ export default function RotaPlanlaPage() {
     }
 
     // Fetch stations near sample points
-    for (const [lat, lng] of samplePoints.slice(0, 5)) { // Limit API calls
+    for (const [lat, lng] of samplePoints.slice(0, 5)) {
       try {
         const response = await fetch(
           `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=30&distanceunit=KM&maxresults=10&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
@@ -191,7 +192,7 @@ export default function RotaPlanlaPage() {
             const maxPower = Math.max(...connections.map((c: any) => c.PowerKW || 0), 0);
             const powerType = connections.some((c: any) => c.CurrentTypeID === 30) ? "DC" : "AC";
             
-            if (maxPower >= 50) { // Only DC fast chargers for trips
+            if (maxPower >= 50) {
               stations.push({
                 id: item.ID,
                 name: item.AddressInfo?.Title || "Bilinmeyen İstasyon",
@@ -242,7 +243,7 @@ export default function RotaPlanlaPage() {
       const durationMin = route.duration / 60;
 
       // Calculate if charging is needed
-      const consumption = selectedVehicle.batteryCapacity / selectedVehicle.range; // kWh per km
+      const consumption = selectedVehicle.batteryCapacity / selectedVehicle.range;
       const energyNeeded = distanceKm * consumption;
       const availableEnergy = (currentCharge / 100) * selectedVehicle.batteryCapacity;
       const minEnergyAtArrival = (minArrivalCharge / 100) * selectedVehicle.batteryCapacity;
@@ -256,14 +257,10 @@ export default function RotaPlanlaPage() {
         // Need charging stops
         const stations = await fetchStationsAlongRoute(route.geometry.coordinates);
         
-        // Simple algorithm: add stops when charge would drop below minimum
         let currentEnergy = availableEnergy;
-        let distanceCovered = 0;
-        const maxRange = (currentCharge / 100) * selectedVehicle.range;
         let prevLat = origin.lat;
         let prevLng = origin.lng;
 
-        // Sort stations by distance from origin
         const sortedStations = stations
           .map(s => ({
             ...s,
@@ -282,16 +279,13 @@ export default function RotaPlanlaPage() {
           const chargeAtStation = ((currentEnergy - energyToStation) / selectedVehicle.batteryCapacity) * 100;
 
           if (chargeAtStation < minArrivalCharge + 10 && chargeAtStation > 5) {
-            // Need to charge here
-            const chargeToAdd = 80 - chargeAtStation; // Charge to 80%
+            const chargeToAdd = 80 - chargeAtStation;
             const energyToAdd = (chargeToAdd / 100) * selectedVehicle.batteryCapacity;
             
-            // Estimate charging time (simplified)
             const chargingPower = Math.min(station.power, selectedVehicle.maxDCPower);
-            const chargingTime = (energyToAdd / chargingPower) * 60; // minutes
+            const chargingTime = (energyToAdd / chargingPower) * 60;
             
-            // Estimate cost
-            const pricePerKwh = station.powerType === "DC" ? 12.5 : 9; // Average
+            const pricePerKwh = station.powerType === "DC" ? 12.5 : 9;
             const chargingCost = energyToAdd * pricePerKwh;
 
             chargingStops.push({
@@ -309,7 +303,7 @@ export default function RotaPlanlaPage() {
             prevLat = station.lat;
             prevLng = station.lng;
 
-            if (chargingStops.length >= 3) break; // Max 3 stops
+            if (chargingStops.length >= 3) break;
           }
         }
       }
@@ -334,13 +328,11 @@ export default function RotaPlanlaPage() {
 
       // Draw route on map
       if (map.current) {
-        // Remove existing route
         if (map.current.getSource("route")) {
           map.current.removeLayer("route");
           map.current.removeSource("route");
         }
 
-        // Add route line
         map.current.addSource("route", {
           type: "geojson",
           data: {
@@ -364,11 +356,10 @@ export default function RotaPlanlaPage() {
           },
         });
 
-        // Clear existing markers
         markersRef.current.forEach(m => m.remove());
         markersRef.current = [];
 
-        // Add origin marker
+        // Origin marker
         const originEl = document.createElement("div");
         originEl.innerHTML = `<div style="width:30px;height:30px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.3)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>`;
         const originMarker = new mapboxgl.Marker({ element: originEl })
@@ -376,7 +367,7 @@ export default function RotaPlanlaPage() {
           .addTo(map.current);
         markersRef.current.push(originMarker);
 
-        // Add destination marker
+        // Destination marker
         const destEl = document.createElement("div");
         destEl.innerHTML = `<div style="width:30px;height:30px;background:#ef4444;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.3)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg></div>`;
         const destMarker = new mapboxgl.Marker({ element: destEl })
@@ -384,7 +375,7 @@ export default function RotaPlanlaPage() {
           .addTo(map.current);
         markersRef.current.push(destMarker);
 
-        // Add charging stop markers
+        // Charging stop markers
         chargingStops.forEach((stop, index) => {
           const stopEl = document.createElement("div");
           stopEl.innerHTML = `<div style="width:36px;height:36px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.3);font-weight:bold;color:white;font-size:14px">${index + 1}</div>`;
@@ -634,6 +625,15 @@ export default function RotaPlanlaPage() {
             {/* Route Result */}
             {routeResult && (
               <div className="space-y-4">
+                {/* Weather Analysis */}
+                <RouteWeatherAnalysis
+                  routeCoordinates={routeResult.geometry.coordinates}
+                  vehicleSpecs={selectedVehicle ? {
+                    batteryCapacity: selectedVehicle.batteryCapacity,
+                    range: selectedVehicle.range,
+                  } : undefined}
+                />
+
                 {/* Summary */}
                 <div className="bg-slate-700/50 rounded-xl p-4">
                   <h3 className="text-white font-medium mb-3">Rota Özeti</h3>
