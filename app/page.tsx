@@ -288,12 +288,14 @@ const handleRegister = async () => {
               Haritayı Keşfet
               <ChevronRight className="w-5 h-5" />
             </Link>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-lg font-semibold transition"
-            >
-              Ücretsiz Üye Ol
-            </button>
+{!user && (
+  <button
+    onClick={() => setShowRegisterModal(true)}
+    className="px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-full text-lg font-semibold transition"
+  >
+    Ücretsiz Üye Ol
+  </button>
+)}
           </div>
 
           {/* Stats */}
@@ -343,12 +345,21 @@ const handleRegister = async () => {
             <p className="text-emerald-100 text-lg mb-8 max-w-xl mx-auto">
               Ücretsiz üyelik ile tüm özelliklere erişin, favori istasyonlarınızı kaydedin ve bildirim alın.
             </p>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="px-8 py-4 bg-white text-emerald-600 rounded-full text-lg font-semibold hover:bg-emerald-50 transition shadow-lg"
-            >
-              Ücretsiz Başla
-            </button>
+{user ? (
+  <Link
+    href="/harita"
+    className="px-8 py-4 bg-white text-emerald-600 rounded-full text-lg font-semibold hover:bg-emerald-50 transition shadow-lg"
+  >
+    Haritaya Git
+  </Link>
+) : (
+  <button
+    onClick={() => setShowRegisterModal(true)}
+    className="px-8 py-4 bg-white text-emerald-600 rounded-full text-lg font-semibold hover:bg-emerald-50 transition shadow-lg"
+  >
+    Ücretsiz Başla
+  </button>
+)}
           </div>
         </div>
       </section>
