@@ -105,11 +105,14 @@ export default function KullaniciProfilPage() {
             if (error) throw error;
 
             // Supabase join sonucunu düzelt
-            const formattedBadges = (data || []).map((item: any) => ({
-                id: item.id,
-                earned_at: item.earned_at,
-                badge: Array.isArray(item.badge) ? item.badge[0] : item.badge
-            })).filter((item: any) => item.badge);
+            const formattedBadges: UserBadge[] = (data || []).map((item: { id: string; earned_at: string; badge: unknown }) => {
+                const badgeData = Array.isArray(item.badge) ? item.badge[0] : item.badge;
+                return {
+                    id: item.id,
+                    earned_at: item.earned_at,
+                    badge: badgeData
+                };
+            }).filter((item) => item.badge && (item.badge as { id: string }).id) as UserBadge[];
 
             setBadges(formattedBadges);
         } catch (err) {

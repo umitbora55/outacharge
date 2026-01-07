@@ -44,12 +44,12 @@ export default function RouteWeatherAnalysis({
 
       try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${midPoint.lat}&longitude=${midPoint.lng}&current=temperature_2m,wind_speed_10m,weather_code`;
-        
+
         const res = await fetch(url);
         if (!res.ok) throw new Error(`API error: ${res.status}`);
-        
+
         const data = await res.json();
-        
+
         const weatherCodes: Record<number, string> = {
           0: "Açık", 1: "Az bulutlu", 2: "Parçalı bulutlu", 3: "Bulutlu",
           45: "Sisli", 48: "Kırağılı sis", 51: "Hafif çisenti", 53: "Çisenti",
@@ -64,9 +64,10 @@ export default function RouteWeatherAnalysis({
           weatherCode: data.current.weather_code,
           description: weatherCodes[data.current.weather_code] || "Bilinmiyor"
         });
-      } catch (e: any) {
-        console.error("Weather fetch error:", e);
-        setError(e?.message || "Hava durumu alınamadı");
+      } catch (e) {
+        const error = e as Error;
+        console.error("Weather fetch error:", error);
+        setError(error.message || "Hava durumu alınamadı");
       } finally {
         setLoading(false);
       }
@@ -77,17 +78,17 @@ export default function RouteWeatherAnalysis({
 
   // Calculate consumption impact
   const baseConsumption = (vehicleSpecs.batteryCapacity / vehicleSpecs.range) * 100;
-  
+
   let tempImpact = 0;
   let windImpact = 0;
-  
+
   if (weather) {
     // Temperature impact: cold weather increases consumption
     if (weather.temperature < 0) tempImpact = 25;
     else if (weather.temperature < 10) tempImpact = 15;
     else if (weather.temperature < 20) tempImpact = 5;
     else if (weather.temperature > 35) tempImpact = 10;
-    
+
     // Wind impact
     if (weather.windSpeed > 50) windImpact = 15;
     else if (weather.windSpeed > 30) windImpact = 10;
@@ -122,31 +123,28 @@ export default function RouteWeatherAnalysis({
   if (!weather) return null;
 
   return (
-    <div className={`rounded-2xl border shadow-sm overflow-hidden ${
-      isHighImpact 
-        ? "bg-gradient-to-br from-red-50 to-orange-50 border-red-200" 
+    <div className={`rounded-2xl border shadow-sm overflow-hidden ${isHighImpact
+        ? "bg-gradient-to-br from-red-50 to-orange-50 border-red-200"
         : isMediumImpact
-        ? "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200"
-        : "bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200"
-    }`}>
+          ? "bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200"
+          : "bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200"
+      }`}>
       {/* Header */}
       <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${
-              isHighImpact 
-                ? "bg-red-100" 
-                : isMediumImpact 
-                ? "bg-amber-100" 
-                : "bg-emerald-100"
-            }`}>
-              <Cloud className={`w-5 h-5 ${
-                isHighImpact 
-                  ? "text-red-600" 
-                  : isMediumImpact 
-                  ? "text-amber-600" 
-                  : "text-emerald-600"
-              }`} />
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${isHighImpact
+                ? "bg-red-100"
+                : isMediumImpact
+                  ? "bg-amber-100"
+                  : "bg-emerald-100"
+              }`}>
+              <Cloud className={`w-5 h-5 ${isHighImpact
+                  ? "text-red-600"
+                  : isMediumImpact
+                    ? "text-amber-600"
+                    : "text-emerald-600"
+                }`} />
             </div>
             <div>
               <p className="text-zinc-900 font-semibold flex items-center gap-2">
@@ -160,13 +158,12 @@ export default function RouteWeatherAnalysis({
           </div>
 
           <div className="text-right">
-            <p className={`text-lg font-bold ${
-              isHighImpact 
-                ? "text-red-600" 
-                : isMediumImpact 
-                ? "text-amber-600" 
-                : "text-emerald-600"
-            }`}>
+            <p className={`text-lg font-bold ${isHighImpact
+                ? "text-red-600"
+                : isMediumImpact
+                  ? "text-amber-600"
+                  : "text-emerald-600"
+              }`}>
               +{totalImpact}%
             </p>
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Tüketim Farkı</p>
@@ -181,19 +178,16 @@ export default function RouteWeatherAnalysis({
               {baseConsumption.toFixed(1)} <span className="text-sm font-normal text-zinc-500">kWh/100km</span>
             </p>
           </div>
-          <div className={`rounded-xl p-3 border ${
-            isHighImpact 
-              ? "bg-red-100/80 border-red-200" 
+          <div className={`rounded-xl p-3 border ${isHighImpact
+              ? "bg-red-100/80 border-red-200"
               : isMediumImpact
-              ? "bg-amber-100/80 border-amber-200"
-              : "bg-emerald-100/80 border-emerald-200"
-          }`}>
-            <p className={`text-xs mb-1 ${
-              isHighImpact ? "text-red-600" : isMediumImpact ? "text-amber-600" : "text-emerald-600"
-            }`}>Tahmini Tüketim</p>
-            <p className={`text-xl font-bold ${
-              isHighImpact ? "text-red-700" : isMediumImpact ? "text-amber-700" : "text-emerald-700"
+                ? "bg-amber-100/80 border-amber-200"
+                : "bg-emerald-100/80 border-emerald-200"
             }`}>
+            <p className={`text-xs mb-1 ${isHighImpact ? "text-red-600" : isMediumImpact ? "text-amber-600" : "text-emerald-600"
+              }`}>Tahmini Tüketim</p>
+            <p className={`text-xl font-bold ${isHighImpact ? "text-red-700" : isMediumImpact ? "text-amber-700" : "text-emerald-700"
+              }`}>
               {adjustedConsumption.toFixed(1)} <span className="text-sm font-normal opacity-70">kWh/100km</span>
             </p>
           </div>

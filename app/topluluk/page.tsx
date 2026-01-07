@@ -9,20 +9,14 @@ import {
     MessageSquare,
     TrendingUp,
     Clock,
-    ChevronUp,
-    ChevronDown,
-    MapPin,
-    Zap,
-    AlertTriangle,
-    HelpCircle,
-    Lightbulb,
-    Newspaper,
-    Car,
-    Plus,
-    Bookmark,
-    Share2,
     Search,
-    Flame
+    PenLine,
+    Loader2,
+    Zap,
+    MessageCircle,
+    Eye,
+    Filter,
+    X
 } from "lucide-react";
 
 interface Post {
@@ -46,26 +40,16 @@ interface Post {
     user: {
         id: string;
         full_name: string;
-        avatar_url: string | null;
     };
-    user_vote?: number;
-    is_saved?: boolean;
 }
 
 const categories = [
-    { id: "all", label: "Tümü", icon: Flame, color: "text-orange-500" },
-    { id: "istasyon_sikayeti", label: "İstasyon Şikayeti", icon: AlertTriangle, color: "text-red-500" },
-    { id: "operator_sikayeti", label: "Operatör Şikayeti", icon: Zap, color: "text-yellow-600" },
-    { id: "deneyim", label: "Deneyim", icon: Car, color: "text-blue-500" },
-    { id: "soru", label: "Soru", icon: HelpCircle, color: "text-purple-500" },
-    { id: "oneri", label: "Öneri", icon: Lightbulb, color: "text-green-500" },
-    { id: "haber", label: "Haber", icon: Newspaper, color: "text-cyan-500" },
-];
-
-const sortOptions = [
-    { id: "trending", label: "Trend", icon: TrendingUp },
-    { id: "new", label: "Yeni", icon: Clock },
-    { id: "top", label: "En Çok Oy", icon: ChevronUp },
+    { id: "all", label: "Tümü", emoji: "🔥" },
+    { id: "deneyim", label: "Deneyimler", emoji: "🚗" },
+    { id: "soru", label: "Sorular", emoji: "❓" },
+    { id: "istasyon_sikayeti", label: "Şikayetler", emoji: "⚠️" },
+    { id: "oneri", label: "Öneriler", emoji: "💡" },
+    { id: "haber", label: "Haberler", emoji: "📰" },
 ];
 
 export default function ToplulukPage() {
@@ -73,9 +57,9 @@ export default function ToplulukPage() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState("all");
-    const [sortBy, setSortBy] = useState("trending");
+    const [sortBy, setSortBy] = useState("new");
     const [searchQuery, setSearchQuery] = useState("");
-    const [votingPostId, setVotingPostId] = useState<string | null>(null);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     const fetchPosts = useCallback(async () => {
         setLoading(true);
@@ -93,186 +77,54 @@ export default function ToplulukPage() {
                 query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`);
             }
 
-            if (sortBy === "trending") {
-                query = query.order("upvotes", { ascending: false }).order("created_at", { ascending: false });
-            } else if (sortBy === "new") {
+            if (sortBy === "popular") {
+                query = query.order("comment_count", { ascending: false });
+            } else {
                 query = query.order("created_at", { ascending: false });
-            } else if (sortBy === "top") {
-                query = query.order("upvotes", { ascending: false });
             }
 
-            query = query.limit(50);
+            query = query.limit(100);
 
             const { data, error } = await query;
 
-            if (error) throw error;
-
-            let postsWithUsers = data || [];
-
-            if (postsWithUsers.length > 0) {
-                const userIds = [...new Set(postsWithUsers.map(p => p.user_id))];
-                const { data: users } = await supabase
-                    .from("users")
-                    .select("id, full_name, avatar_url")
-                    .in("id", userIds);
-
-                const usersMap = new Map(users?.map(u => [u.id, u]) || []);
-
-                postsWithUsers = postsWithUsers.map(post => ({
-                    ...post,
-                    user: usersMap.get(post.user_id) || { id: post.user_id, full_name: "Anonim", avatar_url: null }
-                }));
+            if (error) {
+                console.error("Supabase error:", error);
+                setPosts([]);
+                setLoading(false);
+                return;
             }
 
-            if (user && postsWithUsers.length > 0) {
-                const postIds = postsWithUsers.map(p => p.id);
-
-                const [votesRes, savedRes] = await Promise.all([
-                    supabase
-                        .from("post_votes")
-                        .select("post_id, vote_type")
-                        .eq("user_id", user.id)
-                        .in("post_id", postIds),
-                    supabase
-                        .from("saved_posts")
-                        .select("post_id")
-                        .eq("user_id", user.id)
-                        .in("post_id", postIds)
-                ]);
-
-                const votesMap = new Map(votesRes.data?.map(v => [v.post_id, v.vote_type]) || []);
-                const savedSet = new Set(savedRes.data?.map(s => s.post_id) || []);
-
-                postsWithUsers = postsWithUsers.map(post => ({
-                    ...post,
-                    user_vote: votesMap.get(post.id),
-                    is_saved: savedSet.has(post.id)
-                }));
+            if (!data || data.length === 0) {
+                setPosts([]);
+                setLoading(false);
+                return;
             }
+
+            const userIds = [...new Set(data.map(p => p.user_id))];
+            const { data: users } = await supabase
+                .from("users")
+                .select("id, full_name")
+                .in("id", userIds);
+
+            const usersMap = new Map(users?.map(u => [u.id, u]) || []);
+
+            const postsWithUsers = data.map(post => ({
+                ...post,
+                user: usersMap.get(post.user_id) || { id: post.user_id, full_name: "Anonim" }
+            }));
 
             setPosts(postsWithUsers);
         } catch (err: any) {
-            console.error("Posts fetch error:", err?.message, err?.code, err);
+            console.error("Posts fetch error:", err);
+            setPosts([]);
         } finally {
             setLoading(false);
         }
-    }, [selectedCategory, sortBy, searchQuery, user]);
+    }, [selectedCategory, sortBy, searchQuery]);
 
     useEffect(() => {
         fetchPosts();
     }, [fetchPosts]);
-
-    const handleVote = async (postId: string, voteType: 1 | -1) => {
-        if (!user) {
-            alert("Oy vermek için giriş yapmalısınız");
-            return;
-        }
-
-        setVotingPostId(postId);
-
-        try {
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-
-            const currentVote = post.user_vote;
-
-            if (currentVote === voteType) {
-                await supabase
-                    .from("post_votes")
-                    .delete()
-                    .eq("post_id", postId)
-                    .eq("user_id", user.id);
-
-                setPosts(posts.map(p =>
-                    p.id === postId
-                        ? {
-                            ...p,
-                            user_vote: undefined,
-                            upvotes: voteType === 1 ? p.upvotes - 1 : p.upvotes,
-                            downvotes: voteType === -1 ? p.downvotes - 1 : p.downvotes
-                        }
-                        : p
-                ));
-            } else {
-                await supabase
-                    .from("post_votes")
-                    .upsert({
-                        post_id: postId,
-                        user_id: user.id,
-                        vote_type: voteType
-                    }, { onConflict: "post_id,user_id" });
-
-                setPosts(posts.map(p => {
-                    if (p.id !== postId) return p;
-
-                    let newUpvotes = p.upvotes;
-                    let newDownvotes = p.downvotes;
-
-                    if (currentVote === 1) newUpvotes--;
-                    if (currentVote === -1) newDownvotes--;
-
-                    if (voteType === 1) newUpvotes++;
-                    if (voteType === -1) newDownvotes++;
-
-                    return {
-                        ...p,
-                        user_vote: voteType,
-                        upvotes: newUpvotes,
-                        downvotes: newDownvotes
-                    };
-                }));
-            }
-        } catch (err) {
-            console.error("Vote error:", err);
-        } finally {
-            setVotingPostId(null);
-        }
-    };
-
-    const handleSave = async (postId: string) => {
-        if (!user) {
-            alert("Kaydetmek için giriş yapmalısınız");
-            return;
-        }
-
-        try {
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-
-            if (post.is_saved) {
-                await supabase
-                    .from("saved_posts")
-                    .delete()
-                    .eq("post_id", postId)
-                    .eq("user_id", user.id);
-            } else {
-                await supabase
-                    .from("saved_posts")
-                    .insert({ post_id: postId, user_id: user.id });
-            }
-
-            setPosts(posts.map(p =>
-                p.id === postId ? { ...p, is_saved: !p.is_saved } : p
-            ));
-        } catch (err) {
-            console.error("Save error:", err);
-        }
-    };
-
-    const getCategoryIcon = (category: string) => {
-        const cat = categories.find(c => c.id === category);
-        return cat ? cat.icon : MessageSquare;
-    };
-
-    const getCategoryColor = (category: string) => {
-        const cat = categories.find(c => c.id === category);
-        return cat ? cat.color : "text-gray-500";
-    };
-
-    const getCategoryLabel = (category: string) => {
-        const cat = categories.find(c => c.id === category);
-        return cat ? cat.label : category;
-    };
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
@@ -283,268 +135,234 @@ export default function ToplulukPage() {
         const days = Math.floor(diff / 86400000);
 
         if (minutes < 1) return "Az önce";
-        if (minutes < 60) return `${minutes} dk önce`;
-        if (hours < 24) return `${hours} saat önce`;
-        if (days < 7) return `${days} gün önce`;
-        return date.toLocaleDateString("tr-TR");
+        if (minutes < 60) return `${minutes} dk`;
+        if (hours < 24) return `${hours} saat`;
+        if (days < 7) return `${days} gün`;
+        return date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+    };
+
+    const getCategoryEmoji = (categoryId: string) => {
+        return categories.find(c => c.id === categoryId)?.emoji || "📝";
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-white">
             <HeaderWhite />
-            
-            {/* Sub Header */}
-            <div className="bg-white border-b border-gray-200 sticky top-16 z-30">
-                <div className="max-w-4xl mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
-                            <MessageSquare className="w-7 h-7 text-emerald-500" />
-                            Topluluk
-                        </h1>
+
+            {/* Hero */}
+            <div className="bg-gradient-to-b from-emerald-50 to-white border-b border-zinc-100">
+                <div className="max-w-3xl mx-auto px-4 py-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 className="text-2xl font-bold text-zinc-900">Topluluk</h1>
+                            <p className="text-zinc-500 text-sm mt-1">EV sahiplerinin deneyim ve bilgi paylaşım alanı</p>
+                        </div>
                         {user && (
                             <Link
                                 href="/topluluk/yeni"
-                                className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-black/90 text-white rounded-full transition-colors text-sm font-medium"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm"
                             >
-                                <Plus className="w-4 h-4" />
-                                <span className="hidden sm:inline">Yeni Entry</span>
+                                <PenLine className="w-4 h-4" />
+                                <span className="hidden sm:inline">Yeni Konu</span>
                             </Link>
                         )}
                     </div>
 
                     {/* Search */}
-                    <div className="relative mb-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                         <input
                             type="text"
-                            placeholder="Entry ara..."
+                            placeholder="Konu veya içerik ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                            className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                         />
                     </div>
+                </div>
+            </div>
 
-                    {/* Categories */}
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        {categories.map((cat) => {
-                            const Icon = cat.icon;
-                            return (
+            {/* Filters Bar */}
+            <div className="sticky top-16 z-20 bg-white border-b border-zinc-100">
+                <div className="max-w-3xl mx-auto px-4">
+                    <div className="flex items-center justify-between py-3">
+                        {/* Categories - Desktop */}
+                        <div className="hidden md:flex items-center gap-1">
+                            {categories.map((cat) => (
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full whitespace-nowrap transition-all text-sm ${selectedCategory === cat.id
-                                        ? "bg-black text-white"
-                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat.id
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "text-zinc-600 hover:bg-zinc-100"
                                         }`}
                                 >
-                                    <Icon className={`w-4 h-4 ${selectedCategory === cat.id ? "text-white" : cat.color}`} />
+                                    <span>{cat.emoji}</span>
                                     <span>{cat.label}</span>
                                 </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
+                            ))}
+                        </div>
 
-            {/* Sort Options */}
-            <div className="max-w-4xl mx-auto px-4 py-3">
-                <div className="flex gap-2">
-                    {sortOptions.map((option) => {
-                        const Icon = option.icon;
-                        return (
+                        {/* Mobile Filter Button */}
+                        <button
+                            onClick={() => setShowMobileFilters(true)}
+                            className="md:hidden flex items-center gap-2 px-3 py-1.5 bg-zinc-100 rounded-lg text-sm text-zinc-700"
+                        >
+                            <Filter className="w-4 h-4" />
+                            Filtrele
+                        </button>
+
+                        {/* Sort */}
+                        <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-1">
                             <button
-                                key={option.id}
-                                onClick={() => setSortBy(option.id)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${sortBy === option.id
-                                    ? "bg-gray-200 text-zinc-900"
-                                    : "text-gray-500 hover:text-zinc-900"
+                                onClick={() => setSortBy("new")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${sortBy === "new"
+                                    ? "bg-white text-zinc-900 shadow-sm"
+                                    : "text-zinc-500 hover:text-zinc-700"
                                     }`}
                             >
-                                <Icon className="w-4 h-4" />
-                                {option.label}
+                                <Clock className="w-3.5 h-3.5" />
+                                Yeni
                             </button>
-                        );
-                    })}
+                            <button
+                                onClick={() => setSortBy("popular")}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${sortBy === "popular"
+                                    ? "bg-white text-zinc-900 shadow-sm"
+                                    : "text-zinc-500 hover:text-zinc-700"
+                                    }`}
+                            >
+                                <TrendingUp className="w-3.5 h-3.5" />
+                                Popüler
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            {/* Mobile Filters Modal */}
+            {showMobileFilters && (
+                <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setShowMobileFilters(false)}>
+                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-zinc-900">Kategori Seç</h3>
+                            <button onClick={() => setShowMobileFilters(false)}>
+                                <X className="w-5 h-5 text-zinc-500" />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {categories.map((cat) => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => {
+                                        setSelectedCategory(cat.id);
+                                        setShowMobileFilters(false);
+                                    }}
+                                    className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${selectedCategory === cat.id
+                                        ? "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500"
+                                        : "bg-zinc-100 text-zinc-700"
+                                        }`}
+                                >
+                                    <span className="text-lg">{cat.emoji}</span>
+                                    <span>{cat.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Posts List */}
-            <div className="max-w-4xl mx-auto px-4 pb-8">
+            <div className="max-w-3xl mx-auto px-4 py-4">
                 {loading ? (
-                    <div className="space-y-4">
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="bg-white rounded-xl p-4 animate-pulse border border-gray-100">
-                                <div className="flex gap-4">
-                                    <div className="w-10 flex flex-col items-center gap-2">
-                                        <div className="w-6 h-6 bg-gray-200 rounded" />
-                                        <div className="w-8 h-4 bg-gray-200 rounded" />
-                                        <div className="w-6 h-6 bg-gray-200 rounded" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-1/4 mb-2" />
-                                        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
-                                        <div className="h-4 bg-gray-200 rounded w-full mb-2" />
-                                        <div className="h-4 bg-gray-200 rounded w-2/3" />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-3" />
+                        <p className="text-zinc-500 text-sm">Yükleniyor...</p>
                     </div>
                 ) : posts.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-                        <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl text-gray-600 mb-2">Henüz entry yok</h3>
-                        <p className="text-gray-400 mb-4">İlk entry&apos;yi sen yaz!</p>
+                    <div className="text-center py-16">
+                        <div className="w-16 h-16 bg-zinc-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <MessageSquare className="w-8 h-8 text-zinc-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-zinc-900 mb-1">Henüz konu yok</h3>
+                        <p className="text-zinc-500 text-sm mb-4">İlk konuyu açan siz olun!</p>
                         {user && (
                             <Link
                                 href="/topluluk/yeni"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-black hover:bg-black/90 text-white rounded-full transition-colors"
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors"
                             >
-                                <Plus className="w-5 h-5" />
-                                Yeni Entry
+                                <PenLine className="w-4 h-4" />
+                                Yeni Konu Aç
                             </Link>
                         )}
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {posts.map((post) => {
-                            const CategoryIcon = getCategoryIcon(post.category);
-                            const score = post.upvotes - post.downvotes;
+                    <div className="divide-y divide-zinc-100">
+                        {posts.map((post) => (
+                            <Link
+                                key={post.id}
+                                href={`/topluluk/${post.id}`}
+                                className="block py-4 hover:bg-zinc-50 -mx-4 px-4 transition-colors"
+                            >
+                                <div className="flex gap-4">
+                                    {/* Emoji Badge */}
+                                    <div className="w-10 h-10 bg-zinc-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
+                                        {getCategoryEmoji(post.category)}
+                                    </div>
 
-                            return (
-                                <article
-                                    key={post.id}
-                                    className={`bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 hover:shadow-sm transition-all ${post.is_pinned ? "ring-2 ring-emerald-500/30" : ""
-                                        }`}
-                                >
-                                    <div className="flex">
-                                        {/* Vote Column */}
-                                        <div className="flex flex-col items-center py-4 px-3 bg-gray-50">
-                                            <button
-                                                onClick={() => handleVote(post.id, 1)}
-                                                disabled={votingPostId === post.id}
-                                                className={`p-1 rounded transition-colors ${post.user_vote === 1
-                                                    ? "text-emerald-500"
-                                                    : "text-gray-400 hover:text-emerald-500"
-                                                    }`}
-                                            >
-                                                <ChevronUp className="w-6 h-6" />
-                                            </button>
-                                            <span className={`text-sm font-bold my-1 ${score > 0 ? "text-emerald-500" : score < 0 ? "text-red-500" : "text-gray-400"
-                                                }`}>
-                                                {score}
-                                            </span>
-                                            <button
-                                                onClick={() => handleVote(post.id, -1)}
-                                                disabled={votingPostId === post.id}
-                                                className={`p-1 rounded transition-colors ${post.user_vote === -1
-                                                    ? "text-red-500"
-                                                    : "text-gray-400 hover:text-red-500"
-                                                    }`}
-                                            >
-                                                <ChevronDown className="w-6 h-6" />
-                                            </button>
-                                        </div>
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className="text-[15px] font-medium text-zinc-900 leading-snug mb-1.5 line-clamp-2">
+                                            {post.is_pinned && (
+                                                <span className="inline-flex items-center justify-center w-5 h-5 bg-emerald-100 text-emerald-600 text-xs rounded mr-1.5">📌</span>
+                                            )}
+                                            {post.title}
+                                        </h2>
 
-                                        {/* Content */}
-                                        <div className="flex-1 py-4 pr-4">
-                                            {/* Meta */}
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 flex-wrap">
-                                                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 ${getCategoryColor(post.category)}`}>
-                                                    <CategoryIcon className="w-3 h-3" />
-                                                    {getCategoryLabel(post.category)}
-                                                </span>
+                                        {/* Meta Row */}
+                                        <div className="flex items-center gap-3 text-xs text-zinc-500">
+                                            <span className="font-medium text-zinc-700">{post.user?.full_name}</span>
+                                            <span>•</span>
+                                            <span>{formatDate(post.created_at)}</span>
 
-                                                {post.station_name && (
-                                                    <span className="flex items-center gap-1">
-                                                        <MapPin className="w-3 h-3" />
-                                                        {post.station_name}
-                                                    </span>
-                                                )}
-
-                                                {post.operator_name && (
-                                                    <span className="flex items-center gap-1">
+                                            {post.operator_name && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className="flex items-center gap-1 text-emerald-600">
                                                         <Zap className="w-3 h-3" />
                                                         {post.operator_name}
                                                     </span>
-                                                )}
-
-                                                {post.city && (
-                                                    <span className="text-gray-400">• {post.city}</span>
-                                                )}
-
-                                                {post.is_resolved && (
-                                                    <span className="text-emerald-500">✓ Çözüldü</span>
-                                                )}
-                                            </div>
-
-                                            {/* Title */}
-                                            <Link href={`/topluluk/${post.id}`}>
-                                                <h2 className="text-lg font-semibold text-zinc-900 hover:text-emerald-600 transition-colors mb-2 line-clamp-2">
-                                                    {post.is_pinned && <span className="text-emerald-500 mr-2">📌</span>}
-                                                    {post.title}
-                                                </h2>
-                                            </Link>
-
-                                            {/* Content Preview */}
-                                            <p className="text-gray-500 text-sm line-clamp-2 mb-3">
-                                                {post.content}
-                                            </p>
-
-                                            {/* Footer */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3 text-xs text-gray-500">
-                                                    <Link
-                                                        href={`/kullanici/${post.user_id}`}
-                                                        className="flex items-center gap-2 hover:text-zinc-900 transition-colors"
-                                                    >
-                                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                                                            {post.user?.full_name?.charAt(0) || "?"}
-                                                        </div>
-                                                        <span>{post.user?.full_name || "Anonim"}</span>
-                                                    </Link>
-                                                    <span>•</span>
-                                                    <span>{formatDate(post.created_at)}</span>
-                                                </div>
-
-                                                <div className="flex items-center gap-3">
-                                                    <Link
-                                                        href={`/topluluk/${post.id}`}
-                                                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-zinc-900 transition-colors"
-                                                    >
-                                                        <MessageSquare className="w-4 h-4" />
-                                                        <span>{post.comment_count}</span>
-                                                    </Link>
-
-                                                    <button
-                                                        onClick={() => handleSave(post.id)}
-                                                        className={`flex items-center gap-1 text-xs transition-colors ${post.is_saved
-                                                            ? "text-yellow-500"
-                                                            : "text-gray-400 hover:text-yellow-500"
-                                                            }`}
-                                                    >
-                                                        <Bookmark className={`w-4 h-4 ${post.is_saved ? "fill-current" : ""}`} />
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(`${window.location.origin}/topluluk/${post.id}`);
-                                                            alert("Link kopyalandı!");
-                                                        }}
-                                                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-zinc-900 transition-colors"
-                                                    >
-                                                        <Share2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                </article>
-                            );
-                        })}
+
+                                    {/* Stats */}
+                                    <div className="flex items-center gap-3 text-xs text-zinc-400 flex-shrink-0">
+                                        <span className="flex items-center gap-1">
+                                            <MessageCircle className="w-4 h-4" />
+                                            {post.comment_count}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Eye className="w-4 h-4" />
+                                            {post.view_count || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
                 )}
             </div>
+
+            {/* Mobile FAB */}
+            {user && (
+                <Link
+                    href="/topluluk/yeni"
+                    className="fixed bottom-6 right-6 md:hidden w-14 h-14 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center hover:bg-emerald-700 transition-all active:scale-95 z-30"
+                >
+                    <PenLine className="w-6 h-6" />
+                </Link>
+            )}
         </div>
     );
 }

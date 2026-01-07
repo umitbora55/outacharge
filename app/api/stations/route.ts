@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
-let cache: { data: any; timestamp: number } | null = null;
+const cache: { data: unknown; timestamp: number } | null = null;
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -26,10 +26,22 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Failed to fetch from OpenChargeMap' }, { status: 500 });
         }
 
-        const data = await response.json();
+        interface OCMStation {
+            ID: number;
+            AddressInfo: {
+                Title: string;
+                Latitude: number;
+                Longitude: number;
+                AddressLine1: string;
+            };
+            OperatorInfo?: { Title: string };
+            Connections?: { PowerKW: number; CurrentTypeID: number }[];
+        }
+
+        const data = await response.json() as OCMStation[];
 
         // Minimize the data payload
-        const optimizedData = data.map((station: any) => ({
+        const optimizedData = data.map((station: OCMStation) => ({
             ID: station.ID,
             AddressInfo: {
                 Title: station.AddressInfo.Title,
@@ -38,7 +50,7 @@ export async function GET(request: Request) {
                 AddressLine1: station.AddressInfo.AddressLine1,
             },
             OperatorInfo: station.OperatorInfo ? { Title: station.OperatorInfo.Title } : undefined,
-            Connections: station.Connections?.map((c: any) => ({
+            Connections: (station.Connections || []).map((c: { PowerKW: number; CurrentTypeID: number }) => ({
                 PowerKW: c.PowerKW,
                 CurrentTypeID: c.CurrentTypeID,
             })),

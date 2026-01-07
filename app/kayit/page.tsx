@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { useAuth, UserRegistrationData } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Zap, Mail, Lock, User, Loader2, ChevronRight, Car, Plug, Home, Check, X, Phone, ArrowLeft } from "lucide-react";
@@ -70,7 +70,7 @@ export default function KayitPage() {
     setLoading(true);
 
     try {
-      const additionalData: any = {};
+      const additionalData: UserRegistrationData = {};
       if (phone) additionalData.phone = phone;
 
       if (selectedBrand && selectedModel) {
@@ -100,8 +100,9 @@ export default function KayitPage() {
 
       // Redirect to profile for onboarding
       router.push("/profil");
-    } catch (err: any) {
-      setError(err.message || "Kayıt başarısız");
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || "Kayıt başarısız");
       setLoading(false);
     }
   };

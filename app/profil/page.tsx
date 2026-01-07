@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import HeaderWhite from "../components/HeaderWhite";
 import {
-  User, Mail, Phone, MapPin, Car, Zap, Bell, Save, Loader2, X
+  User, Car, Zap, Bell, Save, Loader2, X
 } from "lucide-react";
 import { vehicles, brands } from "@/data/vehicles";
 
@@ -26,7 +26,7 @@ type ProfileForm = {
 };
 
 // Normalize function for type-safe comparison with correct defaults
-const normalize = (key: keyof ProfileForm, val: any) => {
+const normalize = (key: keyof ProfileForm, val: string | number | boolean | undefined | null) => {
   if (val === undefined || val === null) {
     if (key === "vehicleYear" || key === "monthlyKm") return undefined;
     if (key === "notifyPriceChanges") return true;
@@ -125,7 +125,7 @@ export default function ProfilPage() {
   // Parse user snapshot for comparison
   const userData = useMemo(() => {
     if (!userSnapshot) return null;
-    return JSON.parse(userSnapshot) as Record<string, any>;
+    return JSON.parse(userSnapshot) as Record<string, string | number | boolean | null>;
   }, [userSnapshot]);
 
   // Get only changed fields (normalized comparison) - single source of truth
@@ -135,10 +135,10 @@ export default function ProfilPage() {
 
     (Object.keys(form) as Array<keyof ProfileForm>).forEach((key) => {
       const currentValue = normalize(key, form[key]);
-      const userValue = normalize(key, userData[key]);
+      const userValue = normalize(key, userData[key] as string | number | boolean | null);
 
       if (currentValue !== userValue) {
-        (out as any)[key] = form[key];
+        Object.assign(out, { [key]: form[key] });
       }
     });
 
@@ -227,8 +227,9 @@ export default function ProfilPage() {
       } else {
         setToast({ type: "success", message: "Profil güncellendi!" });
       }
-    } catch (err: any) {
-      setToast({ type: "error", message: err.message || "Bir hata oluştu" });
+    } catch (err) {
+      const error = err as Error;
+      setToast({ type: "error", message: error.message || "Bir hata oluştu" });
     } finally {
       setSaving(false);
     }
@@ -254,8 +255,8 @@ export default function ProfilPage() {
       {toast && (
         <div className="fixed top-20 right-4 z-50 animate-slide-in-right">
           <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg ${toast.type === "success"
-              ? "bg-emerald-500 text-white"
-              : "bg-red-500 text-white"
+            ? "bg-emerald-500 text-white"
+            : "bg-red-500 text-white"
             }`}>
             <span>{toast.message}</span>
             <button onClick={() => setToast(null)}>

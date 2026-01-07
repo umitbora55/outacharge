@@ -5,13 +5,13 @@ import Link from "next/link";
 import mapboxgl from "mapbox-gl";
 import {
   ArrowLeft, MapPin, Navigation, Zap, Battery, Clock, Car,
-  ChevronRight, Loader2, Route, AlertCircle, Check, X,
-  Circle, Flag
+  ChevronRight, Loader2, Route, AlertCircle, Check,
+  Circle, Flag, MessageCircle
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { vehicles, vehiclesByBrand, brands, Vehicle } from "@/data/vehicles";
-import { operators } from "@/data/operators";
 import RouteWeatherAnalysis from "../components/RouteWeatherAnalysis";
+import RouteChatHub from "../components/RouteChatHub";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -43,7 +43,10 @@ interface ChargingStop {
 interface RouteResult {
   distance: number;
   duration: number;
-  geometry: any;
+  geometry: {
+    type: "LineString";
+    coordinates: [number, number][];
+  };
   chargingStops: ChargingStop[];
   totalChargingTime: number;
   totalChargingCost: number;
@@ -60,8 +63,8 @@ export default function RotaPlanlaPage() {
   const [destination, setDestination] = useState<Location | null>(null);
   const [originSearch, setOriginSearch] = useState("");
   const [destinationSearch, setDestinationSearch] = useState("");
-  const [originResults, setOriginResults] = useState<any[]>([]);
-  const [destinationResults, setDestinationResults] = useState<any[]>([]);
+  const [originResults, setOriginResults] = useState<{ place_name: string; center: [number, number] }[]>([]);
+  const [destinationResults, setDestinationResults] = useState<{ place_name: string; center: [number, number] }[]>([]);
   const [searchingOrigin, setSearchingOrigin] = useState(false);
   const [searchingDestination, setSearchingDestination] = useState(false);
 
@@ -75,6 +78,7 @@ export default function RotaPlanlaPage() {
 
   const [showVehicleSelect, setShowVehicleSelect] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState("");
+  const [showChatHub, setShowChatHub] = useState(false);
 
   // Auto-select user's vehicle
   useEffect(() => {
@@ -135,11 +139,19 @@ export default function RotaPlanlaPage() {
   // Search location
   const searchLocation = async (query: string, type: "origin" | "destination") => {
     if (!query.trim()) {
-      type === "origin" ? setOriginResults([]) : setDestinationResults([]);
+      if (type === "origin") {
+        setOriginResults([]);
+      } else {
+        setDestinationResults([]);
+      }
       return;
     }
 
-    type === "origin" ? setSearchingOrigin(true) : setSearchingDestination(true);
+    if (type === "origin") {
+      setSearchingOrigin(true);
+    } else {
+      setSearchingDestination(true);
+    }
 
     try {
       const response = await fetch(
@@ -148,17 +160,25 @@ export default function RotaPlanlaPage() {
       const data = await response.json();
 
       if (data.features) {
-        type === "origin" ? setOriginResults(data.features) : setDestinationResults(data.features);
+        if (type === "origin") {
+          setOriginResults(data.features);
+        } else {
+          setDestinationResults(data.features);
+        }
       }
     } catch (err) {
       console.error("Search error:", err);
     } finally {
-      type === "origin" ? setSearchingOrigin(false) : setSearchingDestination(false);
+      if (type === "origin") {
+        setSearchingOrigin(false);
+      } else {
+        setSearchingDestination(false);
+      }
     }
   };
 
   // Select location
-  const selectLocation = (feature: any, type: "origin" | "destination") => {
+  const selectLocation = (feature: { place_name: string; center: [number, number] }, type: "origin" | "destination") => {
     const location: Location = {
       name: feature.place_name,
       lat: feature.center[1],
@@ -186,7 +206,16 @@ export default function RotaPlanlaPage() {
 
   // Fetch charging stations along route
   const fetchStationsAlongRoute = async (coordinates: [number, number][]) => {
-    const stations: any[] = [];
+    const stations: {
+      id: number;
+      name: string;
+      operator: string;
+      lat: number;
+      lng: number;
+      power: number;
+      powerType: string;
+      address: string;
+    }[] = [];
 
     // Sample points along the route (every ~50km)
     const samplePoints: [number, number][] = [];
@@ -212,11 +241,16 @@ export default function RotaPlanlaPage() {
         );
         const data = await response.json();
 
-        data.forEach((item: any) => {
+        data.forEach((item: {
+          ID: number;
+          Connections: { PowerKW: number; CurrentTypeID: number }[];
+          AddressInfo: { Title: string; Latitude: number; Longitude: number; AddressLine1: string };
+          OperatorInfo: { Title: string };
+        }) => {
           if (!stations.find(s => s.id === item.ID)) {
             const connections = item.Connections || [];
-            const maxPower = Math.max(...connections.map((c: any) => c.PowerKW || 0), 0);
-            const powerType = connections.some((c: any) => c.CurrentTypeID === 30) ? "DC" : "AC";
+            const maxPower = Math.max(...connections.map((c: { PowerKW: number }) => c.PowerKW || 0), 0);
+            const powerType = connections.some((c: { CurrentTypeID: number }) => c.CurrentTypeID === 30) ? "DC" : "AC";
 
             if (maxPower >= 50) {
               stations.push({
@@ -275,7 +309,7 @@ export default function RotaPlanlaPage() {
       const minEnergyAtArrival = (minArrivalCharge / 100) * selectedVehicle.batteryCapacity;
       const usableEnergy = availableEnergy - minEnergyAtArrival;
 
-      let chargingStops: ChargingStop[] = [];
+      const chargingStops: ChargingStop[] = [];
       let totalChargingTime = 0;
       let totalChargingCost = 0;
 
@@ -697,34 +731,45 @@ export default function RotaPlanlaPage() {
 
                 {/* Charging Stops */}
                 {routeResult.chargingStops.length > 0 ? (
-                  <div className="bg-gray-100 rounded-xl p-4">
-                    <h3 className="text-zinc-900 font-medium mb-3">Şarj Durakları ({routeResult.chargingStops.length})</h3>
-                    <div className="space-y-3">
-                      {routeResult.chargingStops.map((stop, index) => (
-                        <div key={index} className="bg-white rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-zinc-900 text-xs font-bold">
-                              {index + 1}
+                  <>
+                    <div className="bg-gray-100 rounded-xl p-4">
+                      <h3 className="text-zinc-900 font-medium mb-3">Şarj Durakları ({routeResult.chargingStops.length})</h3>
+                      <div className="space-y-3">
+                        {routeResult.chargingStops.map((stop, index) => (
+                          <div key={index} className="bg-white rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-zinc-900 text-xs font-bold">
+                                {index + 1}
+                              </div>
+                              <span className="text-zinc-900 font-medium flex-1 truncate">{stop.station.name}</span>
                             </div>
-                            <span className="text-zinc-900 font-medium flex-1 truncate">{stop.station.name}</span>
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <div className="flex justify-between">
+                                <span>Operatör: {stop.station.operator}</span>
+                                <span>{stop.station.power} kW {stop.station.powerType}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Varış: %{stop.arrivalCharge} → Çıkış: %{stop.departureCharge}</span>
+                              </div>
+                              <div className="flex justify-between text-emerald-400">
+                                <span>⏱ {stop.chargingTime} dk şarj</span>
+                                <span>💰 ₺{stop.chargingCost}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div className="flex justify-between">
-                              <span>Operatör: {stop.station.operator}</span>
-                              <span>{stop.station.power} kW {stop.station.powerType}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Varış: %{stop.arrivalCharge} → Çıkış: %{stop.departureCharge}</span>
-                            </div>
-                            <div className="flex justify-between text-emerald-400">
-                              <span>⏱ {stop.chargingTime} dk şarj</span>
-                              <span>💰 ₺{stop.chargingCost}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Chat Hub Button */}
+                    <button
+                      onClick={() => setShowChatHub(true)}
+                      className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      Durak Chat&apos;lerine Katıl
+                    </button>
+                  </>
                 ) : (
                   <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
                     <Check className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
@@ -752,6 +797,15 @@ export default function RotaPlanlaPage() {
         {/* Map */}
         <div ref={mapContainer} className="flex-1 min-h-[400px] md:min-h-0" style={{ background: "#e5e5e5" }} />
       </div>
+
+      {/* Route Chat Hub */}
+      {routeResult && routeResult.chargingStops.length > 0 && (
+        <RouteChatHub
+          chargingStops={routeResult.chargingStops}
+          isOpen={showChatHub}
+          onClose={() => setShowChatHub(false)}
+        />
+      )}
     </div>
   );
 }

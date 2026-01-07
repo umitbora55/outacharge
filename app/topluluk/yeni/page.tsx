@@ -146,9 +146,10 @@ export default function YeniEntryPage() {
             if (insertError) throw insertError;
 
             router.push(`/topluluk/${data.id}`);
-        } catch (err: any) {
-            console.error("Submit error:", err);
-            setError(err.message || "Bir hata oluştu");
+        } catch (err) {
+            const error = err as Error;
+            console.error("Submit error:", error);
+            setError(error.message || "Bir hata oluştu");
         } finally {
             setSubmitting(false);
         }
@@ -216,8 +217,8 @@ export default function YeniEntryPage() {
                                         type="button"
                                         onClick={() => setCategory(cat.id)}
                                         className={`p-4 rounded-xl border-2 transition-all text-left group ${isActive
-                                                ? `${cat.color} ${cat.activeBorder}`
-                                                : "bg-white border-gray-100 hover:border-gray-300 hover:bg-gray-50"
+                                            ? `${cat.color} ${cat.activeBorder}`
+                                            : "bg-white border-gray-100 hover:border-gray-300 hover:bg-gray-50"
                                             }`}
                                     >
                                         <Icon className={`w-6 h-6 mb-2 ${isActive ? "text-current" : "text-gray-400 group-hover:text-gray-600"}`} />

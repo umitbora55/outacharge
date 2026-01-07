@@ -5,6 +5,41 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
+// Operatör eşleştirme - istasyon adından operatör tespiti
+const operatorPatterns: { pattern: RegExp; name: string }[] = [
+  { pattern: /\bzes\b/i, name: "ZES" },
+  { pattern: /\beşarj\b|esarj/i, name: "Eşarj" },
+  { pattern: /\btrugo\b/i, name: "Trugo" },
+  { pattern: /\btesla\b|supercharger/i, name: "Tesla Supercharger" },
+  { pattern: /\bvoltrun\b/i, name: "Voltrun" },
+  { pattern: /\be-power\b|epower|petrol ofisi/i, name: "Petrol Ofisi e-POwer" },
+  { pattern: /\bbeefull\b/i, name: "Beefull" },
+  { pattern: /\baksa\s*şarj\b|aksasarj/i, name: "Aksa Şarj" },
+  { pattern: /\bsharz\b/i, name: "Sharz.net" },
+  { pattern: /\bastor\b/i, name: "Astor Enerji" },
+  { pattern: /\benyakit\b|en\s*yakıt/i, name: "En Yakıt" },
+  { pattern: /\bg-charge\b|gcharge|gersan/i, name: "G-Charge" },
+  { pattern: /\boncharge\b/i, name: "OnCharge" },
+  { pattern: /\bwat\b/i, name: "Wat Mobilite" },
+];
+
+function detectOperator(stationTitle: string, operatorTitle?: string): string {
+  // Önce API'den gelen operatör bilgisini kontrol et
+  if (operatorTitle && operatorTitle.trim() !== "") {
+    return operatorTitle;
+  }
+
+  // İstasyon adından operatör tespit et
+  for (const { pattern, name } of operatorPatterns) {
+    if (pattern.test(stationTitle)) {
+      return name;
+    }
+  }
+
+  return "Bilinmeyen Operatör";
+}
+
+
 interface Station {
   ID: number;
   AddressInfo: {
@@ -63,7 +98,7 @@ export default function TestMap() {
         properties: {
           id: station.ID,
           title: station.AddressInfo.Title,
-          operator: station.OperatorInfo?.Title || "Bilinmeyen Operatör",
+          operator: detectOperator(station.AddressInfo.Title, station.OperatorInfo?.Title),
           address: station.AddressInfo.AddressLine1 || "",
           power: Math.max(...(station.Connections?.map(c => c.PowerKW) || [0])),
         },
@@ -88,7 +123,7 @@ export default function TestMap() {
       style: "mapbox://styles/mapbox/light-v11", // Cleaner, premium light map
       center: [35.2433, 38.9637], // Turkey center
       zoom: 6,
-      projection: { name: 'mercator' } as any
+      projection: { name: 'mercator' }
     });
 
     map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
@@ -198,7 +233,7 @@ export default function TestMap() {
           (err, zoom) => {
             if (err) return;
             map.current!.easeTo({
-              center: (features[0].geometry as any).coordinates,
+              center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
               zoom: zoom!,
             });
           }
@@ -210,14 +245,14 @@ export default function TestMap() {
 
         // Center map on click gently
         map.current!.flyTo({
-          center: (e.features[0].geometry as any).coordinates,
+          center: (e.features[0].geometry as GeoJSON.Point).coordinates as [number, number],
           zoom: map.current!.getZoom() < 12 ? 14 : map.current!.getZoom(),
           speed: 1.2
         });
 
         const feature = e.features[0];
-        const coordinates = (feature.geometry as any).coordinates.slice();
-        const { title, operator, address, power } = feature.properties as any;
+        const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice();
+        const { title, operator, address, power } = feature.properties as { title: string; operator: string; address: string; power: number };
 
         while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
           coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
@@ -261,7 +296,7 @@ export default function TestMap() {
           maxWidth: '300px',
           focusAfterOpen: false
         })
-          .setLngLat(coordinates)
+          .setLngLat(coordinates as [number, number])
           .setHTML(popupHTML)
           .addTo(map.current!);
       });

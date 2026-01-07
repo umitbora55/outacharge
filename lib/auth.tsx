@@ -30,12 +30,25 @@ interface UserProfile {
   lastLogin?: string;
 }
 
+// Kayıt sırasında alınan ek veriler
+export interface UserRegistrationData {
+  phone?: string;
+  vehicle_brand?: string;
+  vehicle_model?: string;
+  vehicle_year?: number;
+  charging_preference?: string;
+  charging_frequency?: string;
+  preferred_charger_type?: string;
+  home_charging_available?: boolean;
+  home_charging?: boolean;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, additionalData?: any) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
@@ -175,12 +188,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       return { error: error?.message || null };
-    } catch (err: any) {
-      return { error: err.message || "Giriş yapılırken bir hata oluştu" };
+    } catch (err) {
+      const error = err as Error;
+      return { error: error.message || "Giriş yapılırken bir hata oluştu" };
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, additionalData?: any) => {
+  const signUp = async (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -198,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Critical Fix: Force sync metadata to public.users if session is created immediately (auto-login)
       if (data.session?.user) {
         // Construct the payload for public.users
-        const profileUpdates: any = {
+        const profileUpdates: Record<string, string | number | boolean | string[] | undefined> = {
           full_name: fullName,
         };
 
@@ -239,8 +253,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { error: null };
-    } catch (err: any) {
-      return { error: err.message || "Kayıt olurken bir hata oluştu" };
+    } catch (err) {
+      const error = err as Error;
+      return { error: error.message || "Kayıt olurken bir hata oluştu" };
     }
   };
 
@@ -255,7 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return { error: "Kullanıcı oturum açmamış" };
 
     try {
-      const dbUpdates: any = {};
+      const dbUpdates: Record<string, string | number | boolean | string[] | undefined> = {};
       if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
       if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
       if (updates.city !== undefined) dbUpdates.city = updates.city;
@@ -283,8 +298,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser({ ...user, ...updates });
       return { error: null };
-    } catch (err: any) {
-      return { error: err.message || "Güncelleme sırasında bir hata oluştu" };
+    } catch (err) {
+      const error = err as Error;
+      return { error: error.message || "Güncelleme sırasında bir hata oluştu" };
     }
   };
 

@@ -26,8 +26,9 @@ export default function GirisPage() {
       }
 
       router.push("/profil");
-    } catch (err: any) {
-      setError(err.message || "Giriş başarısız");
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || "Giriş başarısız");
     } finally {
       setLoading(false);
     }

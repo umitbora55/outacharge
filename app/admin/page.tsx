@@ -56,19 +56,19 @@ type TabType = "dashboard" | "users" | "reports" | "reviews";
 export default function AdminPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  
+
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  
+
   const [users, setUsers] = useState<User[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  
+
   const [deleting, setDeleting] = useState<string | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
 
@@ -185,10 +185,10 @@ export default function AdminPage() {
         return;
       }
 
-      setReports(prev => prev.map(r => 
+      setReports(prev => prev.map(r =>
         r.id === reportId ? { ...r, resolved: true } : r
       ));
-      
+
       if (stats) {
         setStats({ ...stats, pendingReports: Math.max(0, stats.pendingReports - 1) });
       }
@@ -201,18 +201,18 @@ export default function AdminPage() {
 
   const deleteReview = async (reviewId: string) => {
     if (!confirm("Bu yorumu silmek istediğinizden emin misiniz?")) return;
-    
+
     setDeleting(reviewId);
     try {
       const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
-      
+
       if (error) {
         alert("Yorum silinemedi: " + error.message);
         return;
       }
 
       setReviews(prev => prev.filter(r => r.id !== reviewId));
-      
+
       if (stats) {
         setStats({ ...stats, totalReviews: Math.max(0, stats.totalReviews - 1) });
       }
@@ -234,7 +234,7 @@ export default function AdminPage() {
     });
   };
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -295,18 +295,16 @@ export default function AdminPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as TabType)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
-                activeTab === tab.id
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${activeTab === tab.id
                   ? "bg-emerald-500 text-white"
                   : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-              }`}
+                }`}
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  activeTab === tab.id ? "bg-white/20" : "bg-slate-700"
-                }`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? "bg-white/20" : "bg-slate-700"
+                  }`}>
                   {tab.count}
                 </span>
               )}
@@ -408,11 +406,10 @@ export default function AdminPage() {
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <Star
                                   key={star}
-                                  className={`w-3 h-3 ${
-                                    star <= review.rating
+                                  className={`w-3 h-3 ${star <= review.rating
                                       ? "text-yellow-400 fill-yellow-400"
                                       : "text-slate-600"
-                                  }`}
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -457,7 +454,7 @@ export default function AdminPage() {
                   <div className="divide-y divide-slate-700">
                     {filteredUsers.map((u) => (
                       <div key={u.id}>
-                        <div 
+                        <div
                           className="p-4 hover:bg-slate-700/50 cursor-pointer transition"
                           onClick={() => setExpandedUser(expandedUser === u.id ? null : u.id)}
                         >
@@ -492,7 +489,7 @@ export default function AdminPage() {
                             </div>
                           </div>
                         </div>
-                        
+
                         {expandedUser === u.id && (
                           <div className="px-4 pb-4 bg-slate-700/30">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -543,11 +540,10 @@ export default function AdminPage() {
                     <button
                       key={f.id}
                       onClick={() => setFilterStatus(f.id)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                        filterStatus === f.id
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filterStatus === f.id
                           ? "bg-emerald-500 text-white"
                           : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                      }`}
+                        }`}
                     >
                       {f.label}
                     </button>
@@ -563,13 +559,12 @@ export default function AdminPage() {
                           <p className="text-slate-400 text-sm">ID: {report.station_id}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            report.status === "broken" ? "bg-red-500/20 text-red-400" :
-                            report.status === "busy" ? "bg-yellow-500/20 text-yellow-400" :
-                            "bg-emerald-500/20 text-emerald-400"
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${report.status === "broken" ? "bg-red-500/20 text-red-400" :
+                              report.status === "busy" ? "bg-yellow-500/20 text-yellow-400" :
+                                "bg-emerald-500/20 text-emerald-400"
+                            }`}>
                             {report.status === "broken" ? "Arızalı" :
-                             report.status === "busy" ? "Dolu" : "Çalışıyor"}
+                              report.status === "busy" ? "Dolu" : "Çalışıyor"}
                           </span>
                           {report.resolved ? (
                             <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs">
@@ -582,13 +577,13 @@ export default function AdminPage() {
                           )}
                         </div>
                       </div>
-                      
+
                       {report.comment && (
                         <p className="text-slate-300 text-sm mb-3 p-3 bg-slate-700/50 rounded-lg">
-                          "{report.comment}"
+                          &quot;{report.comment}&quot;
                         </p>
                       )}
-                      
+
                       <div className="flex items-center justify-between">
                         <span className="text-slate-500 text-xs">{formatDate(report.created_at)}</span>
                         {!report.resolved && (
@@ -637,11 +632,10 @@ export default function AdminPage() {
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
-                              className={`w-4 h-4 ${
-                                star <= review.rating
+                              className={`w-4 h-4 ${star <= review.rating
                                   ? "text-yellow-400 fill-yellow-400"
                                   : "text-slate-600"
-                              }`}
+                                }`}
                             />
                           ))}
                         </div>
@@ -658,11 +652,11 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
-                    
+
                     {review.comment && (
                       <p className="text-slate-300 text-sm mb-3">{review.comment}</p>
                     )}
-                    
+
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <span>Station ID: {review.station_id}</span>
                       <span>{formatDate(review.created_at)}</span>

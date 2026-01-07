@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Zap, Calculator, Car, Battery, TrendingDown, ChevronDown, ArrowRight, Info, ExternalLink } from "lucide-react";
-import Link from "next/link";
+import { Zap, Calculator, Car, Battery, TrendingDown, ChevronDown, Info } from "lucide-react";
 import HeaderWhite from "../components/HeaderWhite";
 import { operators, compareAllOperators, calculateHomeChargingCost, getOperatorStats, ChargeType } from "@/data/operators";
-import { vehicles, vehiclesByBrand, brands, Vehicle } from "@/data/vehicles";
+import { vehiclesByBrand, brands, Vehicle } from "@/data/vehicles";
 
 export default function HesaplayiciPage() {
   // Vehicle selection
@@ -239,7 +238,7 @@ export default function HesaplayiciPage() {
                     />
                     <div>
                       <div className="text-zinc-900 text-sm font-medium">Tesla sahibiyim</div>
-                      <div className="text-gray-500 text-xs">Supercharger'da indirimli fiyat</div>
+                      <div className="text-gray-500 text-xs">Supercharger&apos;da indirimli fiyat</div>
                     </div>
                   </label>
                 )}

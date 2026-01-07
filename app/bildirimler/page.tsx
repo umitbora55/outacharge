@@ -38,7 +38,7 @@ interface Notification {
     };
 }
 
-const notificationIcons: Record<string, any> = {
+const notificationIcons: Record<string, typeof UserPlus> = {
     follow: UserPlus,
     post_vote: ChevronUp,
     post_comment: MessageSquare,
@@ -302,8 +302,8 @@ export default function BildirimlerPage() {
                         <button
                             onClick={() => setFilter("all")}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === "all"
-                                    ? "bg-emerald-600 text-zinc-900"
-                                    : "bg-gray-100 text-gray-500 hover:text-zinc-900"
+                                ? "bg-emerald-600 text-zinc-900"
+                                : "bg-gray-100 text-gray-500 hover:text-zinc-900"
                                 }`}
                         >
                             Tümü
@@ -311,8 +311,8 @@ export default function BildirimlerPage() {
                         <button
                             onClick={() => setFilter("unread")}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === "unread"
-                                    ? "bg-emerald-600 text-zinc-900"
-                                    : "bg-gray-100 text-gray-500 hover:text-zinc-900"
+                                ? "bg-emerald-600 text-zinc-900"
+                                : "bg-gray-100 text-gray-500 hover:text-zinc-900"
                                 }`}
                         >
                             Okunmamış

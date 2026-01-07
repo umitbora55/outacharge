@@ -2,7 +2,33 @@
 import { useEffect, useRef } from "react";
 
 interface ParticleCanvasProps {
-  titleRef?: React.RefObject<HTMLElement>;
+  titleRef?: React.RefObject<HTMLElement | null>;
+}
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  isBlue: boolean;
+  hue: number;
+  life: number;
+  maxLife: number;
+}
+
+interface Spark {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  alpha: number;
+  hue: number;
+  speed: number;
 }
 
 export default function ParticleCanvas({ titleRef }: ParticleCanvasProps) {
@@ -27,8 +53,8 @@ export default function ParticleCanvas({ titleRef }: ParticleCanvasProps) {
     let windX = 0;
     let windTargetX = 0;
 
-    const pts: any[] = [];
-    const sparks: any[] = [];
+    const pts: Particle[] = [];
+    const sparks: Spark[] = [];
     const N = 280;
 
     const noiseTable: number[] = [];
@@ -68,7 +94,7 @@ export default function ParticleCanvas({ titleRef }: ParticleCanvasProps) {
       return a + Math.random() * (b - a);
     }
 
-    function reset(p: any) {
+    function reset(p: Particle) {
       p.x = rand(-0.05, 1.05) * W;
       p.y = rand(-0.25, -0.02) * H;
       const fall = rand(2.2, 5.6) * DPR;
@@ -121,7 +147,7 @@ export default function ParticleCanvas({ titleRef }: ParticleCanvasProps) {
     }
 
     for (let i = 0; i < N; i++) {
-      const p: any = {};
+      const p = {} as Particle;
       reset(p);
       p.life = rand(30, p.life);
       pts.push(p);
