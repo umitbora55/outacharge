@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import HeaderWhite from "../components/HeaderWhite";
 import {
     MessageSquare,
     TrendingUp,
@@ -54,7 +55,7 @@ interface Post {
 const categories = [
     { id: "all", label: "Tümü", icon: Flame, color: "text-orange-500" },
     { id: "istasyon_sikayeti", label: "İstasyon Şikayeti", icon: AlertTriangle, color: "text-red-500" },
-    { id: "operator_sikayeti", label: "Operatör Şikayeti", icon: Zap, color: "text-yellow-500" },
+    { id: "operator_sikayeti", label: "Operatör Şikayeti", icon: Zap, color: "text-yellow-600" },
     { id: "deneyim", label: "Deneyim", icon: Car, color: "text-blue-500" },
     { id: "soru", label: "Soru", icon: HelpCircle, color: "text-purple-500" },
     { id: "oneri", label: "Öneri", icon: Lightbulb, color: "text-green-500" },
@@ -106,7 +107,6 @@ export default function ToplulukPage() {
 
             if (error) throw error;
 
-            // Kullanıcı bilgilerini ayrı çek
             let postsWithUsers = data || [];
 
             if (postsWithUsers.length > 0) {
@@ -124,7 +124,6 @@ export default function ToplulukPage() {
                 }));
             }
 
-            // Kullanıcının oylarını ve kayıtlarını al
             if (user && postsWithUsers.length > 0) {
                 const postIds = postsWithUsers.map(p => p.id);
 
@@ -291,21 +290,23 @@ export default function ToplulukPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-            {/* Header */}
-            <div className="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
+        <div className="min-h-screen bg-gray-50">
+            <HeaderWhite />
+            
+            {/* Sub Header */}
+            <div className="bg-white border-b border-gray-200 sticky top-16 z-30">
                 <div className="max-w-4xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
                             <MessageSquare className="w-7 h-7 text-emerald-500" />
                             Topluluk
                         </h1>
                         {user && (
                             <Link
                                 href="/topluluk/yeni"
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-black/90 text-white rounded-full transition-colors text-sm font-medium"
                             >
-                                <Plus className="w-5 h-5" />
+                                <Plus className="w-4 h-4" />
                                 <span className="hidden sm:inline">Yeni Entry</span>
                             </Link>
                         )}
@@ -313,13 +314,13 @@ export default function ToplulukPage() {
 
                     {/* Search */}
                     <div className="relative mb-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Entry ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                         />
                     </div>
 
@@ -331,13 +332,13 @@ export default function ToplulukPage() {
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${selectedCategory === cat.id
-                                        ? "bg-emerald-600 text-white"
-                                        : "bg-slate-700/50 text-slate-300 hover:bg-slate-700"
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full whitespace-nowrap transition-all text-sm ${selectedCategory === cat.id
+                                        ? "bg-black text-white"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                         }`}
                                 >
                                     <Icon className={`w-4 h-4 ${selectedCategory === cat.id ? "text-white" : cat.color}`} />
-                                    <span className="text-sm">{cat.label}</span>
+                                    <span>{cat.label}</span>
                                 </button>
                             );
                         })}
@@ -355,8 +356,8 @@ export default function ToplulukPage() {
                                 key={option.id}
                                 onClick={() => setSortBy(option.id)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${sortBy === option.id
-                                    ? "bg-slate-700 text-white"
-                                    : "text-slate-400 hover:text-white"
+                                    ? "bg-gray-200 text-zinc-900"
+                                    : "text-gray-500 hover:text-zinc-900"
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -372,32 +373,32 @@ export default function ToplulukPage() {
                 {loading ? (
                     <div className="space-y-4">
                         {[...Array(5)].map((_, i) => (
-                            <div key={i} className="bg-slate-800/50 rounded-xl p-4 animate-pulse">
+                            <div key={i} className="bg-white rounded-xl p-4 animate-pulse border border-gray-100">
                                 <div className="flex gap-4">
                                     <div className="w-10 flex flex-col items-center gap-2">
-                                        <div className="w-6 h-6 bg-slate-700 rounded" />
-                                        <div className="w-8 h-4 bg-slate-700 rounded" />
-                                        <div className="w-6 h-6 bg-slate-700 rounded" />
+                                        <div className="w-6 h-6 bg-gray-200 rounded" />
+                                        <div className="w-8 h-4 bg-gray-200 rounded" />
+                                        <div className="w-6 h-6 bg-gray-200 rounded" />
                                     </div>
                                     <div className="flex-1">
-                                        <div className="h-4 bg-slate-700 rounded w-1/4 mb-2" />
-                                        <div className="h-6 bg-slate-700 rounded w-3/4 mb-2" />
-                                        <div className="h-4 bg-slate-700 rounded w-full mb-2" />
-                                        <div className="h-4 bg-slate-700 rounded w-2/3" />
+                                        <div className="h-4 bg-gray-200 rounded w-1/4 mb-2" />
+                                        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
+                                        <div className="h-4 bg-gray-200 rounded w-full mb-2" />
+                                        <div className="h-4 bg-gray-200 rounded w-2/3" />
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : posts.length === 0 ? (
-                    <div className="text-center py-12">
-                        <MessageSquare className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                        <h3 className="text-xl text-slate-400 mb-2">Henüz entry yok</h3>
-                        <p className="text-slate-500 mb-4">İlk entry&apos;yi sen yaz!</p>
+                    <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+                        <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-xl text-gray-600 mb-2">Henüz entry yok</h3>
+                        <p className="text-gray-400 mb-4">İlk entry&apos;yi sen yaz!</p>
                         {user && (
                             <Link
                                 href="/topluluk/yeni"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-black hover:bg-black/90 text-white rounded-full transition-colors"
                             >
                                 <Plus className="w-5 h-5" />
                                 Yeni Entry
@@ -413,23 +414,23 @@ export default function ToplulukPage() {
                             return (
                                 <article
                                     key={post.id}
-                                    className={`bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600 transition-all ${post.is_pinned ? "ring-2 ring-emerald-500/50" : ""
+                                    className={`bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-gray-200 hover:shadow-sm transition-all ${post.is_pinned ? "ring-2 ring-emerald-500/30" : ""
                                         }`}
                                 >
                                     <div className="flex">
                                         {/* Vote Column */}
-                                        <div className="flex flex-col items-center py-4 px-3 bg-slate-800/80">
+                                        <div className="flex flex-col items-center py-4 px-3 bg-gray-50">
                                             <button
                                                 onClick={() => handleVote(post.id, 1)}
                                                 disabled={votingPostId === post.id}
                                                 className={`p-1 rounded transition-colors ${post.user_vote === 1
                                                     ? "text-emerald-500"
-                                                    : "text-slate-500 hover:text-emerald-500"
+                                                    : "text-gray-400 hover:text-emerald-500"
                                                     }`}
                                             >
                                                 <ChevronUp className="w-6 h-6" />
                                             </button>
-                                            <span className={`text-sm font-bold my-1 ${score > 0 ? "text-emerald-500" : score < 0 ? "text-red-500" : "text-slate-400"
+                                            <span className={`text-sm font-bold my-1 ${score > 0 ? "text-emerald-500" : score < 0 ? "text-red-500" : "text-gray-400"
                                                 }`}>
                                                 {score}
                                             </span>
@@ -438,7 +439,7 @@ export default function ToplulukPage() {
                                                 disabled={votingPostId === post.id}
                                                 className={`p-1 rounded transition-colors ${post.user_vote === -1
                                                     ? "text-red-500"
-                                                    : "text-slate-500 hover:text-red-500"
+                                                    : "text-gray-400 hover:text-red-500"
                                                     }`}
                                             >
                                                 <ChevronDown className="w-6 h-6" />
@@ -448,8 +449,8 @@ export default function ToplulukPage() {
                                         {/* Content */}
                                         <div className="flex-1 py-4 pr-4">
                                             {/* Meta */}
-                                            <div className="flex items-center gap-2 text-xs text-slate-400 mb-2 flex-wrap">
-                                                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700/50 ${getCategoryColor(post.category)}`}>
+                                            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 flex-wrap">
+                                                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 ${getCategoryColor(post.category)}`}>
                                                     <CategoryIcon className="w-3 h-3" />
                                                     {getCategoryLabel(post.category)}
                                                 </span>
@@ -469,7 +470,7 @@ export default function ToplulukPage() {
                                                 )}
 
                                                 {post.city && (
-                                                    <span className="text-slate-500">• {post.city}</span>
+                                                    <span className="text-gray-400">• {post.city}</span>
                                                 )}
 
                                                 {post.is_resolved && (
@@ -479,23 +480,23 @@ export default function ToplulukPage() {
 
                                             {/* Title */}
                                             <Link href={`/topluluk/${post.id}`}>
-                                                <h2 className="text-lg font-semibold text-white hover:text-emerald-400 transition-colors mb-2 line-clamp-2">
+                                                <h2 className="text-lg font-semibold text-zinc-900 hover:text-emerald-600 transition-colors mb-2 line-clamp-2">
                                                     {post.is_pinned && <span className="text-emerald-500 mr-2">📌</span>}
                                                     {post.title}
                                                 </h2>
                                             </Link>
 
                                             {/* Content Preview */}
-                                            <p className="text-slate-400 text-sm line-clamp-2 mb-3">
+                                            <p className="text-gray-500 text-sm line-clamp-2 mb-3">
                                                 {post.content}
                                             </p>
 
                                             {/* Footer */}
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                <div className="flex items-center gap-3 text-xs text-gray-500">
                                                     <Link
                                                         href={`/kullanici/${post.user_id}`}
-                                                        className="flex items-center gap-2 hover:text-slate-300 transition-colors"
+                                                        className="flex items-center gap-2 hover:text-zinc-900 transition-colors"
                                                     >
                                                         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
                                                             {post.user?.full_name?.charAt(0) || "?"}
@@ -509,7 +510,7 @@ export default function ToplulukPage() {
                                                 <div className="flex items-center gap-3">
                                                     <Link
                                                         href={`/topluluk/${post.id}`}
-                                                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                                                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-zinc-900 transition-colors"
                                                     >
                                                         <MessageSquare className="w-4 h-4" />
                                                         <span>{post.comment_count}</span>
@@ -519,7 +520,7 @@ export default function ToplulukPage() {
                                                         onClick={() => handleSave(post.id)}
                                                         className={`flex items-center gap-1 text-xs transition-colors ${post.is_saved
                                                             ? "text-yellow-500"
-                                                            : "text-slate-500 hover:text-yellow-500"
+                                                            : "text-gray-400 hover:text-yellow-500"
                                                             }`}
                                                     >
                                                         <Bookmark className={`w-4 h-4 ${post.is_saved ? "fill-current" : ""}`} />
@@ -530,7 +531,7 @@ export default function ToplulukPage() {
                                                             navigator.clipboard.writeText(`${window.location.origin}/topluluk/${post.id}`);
                                                             alert("Link kopyalandı!");
                                                         }}
-                                                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                                                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-zinc-900 transition-colors"
                                                     >
                                                         <Share2 className="w-4 h-4" />
                                                     </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
@@ -39,7 +39,7 @@ interface UserSearchResult {
     avatar_url: string | null;
 }
 
-export default function MesajlarPage() {
+function MesajlarContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useAuth();
@@ -208,14 +208,14 @@ export default function MesajlarPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center max-w-md">
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-8 text-center max-w-md">
                     <Mail className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Giriş Gerekli</h2>
-                    <p className="text-slate-400 mb-6">Mesajlarınızı görmek için giriş yapmalısınız.</p>
+                    <h2 className="text-xl font-bold text-zinc-900 mb-2">Giriş Gerekli</h2>
+                    <p className="text-gray-500 mb-6">Mesajlarınızı görmek için giriş yapmalısınız.</p>
                     <Link
                         href="/?login=true"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors"
                     >
                         Giriş Yap
                     </Link>
@@ -225,26 +225,26 @@ export default function MesajlarPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-40 backdrop-blur-sm">
                 <div className="max-w-2xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <Link
                                 href="/topluluk"
-                                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
-                                <ArrowLeft className="w-5 h-5 text-slate-400" />
+                                <ArrowLeft className="w-5 h-5 text-gray-500" />
                             </Link>
-                            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
                                 <Mail className="w-6 h-6 text-emerald-500" />
                                 Mesajlar
                             </h1>
                         </div>
                         <button
                             onClick={() => setShowNewChat(!showNewChat)}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors text-sm"
                         >
                             Yeni Mesaj
                         </button>
@@ -254,26 +254,26 @@ export default function MesajlarPage() {
                     {showNewChat && (
                         <div className="mb-4">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                                 <input
                                     type="text"
                                     placeholder="Kullanıcı ara..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-zinc-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                     autoFocus
                                 />
                             </div>
 
                             {/* Search Results */}
                             {searchQuery.length >= 2 && (
-                                <div className="mt-2 bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                                <div className="mt-2 bg-white border border-gray-200 rounded-lg overflow-hidden">
                                     {searching ? (
                                         <div className="p-4 text-center">
                                             <Loader2 className="w-5 h-5 text-emerald-500 animate-spin mx-auto" />
                                         </div>
                                     ) : searchResults.length === 0 ? (
-                                        <div className="p-4 text-center text-slate-500">
+                                        <div className="p-4 text-center text-gray-400">
                                             Kullanıcı bulunamadı
                                         </div>
                                     ) : (
@@ -281,12 +281,12 @@ export default function MesajlarPage() {
                                             <button
                                                 key={result.id}
                                                 onClick={() => startConversation(result.id)}
-                                                className="w-full flex items-center gap-3 p-3 hover:bg-slate-700 transition-colors"
+                                                className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors"
                                             >
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-zinc-900 font-bold">
                                                     {result.full_name?.charAt(0) || "?"}
                                                 </div>
-                                                <span className="text-white">{result.full_name}</span>
+                                                <span className="text-zinc-900">{result.full_name}</span>
                                             </button>
                                         ))
                                     )}
@@ -306,11 +306,11 @@ export default function MesajlarPage() {
                 ) : conversations.length === 0 ? (
                     <div className="text-center py-12">
                         <MessageSquare className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                        <h3 className="text-xl text-slate-400 mb-2">Henüz mesajınız yok</h3>
-                        <p className="text-slate-500 mb-4">Yeni bir sohbet başlatın!</p>
+                        <h3 className="text-xl text-gray-500 mb-2">Henüz mesajınız yok</h3>
+                        <p className="text-gray-400 mb-4">Yeni bir sohbet başlatın!</p>
                         <button
                             onClick={() => setShowNewChat(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors"
                         >
                             <Users className="w-5 h-5" />
                             Kullanıcı Ara
@@ -322,14 +322,14 @@ export default function MesajlarPage() {
                             <Link
                                 key={conv.id}
                                 href={`/mesajlar/${conv.id}`}
-                                className="flex items-center gap-4 p-4 hover:bg-slate-800/50 transition-colors"
+                                className="flex items-center gap-4 p-4 hover:bg-white transition-colors"
                             >
                                 <div className="relative">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-zinc-900 font-bold text-lg">
                                         {conv.other_user.full_name?.charAt(0) || "?"}
                                     </div>
                                     {conv.unread_count > 0 && (
-                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-xs text-zinc-900 font-bold">
                                             {conv.unread_count > 9 ? "9+" : conv.unread_count}
                                         </div>
                                     )}
@@ -337,15 +337,15 @@ export default function MesajlarPage() {
 
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className={`font-medium ${conv.unread_count > 0 ? "text-white" : "text-slate-300"}`}>
+                                        <span className={`font-medium ${conv.unread_count > 0 ? "text-zinc-900" : "text-gray-600"}`}>
                                             {conv.other_user.full_name}
                                         </span>
-                                        <span className="text-xs text-slate-500">
+                                        <span className="text-xs text-gray-400">
                                             {formatTime(conv.last_message_at)}
                                         </span>
                                     </div>
                                     {conv.last_message && (
-                                        <p className={`text-sm truncate ${conv.unread_count > 0 ? "text-slate-300" : "text-slate-500"}`}>
+                                        <p className={`text-sm truncate ${conv.unread_count > 0 ? "text-gray-600" : "text-gray-400"}`}>
                                             {conv.last_message.sender_id === user.id && "Sen: "}
                                             {conv.last_message.content}
                                         </p>
@@ -361,5 +361,17 @@ export default function MesajlarPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function MesajlarPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+            </div>
+        }>
+            <MesajlarContent />
+        </Suspense>
     );
 }

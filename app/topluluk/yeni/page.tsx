@@ -24,42 +24,48 @@ const categories = [
         id: "istasyon_sikayeti",
         label: "İstasyon Şikayeti",
         icon: AlertTriangle,
-        color: "bg-red-500/20 border-red-500/50 text-red-400",
+        color: "bg-red-50 text-red-600 border-red-200",
+        activeBorder: "border-red-500",
         description: "Belirli bir istasyonla ilgili sorun bildirin"
     },
     {
         id: "operator_sikayeti",
         label: "Operatör Şikayeti",
         icon: Zap,
-        color: "bg-yellow-500/20 border-yellow-500/50 text-yellow-400",
+        color: "bg-yellow-50 text-yellow-600 border-yellow-200",
+        activeBorder: "border-yellow-500",
         description: "Şarj operatörü hakkında genel şikayet"
     },
     {
         id: "deneyim",
         label: "Deneyim",
         icon: Car,
-        color: "bg-blue-500/20 border-blue-500/50 text-blue-400",
+        color: "bg-blue-50 text-blue-600 border-blue-200",
+        activeBorder: "border-blue-500",
         description: "Şarj veya yolculuk deneyiminizi paylaşın"
     },
     {
         id: "soru",
         label: "Soru",
         icon: HelpCircle,
-        color: "bg-purple-500/20 border-purple-500/50 text-purple-400",
+        color: "bg-purple-50 text-purple-600 border-purple-200",
+        activeBorder: "border-purple-500",
         description: "Topluluktan yardım isteyin"
     },
     {
         id: "oneri",
         label: "Öneri",
         icon: Lightbulb,
-        color: "bg-green-500/20 border-green-500/50 text-green-400",
+        color: "bg-emerald-50 text-emerald-600 border-emerald-200",
+        activeBorder: "border-emerald-500",
         description: "İstasyon veya özellik önerisi"
     },
     {
         id: "haber",
         label: "Haber",
         icon: Newspaper,
-        color: "bg-cyan-500/20 border-cyan-500/50 text-cyan-400",
+        color: "bg-cyan-50 text-cyan-600 border-cyan-200",
+        activeBorder: "border-cyan-500",
         description: "Elektrikli araç sektörü haberleri"
     },
 ];
@@ -150,21 +156,23 @@ export default function YeniEntryPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center max-w-md">
-                    <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Giriş Gerekli</h2>
-                    <p className="text-slate-400 mb-6">Entry yazmak için giriş yapmalısınız.</p>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center max-w-md shadow-sm">
+                    <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-100">
+                        <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                    </div>
+                    <h2 className="text-xl font-bold text-zinc-900 mb-2">Giriş Gerekli</h2>
+                    <p className="text-gray-500 mb-6">Entry yazmak için giriş yapmalısınız.</p>
                     <div className="flex gap-3 justify-center">
                         <Link
                             href="/topluluk"
-                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                            className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-zinc-900 font-medium rounded-full transition-colors"
                         >
                             Geri Dön
                         </Link>
                         <Link
                             href="/?login=true"
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                            className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-full transition-colors"
                         >
                             Giriş Yap
                         </Link>
@@ -175,47 +183,48 @@ export default function YeniEntryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-white">
             {/* Header */}
-            <div className="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
+            <div className="bg-white border-b border-gray-100 sticky top-0 z-40">
                 <div className="max-w-3xl mx-auto px-4 py-4">
                     <div className="flex items-center gap-4">
                         <Link
                             href="/topluluk"
-                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                         >
-                            <ArrowLeft className="w-5 h-5 text-slate-400" />
+                            <ArrowLeft className="w-5 h-5 text-gray-500" />
                         </Link>
-                        <h1 className="text-xl font-bold text-white">Yeni Entry</h1>
+                        <h1 className="text-xl font-bold text-zinc-900">Yeni Entry</h1>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-3xl mx-auto px-4 py-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="max-w-3xl mx-auto px-4 py-8">
+                <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Kategori Seçimi */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-3">
-                            Kategori Seçin *
+                        <label className="block text-sm font-semibold text-zinc-900 mb-4">
+                            Kategori Seçin <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {categories.map((cat) => {
                                 const Icon = cat.icon;
+                                const isActive = category === cat.id;
                                 return (
                                     <button
                                         key={cat.id}
                                         type="button"
                                         onClick={() => setCategory(cat.id)}
-                                        className={`p-4 rounded-xl border-2 transition-all text-left ${category === cat.id
-                                                ? cat.color + " border-current"
-                                                : "bg-slate-800/50 border-slate-700 hover:border-slate-600"
+                                        className={`p-4 rounded-xl border-2 transition-all text-left group ${isActive
+                                                ? `${cat.color} ${cat.activeBorder}`
+                                                : "bg-white border-gray-100 hover:border-gray-300 hover:bg-gray-50"
                                             }`}
                                     >
-                                        <Icon className={`w-6 h-6 mb-2 ${category === cat.id ? "" : "text-slate-400"}`} />
-                                        <div className={`font-medium ${category === cat.id ? "" : "text-white"}`}>
+                                        <Icon className={`w-6 h-6 mb-2 ${isActive ? "text-current" : "text-gray-400 group-hover:text-gray-600"}`} />
+                                        <div className={`font-semibold text-sm ${isActive ? "text-current" : "text-zinc-900"}`}>
                                             {cat.label}
                                         </div>
-                                        <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                        <div className={`text-xs mt-1 line-clamp-2 ${isActive ? "opacity-80" : "text-gray-500"}`}>
                                             {cat.description}
                                         </div>
                                     </button>
@@ -226,14 +235,14 @@ export default function YeniEntryPage() {
 
                     {/* Operatör Seçimi (Şikayet kategorileri için) */}
                     {(category === "istasyon_sikayeti" || category === "operator_sikayeti") && (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label className="block text-sm font-semibold text-zinc-900 mb-2">
                                 Operatör (Opsiyonel)
                             </label>
                             <select
                                 value={operatorId}
                                 onChange={(e) => setOperatorId(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                             >
                                 <option value="">Operatör seçin...</option>
                                 {operators.map((op) => (
@@ -247,18 +256,18 @@ export default function YeniEntryPage() {
 
                     {/* İstasyon Adı (İstasyon şikayeti için) */}
                     {category === "istasyon_sikayeti" && (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label className="block text-sm font-semibold text-zinc-900 mb-2">
                                 İstasyon Adı/Lokasyonu (Opsiyonel)
                             </label>
                             <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="text"
                                     value={stationName}
                                     onChange={(e) => setStationName(e.target.value)}
                                     placeholder="Örn: ZES Ankara Kızılay AVM"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                 />
                             </div>
                         </div>
@@ -266,14 +275,14 @@ export default function YeniEntryPage() {
 
                     {/* Şehir Seçimi */}
                     {(category === "istasyon_sikayeti" || category === "oneri" || category === "deneyim") && (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label className="block text-sm font-semibold text-zinc-900 mb-2">
                                 Şehir (Opsiyonel)
                             </label>
                             <select
                                 value={city}
                                 onChange={(e) => setCity(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                             >
                                 <option value="">Şehir seçin...</option>
                                 {cities.map((c) => (
@@ -287,8 +296,8 @@ export default function YeniEntryPage() {
 
                     {/* Başlık */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Başlık *
+                        <label className="block text-sm font-semibold text-zinc-900 mb-2">
+                            Başlık <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
@@ -296,50 +305,50 @@ export default function YeniEntryPage() {
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="Dikkat çekici bir başlık yazın..."
                             maxLength={200}
-                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
                         />
-                        <div className="text-xs text-slate-500 mt-1 text-right">
+                        <div className="text-xs text-gray-400 mt-1 text-right font-medium">
                             {title.length}/200
                         </div>
                     </div>
 
                     {/* İçerik */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            İçerik *
+                        <label className="block text-sm font-semibold text-zinc-900 mb-2">
+                            İçerik <span className="text-red-500">*</span>
                         </label>
                         <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Detaylı açıklamanızı yazın..."
                             rows={8}
-                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all resize-none"
                         />
-                        <div className="text-xs text-slate-500 mt-1 text-right">
+                        <div className="text-xs text-gray-400 mt-1 text-right font-medium">
                             {content.length} karakter (min. 30)
                         </div>
                     </div>
 
                     {/* Hata Mesajı */}
                     {error && (
-                        <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 flex items-center gap-2">
+                        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 flex items-center gap-3">
                             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                            {error}
+                            <span className="text-sm font-medium">{error}</span>
                         </div>
                     )}
 
                     {/* Submit */}
-                    <div className="flex gap-3 pt-4">
+                    <div className="flex gap-4 pt-4 border-t border-gray-100">
                         <Link
                             href="/topluluk"
-                            className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors text-center"
+                            className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-zinc-900 font-semibold rounded-full transition-colors text-center"
                         >
                             İptal
                         </Link>
                         <button
                             type="submit"
                             disabled={submitting || !category || !title.trim() || !content.trim()}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors"
+                            className="flex-[2] flex items-center justify-center gap-2 px-6 py-3.5 bg-zinc-900 hover:bg-black disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-full transition-colors shadow-lg shadow-zinc-200"
                         >
                             {submitting ? (
                                 <>

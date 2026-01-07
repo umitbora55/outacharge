@@ -246,14 +246,14 @@ export default function BildirimlerPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center max-w-md">
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-8 text-center max-w-md">
                     <Bell className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Giriş Gerekli</h2>
-                    <p className="text-slate-400 mb-6">Bildirimlerinizi görmek için giriş yapmalısınız.</p>
+                    <h2 className="text-xl font-bold text-zinc-900 mb-2">Giriş Gerekli</h2>
+                    <p className="text-gray-500 mb-6">Bildirimlerinizi görmek için giriş yapmalısınız.</p>
                     <Link
                         href="/?login=true"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors"
                     >
                         Giriş Yap
                     </Link>
@@ -263,23 +263,23 @@ export default function BildirimlerPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-40 backdrop-blur-sm">
                 <div className="max-w-2xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <Link
                                 href="/topluluk"
-                                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                             >
-                                <ArrowLeft className="w-5 h-5 text-slate-400" />
+                                <ArrowLeft className="w-5 h-5 text-gray-500" />
                             </Link>
-                            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
                                 <Bell className="w-6 h-6 text-emerald-500" />
                                 Bildirimler
                                 {unreadCount > 0 && (
-                                    <span className="px-2 py-0.5 bg-emerald-600 text-white text-xs rounded-full">
+                                    <span className="px-2 py-0.5 bg-emerald-600 text-zinc-900 text-xs rounded-full">
                                         {unreadCount}
                                     </span>
                                 )}
@@ -302,8 +302,8 @@ export default function BildirimlerPage() {
                         <button
                             onClick={() => setFilter("all")}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === "all"
-                                    ? "bg-emerald-600 text-white"
-                                    : "bg-slate-700/50 text-slate-400 hover:text-white"
+                                    ? "bg-emerald-600 text-zinc-900"
+                                    : "bg-gray-100 text-gray-500 hover:text-zinc-900"
                                 }`}
                         >
                             Tümü
@@ -311,8 +311,8 @@ export default function BildirimlerPage() {
                         <button
                             onClick={() => setFilter("unread")}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === "unread"
-                                    ? "bg-emerald-600 text-white"
-                                    : "bg-slate-700/50 text-slate-400 hover:text-white"
+                                    ? "bg-emerald-600 text-zinc-900"
+                                    : "bg-gray-100 text-gray-500 hover:text-zinc-900"
                                 }`}
                         >
                             Okunmamış
@@ -330,10 +330,10 @@ export default function BildirimlerPage() {
                 ) : notifications.length === 0 ? (
                     <div className="text-center py-12">
                         <Bell className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                        <h3 className="text-xl text-slate-400 mb-2">
+                        <h3 className="text-xl text-gray-500 mb-2">
                             {filter === "unread" ? "Okunmamış bildirim yok" : "Henüz bildirim yok"}
                         </h3>
-                        <p className="text-slate-500">
+                        <p className="text-gray-400">
                             Yeni aktiviteler olduğunda burada göreceksin
                         </p>
                     </div>
@@ -341,21 +341,21 @@ export default function BildirimlerPage() {
                     <div className="divide-y divide-slate-700/50">
                         {notifications.map((notif) => {
                             const Icon = notificationIcons[notif.type] || Bell;
-                            const colorClass = notificationColors[notif.type] || "text-slate-500 bg-slate-500/20";
+                            const colorClass = notificationColors[notif.type] || "text-gray-400 bg-slate-500/20";
 
                             return (
                                 <div
                                     key={notif.id}
-                                    className={`relative ${!notif.is_read ? "bg-slate-800/30" : ""}`}
+                                    className={`relative ${!notif.is_read ? "bg-white/30" : ""}`}
                                 >
                                     <Link
                                         href={getNotificationLink(notif)}
                                         onClick={() => !notif.is_read && markAsRead(notif.id)}
-                                        className="flex items-start gap-4 p-4 hover:bg-slate-800/50 transition-colors"
+                                        className="flex items-start gap-4 p-4 hover:bg-white transition-colors"
                                     >
                                         {/* Avatar or Icon */}
                                         {notif.from_user ? (
-                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-zinc-900 font-bold text-lg flex-shrink-0">
                                                 {notif.from_user.full_name?.charAt(0) || "?"}
                                             </div>
                                         ) : (
@@ -365,15 +365,15 @@ export default function BildirimlerPage() {
                                         )}
 
                                         <div className="flex-1 min-w-0">
-                                            <p className={`${!notif.is_read ? "text-white" : "text-slate-300"}`}>
+                                            <p className={`${!notif.is_read ? "text-zinc-900" : "text-gray-600"}`}>
                                                 {getNotificationText(notif)}
                                             </p>
                                             {notif.title && (
-                                                <p className="text-sm text-slate-500 mt-1 line-clamp-1">
+                                                <p className="text-sm text-gray-400 mt-1 line-clamp-1">
                                                     &quot;{notif.title}&quot;
                                                 </p>
                                             )}
-                                            <p className="text-xs text-slate-500 mt-1">
+                                            <p className="text-xs text-gray-400 mt-1">
                                                 {formatDate(notif.created_at)}
                                             </p>
                                         </div>
@@ -389,18 +389,18 @@ export default function BildirimlerPage() {
                                         {!notif.is_read && (
                                             <button
                                                 onClick={() => markAsRead(notif.id)}
-                                                className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                                                className="p-1.5 bg-gray-100 hover:bg-slate-600 rounded-lg transition-colors"
                                                 title="Okundu işaretle"
                                             >
-                                                <Check className="w-3 h-3 text-slate-400" />
+                                                <Check className="w-3 h-3 text-gray-500" />
                                             </button>
                                         )}
                                         <button
                                             onClick={() => deleteNotification(notif.id)}
-                                            className="p-1.5 bg-slate-700 hover:bg-red-600 rounded-lg transition-colors"
+                                            className="p-1.5 bg-gray-100 hover:bg-red-600 rounded-lg transition-colors"
                                             title="Sil"
                                         >
-                                            <Trash2 className="w-3 h-3 text-slate-400" />
+                                            <Trash2 className="w-3 h-3 text-gray-500" />
                                         </button>
                                     </div>
 

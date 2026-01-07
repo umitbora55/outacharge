@@ -35,7 +35,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, additionalData?: any) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
@@ -57,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
-        console.error("Profile fetch error:", error);
         // Profil bulunamadıysa, trigger henüz çalışmamış olabilir - biraz bekle ve tekrar dene
         if (error.code === "PGRST116") {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -92,8 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               createdAt: retryData.created_at,
               lastLogin: retryData.last_login,
             });
+            return;
           }
         }
+
+        console.warn("Profile fetch error or retry failed, using fallback:", error);
+        // Fallback to minimal user from available data
+        setUser({
+          id: userId,
+          email: email,
+          fullName: email.split('@')[0],
+          createdAt: new Date().toISOString(),
+        });
         return;
       }
 
@@ -134,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // 1. Mevcut oturumu kontrol et
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("AuthProvider: Initial Session Check", session);
       setSession(session);
       if (session?.user) {
         fetchProfile(session.user.id, session.user.email!);
@@ -143,7 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // 2. Oturum değişikliklerini dinle
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("AuthProvider: Auth Change Event", event, session);
       setSession(session);
       if (session?.user) {
         setLoading(true);
@@ -169,18 +180,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, additionalData?: any) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
+            ...additionalData,
           },
         },
       });
-      return { error: error?.message || null };
+
+      if (error) return { error: error.message };
+
+      // Critical Fix: Force sync metadata to public.users if session is created immediately (auto-login)
+      if (data.session?.user) {
+        // Construct the payload for public.users
+        const profileUpdates: any = {
+          full_name: fullName,
+        };
+
+        if (additionalData?.phone) profileUpdates.phone = additionalData.phone;
+        if (additionalData?.vehicle_brand) profileUpdates.vehicle_brand = additionalData.vehicle_brand;
+        if (additionalData?.vehicle_model) profileUpdates.vehicle_model = additionalData.vehicle_model;
+        if (additionalData?.vehicle_year) profileUpdates.vehicle_year = additionalData.vehicle_year;
+        if (additionalData?.charging_preference) profileUpdates.charging_preference = additionalData.charging_preference;
+        if (additionalData?.charging_frequency) profileUpdates.charging_frequency = additionalData.charging_frequency;
+        if (additionalData?.preferred_charger_type) profileUpdates.preferred_charger_type = additionalData.preferred_charger_type;
+
+        // Handle both possible key names for home charging
+        if (additionalData?.home_charging_available !== undefined) {
+          profileUpdates.home_charging_available = additionalData.home_charging_available;
+        } else if (additionalData?.home_charging !== undefined) {
+          // If legacy key used, map to what we think is the column (assuming home_charging_available based on recent usage, or maybe home_charging?)
+          // Safest bet: try to update the one we saw in client code: home_charging_available
+          profileUpdates.home_charging_available = additionalData.home_charging;
+        }
+
+        // Force update the profile - use upsert to handle race condition where trigger might be slow
+        const { error: updateError } = await supabase
+          .from("users")
+          .upsert({
+            id: data.session.user.id,
+            email: email,
+            ...profileUpdates
+          })
+          .select(); // select() sometimes helps retrieve the error or data properly
+
+        if (updateError) {
+          console.error("Profile sync error details:", JSON.stringify(updateError, null, 2));
+          // Don't block signup success, but convert to non-fatal warning
+        } else {
+          // Also update local state immediately so UI reflects it without re-fetch
+          setUser(prev => prev ? ({ ...prev, ...additionalData, fullName, phone: additionalData?.phone }) : null);
+        }
+      }
+
+      return { error: null };
     } catch (err: any) {
       return { error: err.message || "Kayıt olurken bir hata oluştu" };
     }

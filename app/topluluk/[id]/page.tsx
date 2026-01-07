@@ -71,12 +71,12 @@ interface Comment {
 }
 
 const categories = [
-    { id: "istasyon_sikayeti", label: "İstasyon Şikayeti", icon: AlertTriangle, color: "text-red-500" },
-    { id: "operator_sikayeti", label: "Operatör Şikayeti", icon: Zap, color: "text-yellow-500" },
-    { id: "deneyim", label: "Deneyim", icon: Car, color: "text-blue-500" },
-    { id: "soru", label: "Soru", icon: HelpCircle, color: "text-purple-500" },
-    { id: "oneri", label: "Öneri", icon: Lightbulb, color: "text-green-500" },
-    { id: "haber", label: "Haber", icon: Newspaper, color: "text-cyan-500" },
+    { id: "istasyon_sikayeti", label: "İstasyon Şikayeti", icon: AlertTriangle, color: "text-red-600 bg-red-50 border-red-200" },
+    { id: "operator_sikayeti", label: "Operatör Şikayeti", icon: Zap, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
+    { id: "deneyim", label: "Deneyim", icon: Car, color: "text-blue-600 bg-blue-50 border-blue-200" },
+    { id: "soru", label: "Soru", icon: HelpCircle, color: "text-purple-600 bg-purple-50 border-purple-200" },
+    { id: "oneri", label: "Öneri", icon: Lightbulb, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+    { id: "haber", label: "Haber", icon: Newspaper, color: "text-cyan-600 bg-cyan-50 border-cyan-200" },
 ];
 
 export default function EntryDetailPage() {
@@ -407,9 +407,9 @@ export default function EntryDetailPage() {
         return cat ? cat.icon : MessageSquare;
     };
 
-    const getCategoryColor = (category: string) => {
+    const getCategoryStyles = (category: string) => {
         const cat = categories.find(c => c.id === category);
-        return cat ? cat.color : "text-gray-500";
+        return cat ? cat.color : "text-gray-500 bg-gray-50 border-gray-200";
     };
 
     const getCategoryLabel = (category: string) => {
@@ -445,7 +445,7 @@ export default function EntryDetailPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+            <div className="min-h-screen bg-white flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
             </div>
         );
@@ -453,11 +453,11 @@ export default function EntryDetailPage() {
 
     if (!post) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+            <div className="min-h-screen bg-white flex items-center justify-center">
                 <div className="text-center">
                     <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-                    <h2 className="text-xl text-white mb-2">Entry bulunamadı</h2>
-                    <Link href="/topluluk" className="text-emerald-500 hover:underline">
+                    <h2 className="text-xl text-zinc-900 font-bold mb-2">Entry bulunamadı</h2>
+                    <Link href="/topluluk" className="text-emerald-600 hover:underline">
                         Topluluğa dön
                     </Link>
                 </div>
@@ -469,42 +469,42 @@ export default function EntryDetailPage() {
     const score = post.upvotes - post.downvotes;
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-white">
             {/* Header */}
-            <div className="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-sm">
+            <div className="bg-white border-b border-gray-100 sticky top-0 z-40">
                 <div className="max-w-4xl mx-auto px-4 py-4">
                     <div className="flex items-center gap-4">
                         <Link
                             href="/topluluk"
-                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                         >
-                            <ArrowLeft className="w-5 h-5 text-slate-400" />
+                            <ArrowLeft className="w-5 h-5 text-gray-500" />
                         </Link>
-                        <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-700/50 text-sm ${getCategoryColor(post.category)}`}>
-                            <CategoryIcon className="w-4 h-4" />
+                        <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getCategoryStyles(post.category)}`}>
+                            <CategoryIcon className="w-3.5 h-3.5" />
                             {getCategoryLabel(post.category)}
                         </span>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="max-w-4xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Post */}
-                <article className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden mb-6">
+                <article className="bg-white border border-gray-200 rounded-2xl overflow-hidden mb-8 shadow-sm">
                     <div className="flex">
                         {/* Vote Column */}
-                        <div className="flex flex-col items-center py-6 px-4 bg-slate-800/80">
+                        <div className="flex flex-col items-center py-6 px-4 bg-gray-50/50 border-r border-gray-100">
                             <button
                                 onClick={() => handleVote(1)}
                                 disabled={voting}
                                 className={`p-2 rounded-lg transition-colors ${userVote === 1
-                                    ? "text-emerald-500 bg-emerald-500/20"
-                                    : "text-slate-500 hover:text-emerald-500 hover:bg-slate-700"
+                                    ? "text-emerald-600 bg-emerald-50"
+                                    : "text-gray-400 hover:text-emerald-600 hover:bg-emerald-50"
                                     }`}
                             >
-                                <ChevronUp className="w-7 h-7" />
+                                <ChevronUp className="w-8 h-8" />
                             </button>
-                            <span className={`text-xl font-bold my-2 ${score > 0 ? "text-emerald-500" : score < 0 ? "text-red-500" : "text-slate-400"
+                            <span className={`text-xl font-bold my-2 ${score > 0 ? "text-emerald-600" : score < 0 ? "text-red-600" : "text-gray-400"
                                 }`}>
                                 {score}
                             </span>
@@ -512,64 +512,64 @@ export default function EntryDetailPage() {
                                 onClick={() => handleVote(-1)}
                                 disabled={voting}
                                 className={`p-2 rounded-lg transition-colors ${userVote === -1
-                                    ? "text-red-500 bg-red-500/20"
-                                    : "text-slate-500 hover:text-red-500 hover:bg-slate-700"
+                                    ? "text-red-500 bg-red-50"
+                                    : "text-gray-400 hover:text-red-500 hover:bg-red-50"
                                     }`}
                             >
-                                <ChevronDown className="w-7 h-7" />
+                                <ChevronDown className="w-8 h-8" />
                             </button>
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 p-6">
+                        <div className="flex-1 p-8">
                             {/* Meta */}
-                            <div className="flex items-center gap-3 text-sm text-slate-400 mb-4 flex-wrap">
+                            <div className="flex items-center gap-3 text-sm text-gray-500 mb-4 flex-wrap">
                                 {post.station_name && (
-                                    <span className="flex items-center gap-1">
-                                        <MapPin className="w-4 h-4" />
+                                    <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md text-xs font-medium">
+                                        <MapPin className="w-3.5 h-3.5" />
                                         {post.station_name}
                                     </span>
                                 )}
                                 {post.operator_name && (
-                                    <span className="flex items-center gap-1">
-                                        <Zap className="w-4 h-4" />
+                                    <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md text-xs font-medium">
+                                        <Zap className="w-3.5 h-3.5" />
                                         {post.operator_name}
                                     </span>
                                 )}
                                 {post.city && (
-                                    <span className="text-slate-500">• {post.city}</span>
+                                    <span className="text-gray-400">• {post.city}</span>
                                 )}
                                 {post.is_resolved && (
-                                    <span className="flex items-center gap-1 text-emerald-500">
-                                        <CheckCircle className="w-4 h-4" />
+                                    <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full text-xs font-bold">
+                                        <CheckCircle className="w-3.5 h-3.5" />
                                         Çözüldü
                                     </span>
                                 )}
                             </div>
 
                             {/* Title */}
-                            <h1 className="text-2xl font-bold text-white mb-4">
-                                {post.is_pinned && <span className="text-emerald-500 mr-2">📌</span>}
+                            <h1 className="text-2xl font-bold text-zinc-900 mb-4 leading-tight">
+                                {post.is_pinned && <span className="text-emerald-500 mr-2" title="Sabitlenmiş">📌</span>}
                                 {post.title}
                             </h1>
 
                             {/* Content */}
-                            <div className="text-slate-300 whitespace-pre-wrap mb-6">
+                            <div className="text-gray-600 whitespace-pre-wrap mb-8 leading-relaxed">
                                 {post.content}
                             </div>
 
                             {/* Author & Date */}
-                            <div className="flex items-center justify-between pt-4 border-t border-slate-700">
+                            <div className="flex items-center justify-between pt-6 border-t border-gray-100">
                                 <Link
                                     href={`/kullanici/${post.user_id}`}
-                                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                                    className="flex items-center gap-3 group"
                                 >
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm border border-emerald-200 group-hover:bg-emerald-200 transition-colors">
                                         {post.user?.full_name?.charAt(0) || "?"}
                                     </div>
                                     <div>
-                                        <div className="text-white font-medium">{post.user?.full_name || "Anonim"}</div>
-                                        <div className="text-xs text-slate-500">{formatDate(post.created_at)}</div>
+                                        <div className="text-zinc-900 font-semibold text-sm group-hover:text-emerald-600 transition-colors">{post.user?.full_name || "Anonim"}</div>
+                                        <div className="text-xs text-gray-400 font-medium">{formatDate(post.created_at)}</div>
                                     </div>
                                 </Link>
 
@@ -577,9 +577,10 @@ export default function EntryDetailPage() {
                                     <button
                                         onClick={handleSave}
                                         className={`p-2 rounded-lg transition-colors ${isSaved
-                                            ? "text-yellow-500 bg-yellow-500/20"
-                                            : "text-slate-500 hover:text-yellow-500 hover:bg-slate-700"
+                                            ? "text-yellow-500 bg-yellow-50"
+                                            : "text-gray-400 hover:text-yellow-600 hover:bg-yellow-50"
                                             }`}
+                                        title={isSaved ? "Kaydedildi" : "Kaydet"}
                                     >
                                         <Bookmark className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
                                     </button>
@@ -589,7 +590,8 @@ export default function EntryDetailPage() {
                                             navigator.clipboard.writeText(window.location.href);
                                             alert("Link kopyalandı!");
                                         }}
-                                        className="p-2 text-slate-500 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                        className="p-2 text-gray-400 hover:text-zinc-900 hover:bg-gray-100 rounded-lg transition-colors"
+                                        title="Paylaş"
                                     >
                                         <Share2 className="w-5 h-5" />
                                     </button>
@@ -598,15 +600,15 @@ export default function EntryDetailPage() {
                                         <div className="relative">
                                             <button
                                                 onClick={() => setShowMenu(!showMenu)}
-                                                className="p-2 text-slate-500 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                                className="p-2 text-gray-400 hover:text-zinc-900 hover:bg-gray-100 rounded-lg transition-colors"
                                             >
                                                 <MoreHorizontal className="w-5 h-5" />
                                             </button>
                                             {showMenu && (
-                                                <div className="absolute right-0 top-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 min-w-[150px] z-10">
+                                                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg py-1 min-w-[150px] z-10 overflow-hidden">
                                                     <button
                                                         onClick={handleDeletePost}
-                                                        className="w-full px-4 py-2 text-left text-red-400 hover:bg-slate-700 flex items-center gap-2"
+                                                        className="w-full px-4 py-2.5 text-left text-red-600 hover:bg-red-50 flex items-center gap-2 text-sm font-medium"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                         Sil
@@ -619,12 +621,12 @@ export default function EntryDetailPage() {
                             </div>
 
                             {/* Stats */}
-                            <div className="flex items-center gap-4 mt-4 text-sm text-slate-500">
-                                <span className="flex items-center gap-1">
+                            <div className="flex items-center gap-4 mt-6 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                                <span className="flex items-center gap-1.5">
                                     <MessageSquare className="w-4 h-4" />
                                     {post.comment_count} yorum
                                 </span>
-                                <span className="flex items-center gap-1">
+                                <span className="flex items-center gap-1.5">
                                     <Eye className="w-4 h-4" />
                                     {post.view_count} görüntüleme
                                 </span>
@@ -634,11 +636,11 @@ export default function EntryDetailPage() {
                 </article>
 
                 {/* Comment Input */}
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-6">
-                    <h3 className="text-lg font-semibold text-white mb-4">Yorum Yaz</h3>
+                <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-8 shadow-sm">
+                    <h3 className="text-lg font-bold text-zinc-900 mb-4">kişisinin düşüncesine katıl</h3>
                     {user ? (
-                        <div className="flex gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        <div className="flex gap-4">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm border border-emerald-200 flex-shrink-0">
                                 {user.fullName?.charAt(0) || "?"}
                             </div>
                             <div className="flex-1">
@@ -647,13 +649,13 @@ export default function EntryDetailPage() {
                                     onChange={(e) => setNewComment(e.target.value)}
                                     placeholder="Düşüncelerinizi paylaşın..."
                                     rows={3}
-                                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
                                 />
-                                <div className="flex justify-end mt-2">
+                                <div className="flex justify-end mt-3">
                                     <button
                                         onClick={() => handleSubmitComment(null)}
                                         disabled={submittingComment || !newComment.trim()}
-                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors"
+                                        className="flex items-center gap-2 px-6 py-2.5 bg-zinc-900 hover:bg-black disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium rounded-full transition-colors shadow-lg shadow-zinc-200"
                                     >
                                         {submittingComment ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -666,11 +668,11 @@ export default function EntryDetailPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="text-center py-4">
-                            <p className="text-slate-400 mb-3">Yorum yapmak için giriş yapın</p>
+                        <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <p className="text-gray-500 mb-4 text-sm font-medium">Bu tartışmaya katılmak için giriş yapın</p>
                             <Link
                                 href="/?login=true"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                                className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-full transition-colors shadow-lg shadow-emerald-200"
                             >
                                 Giriş Yap
                             </Link>
@@ -679,41 +681,42 @@ export default function EntryDetailPage() {
                 </div>
 
                 {/* Comments */}
-                <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-white">
-                        Yorumlar ({post.comment_count})
+                <div className="space-y-6">
+                    <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                        Yorumlar
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{post.comment_count}</span>
                     </h3>
 
                     {comments.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500">
+                        <div className="text-center py-12 text-gray-400 font-medium bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
                             Henüz yorum yok. İlk yorumu sen yaz!
                         </div>
                     ) : (
                         comments.map((comment) => (
-                            <div key={comment.id} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                            <div key={comment.id} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
                                 {/* Comment */}
-                                <div className="flex gap-3">
+                                <div className="flex gap-4">
                                     <Link href={`/kullanici/${comment.user_id}`}>
-                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-sm flex-shrink-0">
                                             {comment.user?.full_name?.charAt(0) || "?"}
                                         </div>
                                     </Link>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <Link href={`/kullanici/${comment.user_id}`} className="text-white font-medium hover:text-emerald-400">
+                                            <Link href={`/kullanici/${comment.user_id}`} className="text-zinc-900 font-semibold hover:text-emerald-600 transition-colors">
                                                 {comment.user?.full_name || "Anonim"}
                                             </Link>
-                                            <span className="text-xs text-slate-500">
+                                            <span className="text-xs text-gray-400 font-medium">
                                                 {formatRelativeDate(comment.created_at)}
                                             </span>
                                         </div>
-                                        <p className="text-slate-300 mb-3">{comment.content}</p>
-                                        <div className="flex items-center gap-4">
+                                        <p className="text-gray-600 mb-3 leading-relaxed">{comment.content}</p>
+                                        <div className="flex items-center gap-6">
                                             <button
                                                 onClick={() => handleLikeComment(comment.id)}
-                                                className={`flex items-center gap-1 text-sm transition-colors ${comment.user_liked
+                                                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${comment.user_liked
                                                     ? "text-red-500"
-                                                    : "text-slate-500 hover:text-red-500"
+                                                    : "text-gray-400 hover:text-red-500"
                                                     }`}
                                             >
                                                 <Heart className={`w-4 h-4 ${comment.user_liked ? "fill-current" : ""}`} />
@@ -722,7 +725,7 @@ export default function EntryDetailPage() {
                                             {user && (
                                                 <button
                                                     onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                                                    className="text-sm text-slate-500 hover:text-white transition-colors"
+                                                    className="text-sm text-gray-400 hover:text-zinc-900 font-medium transition-colors"
                                                 >
                                                     Yanıtla
                                                 </button>
@@ -731,18 +734,19 @@ export default function EntryDetailPage() {
 
                                         {/* Reply Input */}
                                         {replyingTo === comment.id && (
-                                            <div className="mt-3 flex gap-2">
+                                            <div className="mt-4 flex gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                                 <input
                                                     type="text"
                                                     value={replyContent}
                                                     onChange={(e) => setReplyContent(e.target.value)}
                                                     placeholder="Yanıtınızı yazın..."
-                                                    className="flex-1 px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                                                    className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                                                    autoFocus
                                                 />
                                                 <button
                                                     onClick={() => handleSubmitComment(comment.id)}
                                                     disabled={submittingComment || !replyContent.trim()}
-                                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white rounded-lg transition-colors"
+                                                    className="px-4 py-2.5 bg-zinc-900 hover:bg-black disabled:bg-gray-200 text-white rounded-xl transition-colors shadow-md"
                                                 >
                                                     <Send className="w-4 h-4" />
                                                 </button>
@@ -751,29 +755,29 @@ export default function EntryDetailPage() {
 
                                         {/* Replies */}
                                         {comment.replies && comment.replies.length > 0 && (
-                                            <div className="mt-4 space-y-3 pl-4 border-l-2 border-slate-700">
+                                            <div className="mt-4 space-y-4 pl-6 border-l-2 border-gray-100">
                                                 {comment.replies.map((reply) => (
                                                     <div key={reply.id} className="flex gap-3">
                                                         <Link href={`/kullanici/${reply.user_id}`}>
-                                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                                                            <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center text-xs font-bold flex-shrink-0">
                                                                 {reply.user?.full_name?.charAt(0) || "?"}
                                                             </div>
                                                         </Link>
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 mb-1">
-                                                                <Link href={`/kullanici/${reply.user_id}`} className="text-white font-medium text-sm hover:text-emerald-400">
+                                                                <Link href={`/kullanici/${reply.user_id}`} className="text-zinc-900 font-semibold text-sm hover:text-emerald-600 transition-colors">
                                                                     {reply.user?.full_name || "Anonim"}
                                                                 </Link>
-                                                                <span className="text-xs text-slate-500">
+                                                                <span className="text-xs text-gray-400 font-medium">
                                                                     {formatRelativeDate(reply.created_at)}
                                                                 </span>
                                                             </div>
-                                                            <p className="text-slate-300 text-sm">{reply.content}</p>
+                                                            <p className="text-gray-600 text-sm leading-relaxed">{reply.content}</p>
                                                             <button
                                                                 onClick={() => handleLikeComment(reply.id)}
-                                                                className={`flex items-center gap-1 text-xs mt-2 transition-colors ${reply.user_liked
+                                                                className={`flex items-center gap-1 text-xs mt-2 font-medium transition-colors ${reply.user_liked
                                                                     ? "text-red-500"
-                                                                    : "text-slate-500 hover:text-red-500"
+                                                                    : "text-gray-400 hover:text-red-500"
                                                                     }`}
                                                             >
                                                                 <Heart className={`w-3 h-3 ${reply.user_liked ? "fill-current" : ""}`} />

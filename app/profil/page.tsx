@@ -1,601 +1,553 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import {
-  User, Mail, Phone, MapPin, Car, Calendar, Zap, Battery,
-  Bell, Tag, Save, ArrowLeft, Edit2, Check, X, Loader2,
-  ChevronRight, Shield, LogOut
-} from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
-import { brands, vehiclesByBrand } from "@/data/vehicles";
-import { BarChart3 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import HeaderWhite from "../components/HeaderWhite";
+import {
+  User, Mail, Phone, MapPin, Car, Zap, Bell, Save, Loader2, X
+} from "lucide-react";
+import { vehicles, brands } from "@/data/vehicles";
 
-const cities = [
-  "Adana", "Ankara", "Antalya", "Bursa", "Denizli", "Diyarbakır", "Eskişehir",
-  "Gaziantep", "İstanbul", "İzmir", "Kayseri", "Kocaeli", "Konya", "Mersin",
-  "Muğla", "Sakarya", "Samsun", "Tekirdağ", "Trabzon"
-];
+type ProfileForm = {
+  fullName: string;
+  phone: string;
+  city: string;
+  vehicleBrand: string;
+  vehicleModel: string;
+  vehicleYear?: number;
+  monthlyKm?: number;
+  chargingPreference: string;
+  chargingFrequency: string;
+  preferredChargerType: string;
+  homeCharging: boolean;
+  notifyPriceChanges: boolean;
+  notifyNewStations: boolean;
+  marketingConsent: boolean;
+};
 
-const chargingFrequencies = [
-  { value: "daily", label: "Her gün" },
-  { value: "weekly", label: "Haftada birkaç kez" },
-  { value: "biweekly", label: "Haftada bir" },
-  { value: "monthly", label: "Ayda birkaç kez" },
-];
-
-const chargerTypes = [
-  { value: "ac", label: "AC (Yavaş Şarj)" },
-  { value: "dc", label: "DC (Hızlı Şarj)" },
-  { value: "both", label: "Her ikisi de" },
-];
-
-type EditingSection = "personal" | "vehicle" | "charging" | "notifications" | null;
+// Normalize function for type-safe comparison with correct defaults
+const normalize = (key: keyof ProfileForm, val: any) => {
+  if (val === undefined || val === null) {
+    if (key === "vehicleYear" || key === "monthlyKm") return undefined;
+    if (key === "notifyPriceChanges") return true;
+    if (key === "notifyNewStations") return true;
+    if (key === "homeCharging") return false;
+    if (key === "marketingConsent") return false;
+    return "";
+  }
+  return val;
+};
 
 export default function ProfilPage() {
+  const { user, updateUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { user, loading: authLoading, updateUser, signOut } = useAuth();
-
-
-  const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
-    show: false,
-    message: "",
-    type: "success",
-  });
-
-  const [formData, setFormData] = useState({
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [vehicleTouched, setVehicleTouched] = useState(false);
+  const [form, setForm] = useState<ProfileForm>({
     fullName: "",
-    email: "",
     phone: "",
     city: "",
     vehicleBrand: "",
     vehicleModel: "",
-    vehicleYear: "",
-    monthlyKm: "",
+    vehicleYear: undefined,
+    monthlyKm: undefined,
+    chargingPreference: "",
     chargingFrequency: "",
     preferredChargerType: "",
     homeCharging: false,
-    notificationsEnabled: false,
+    notifyPriceChanges: true,
+    notifyNewStations: true,
     marketingConsent: false,
   });
 
-  // Load user data into form
+  // Auth guard - only redirect after loading completes
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) router.replace("/giris");
+  }, [user, authLoading, router]);
+
+  // Initialize form from user data
   useEffect(() => {
     if (user) {
-      setFormData({
+      setForm({
         fullName: user.fullName || "",
-        email: user.email || "",
         phone: user.phone || "",
         city: user.city || "",
         vehicleBrand: user.vehicleBrand || "",
         vehicleModel: user.vehicleModel || "",
-        vehicleYear: user.vehicleYear?.toString() || "",
-        monthlyKm: user.monthlyKm?.toString() || "",
+        vehicleYear: user.vehicleYear,
+        monthlyKm: user.monthlyKm,
+        chargingPreference: user.chargingPreference || "",
         chargingFrequency: user.chargingFrequency || "",
         preferredChargerType: user.preferredChargerType || "",
-        homeCharging: user.homeCharging || false,
-        notificationsEnabled: user.notificationsEnabled || false,
-        marketingConsent: user.marketingConsent || false,
+        homeCharging: user.homeCharging ?? false,
+        notifyPriceChanges: user.notifyPriceChanges ?? true,
+        notifyNewStations: user.notifyNewStations ?? true,
+        marketingConsent: user.marketingConsent ?? false,
       });
     }
   }, [user]);
 
-  // Redirect if not logged in
+  // Toast cleanup
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/");
-    }
-  }, [authLoading, user, router]);
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // Form setter helper
+  const setField = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Stable user snapshot to prevent unnecessary recalculation
+  const userSnapshot = useMemo(() => {
+    if (!user) return "";
+    return JSON.stringify({
+      fullName: user.fullName ?? "",
+      phone: user.phone ?? "",
+      city: user.city ?? "",
+      vehicleBrand: user.vehicleBrand ?? "",
+      vehicleModel: user.vehicleModel ?? "",
+      vehicleYear: user.vehicleYear ?? null,
+      monthlyKm: user.monthlyKm ?? null,
+      chargingPreference: user.chargingPreference ?? "",
+      chargingFrequency: user.chargingFrequency ?? "",
+      preferredChargerType: user.preferredChargerType ?? "",
+      homeCharging: user.homeCharging ?? false,
+      notifyPriceChanges: user.notifyPriceChanges ?? true,
+      notifyNewStations: user.notifyNewStations ?? true,
+      marketingConsent: user.marketingConsent ?? false,
+    });
+  }, [user]);
+
+  // Parse user snapshot for comparison
+  const userData = useMemo(() => {
+    if (!userSnapshot) return null;
+    return JSON.parse(userSnapshot) as Record<string, any>;
+  }, [userSnapshot]);
+
+  // Get only changed fields (normalized comparison) - single source of truth
+  const changes = useMemo((): Partial<ProfileForm> => {
+    if (!userData) return {};
+    const out: Partial<ProfileForm> = {};
+
+    (Object.keys(form) as Array<keyof ProfileForm>).forEach((key) => {
+      const currentValue = normalize(key, form[key]);
+      const userValue = normalize(key, userData[key]);
+
+      if (currentValue !== userValue) {
+        (out as any)[key] = form[key];
+      }
+    });
+
+    return out;
+  }, [form, userData]);
+
+  // Check if form is dirty (using changes as single source of truth)
+  const isDirty = useMemo(() => Object.keys(changes).length > 0, [changes]);
+
+  // Validation
+  const validate = (): string | null => {
+    // Normalize and validate phone
+    if (form.phone) {
+      const digitsOnly = form.phone.replace(/\D/g, "");
+      if (digitsOnly.length < 10) {
+        return "Telefon numarası en az 10 rakam içermelidir";
+      }
+    }
+
+    // Year validation
+    const currentYear = new Date().getFullYear();
+    if (form.vehicleYear && (form.vehicleYear < 2000 || form.vehicleYear > currentYear + 1)) {
+      return `Model yılı 2000-${currentYear + 1} arasında olmalı`;
+    }
+
+    // Monthly km validation
+    if (form.monthlyKm && (form.monthlyKm < 0 || form.monthlyKm > 20000)) {
+      return "Aylık km 0-20000 arasında olmalı";
+    }
+
+    // Brand/model consistency
+    if (form.vehicleBrand && form.vehicleModel) {
+      const vehicle = vehicles.find(v => v.brand === form.vehicleBrand && v.model === form.vehicleModel);
+      if (!vehicle) {
+        return "Seçilen model bu marka için geçerli değil";
+      }
+    }
+
+    return null;
   };
 
   const handleSave = async () => {
+    // Validation
+    const error = validate();
+    if (error) {
+      setToast({ type: "error", message: error });
+      return;
+    }
+
     setSaving(true);
 
-    const result = await updateUser({
-      fullName: formData.fullName,
-      phone: formData.phone,
-      city: formData.city,
-      vehicleBrand: formData.vehicleBrand,
-      vehicleModel: formData.vehicleModel,
-      vehicleYear: formData.vehicleYear ? parseInt(formData.vehicleYear) : undefined,
-      monthlyKm: formData.monthlyKm ? parseInt(formData.monthlyKm) : undefined,
-      chargingFrequency: formData.chargingFrequency,
-      preferredChargerType: formData.preferredChargerType,
-      homeCharging: formData.homeCharging,
-      notificationsEnabled: formData.notificationsEnabled,
-      marketingConsent: formData.marketingConsent,
-    });
+    try {
+      if (Object.keys(changes).length === 0) {
+        setToast({ type: "success", message: "Değişiklik yok" });
+        setSaving(false);
+        return;
+      }
 
-    setSaving(false);
+      // Prepare payload with smart brand/model handling
+      const payload = { ...changes };
 
-    if (!result.error) {
-      setEditingSection(null);
-      setToast({ show: true, message: "Bilgiler başarıyla güncellendi!", type: "success" });
-    } else {
-      setToast({ show: true, message: result.error || "Güncelleme başarısız.", type: "error" });
+      // If brand is selected but model is empty, don't save vehicle fields
+      // but allow saving other fields (soft validation)
+      if (payload.vehicleBrand && !form.vehicleModel) {
+        delete payload.vehicleBrand;
+        delete payload.vehicleModel;
+        setToast({ type: "error", message: "Marka seçtiyseniz model de seçmelisiniz. Araç bilgileri kaydedilmedi." });
+        // Continue to save other fields
+      }
+
+      // Normalize phone before saving
+      if (payload.phone) {
+        payload.phone = payload.phone.replace(/\D/g, "");
+      }
+
+      // Only update if there are still changes after cleanup
+      if (Object.keys(payload).length === 0) {
+        setSaving(false);
+        return;
+      }
+
+      const { error: updateError } = await updateUser(payload);
+
+      if (updateError) {
+        setToast({ type: "error", message: updateError });
+      } else {
+        setToast({ type: "success", message: "Profil güncellendi!" });
+      }
+    } catch (err: any) {
+      setToast({ type: "error", message: err.message || "Bir hata oluştu" });
+    } finally {
+      setSaving(false);
     }
-
-    setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
   };
 
-  const handleCancel = () => {
-    if (user) {
-      setFormData({
-        fullName: user.fullName || "",
-        email: user.email || "",
-        phone: user.phone || "",
-        city: user.city || "",
-        vehicleBrand: user.vehicleBrand || "",
-        vehicleModel: user.vehicleModel || "",
-        vehicleYear: user.vehicleYear?.toString() || "",
-        monthlyKm: user.monthlyKm?.toString() || "",
-        chargingFrequency: user.chargingFrequency || "",
-        preferredChargerType: user.preferredChargerType || "",
-        homeCharging: user.homeCharging || false,
-        notificationsEnabled: user.notificationsEnabled || false,
-        marketingConsent: user.marketingConsent || false,
-      });
-    }
-    setEditingSection(null);
-  };
-
-  if (authLoading) {
+  if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const SectionHeader = ({
-    title,
-    icon: Icon,
-    section
-  }: {
-    title: string;
-    icon: any;
-    section: EditingSection;
-  }) => (
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-bold text-white flex items-center gap-2">
-        <Icon className="w-5 h-5 text-emerald-400" />
-        {title}
-      </h3>
-      {editingSection === section ? (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCancel}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
-            title="İptal"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-lg text-sm font-medium transition"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Kaydet
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setEditingSection(section)}
-          className="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-700 rounded-lg transition"
-          title="Düzenle"
-        >
-          <Edit2 className="w-5 h-5" />
-        </button>
-      )}
-    </div>
-  );
+  const availableModels = form.vehicleBrand
+    ? vehicles.filter(v => v.brand === form.vehicleBrand)
+    : [];
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="text-slate-400 hover:text-white transition">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-          <h1 className="text-xl font-bold text-white">Profilim</h1>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <HeaderWhite />
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        {/* Profile Header */}
-        <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-              {getInitials(user.fullName)}
-            </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white">{user.fullName}</h2>
-              <p className="text-slate-400">{user.email}</p>
-              {user.vehicleBrand && user.vehicleModel && (
-                <div className="flex items-center gap-2 mt-2 text-emerald-400">
-                  <Car className="w-4 h-4" />
-                  <span>{user.vehicleBrand} {user.vehicleModel}</span>
-                </div>
-              )}
-            </div>
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-20 right-4 z-50 animate-slide-in-right">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg ${toast.type === "success"
+              ? "bg-emerald-500 text-white"
+              : "bg-red-500 text-white"
+            }`}>
+            <span>{toast.message}</span>
+            <button onClick={() => setToast(null)}>
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Personal Information */}
-        <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-          <SectionHeader title="Kişisel Bilgiler" icon={User} section="personal" />
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-zinc-900 mb-2">Profil Ayarları</h1>
+          <p className="text-gray-500">Hesap bilgilerinizi ve tercihlerinizi yönetin</p>
+        </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Ad Soyad</label>
-              {editingSection === "personal" ? (
+        <div className="space-y-6">
+          {/* Kişisel Bilgiler */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-emerald-500" />
+              Kişisel Bilgiler
+            </h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Ad Soyad *</label>
                 <input
                   type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  value={form.fullName}
+                  onChange={(e) => setField("fullName", e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-              ) : (
-                <p className="text-white">{user.fullName}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">E-posta</label>
-              <p className="text-white flex items-center gap-2">
-                <Mail className="w-4 h-4 text-slate-500" />
-                {user.email}
-                <span className="text-xs text-slate-500">(değiştirilemez)</span>
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Telefon</label>
-              {editingSection === "personal" ? (
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">E-posta</label>
+                <input
+                  type="email"
+                  value={user.email}
+                  disabled
+                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Telefon</label>
                 <input
                   type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="05XX XXX XX XX"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  placeholder="0532 123 45 67"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-              ) : (
-                <p className="text-white flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-slate-500" />
-                  {user.phone || <span className="text-slate-500">Belirtilmemiş</span>}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Şehir</label>
-              {editingSection === "personal" ? (
-                <select
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                >
-                  <option value="">Şehir seçin</option>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-white flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-500" />
-                  {user.city || <span className="text-slate-500">Belirtilmemiş</span>}
-                </p>
-              )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Şehir</label>
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={(e) => setField("city", e.target.value)}
+                  placeholder="İstanbul"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Vehicle Information */}
-        <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-          <SectionHeader title="Araç Bilgileri" icon={Car} section="vehicle" />
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Araç Markası</label>
-              {editingSection === "vehicle" ? (
+          {/* Araç Bilgileri */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+              <Car className="w-5 h-5 text-emerald-500" />
+              Araç Bilgileri
+            </h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Marka</label>
                 <select
-                  name="vehicleBrand"
-                  value={formData.vehicleBrand}
+                  value={form.vehicleBrand}
                   onChange={(e) => {
-                    handleInputChange(e);
-                    setFormData((prev) => ({ ...prev, vehicleModel: "" }));
+                    setVehicleTouched(true);
+                    setField("vehicleBrand", e.target.value);
+                    setField("vehicleModel", "");
                   }}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Marka seçin</option>
-                  {brands.map((brand) => (
+                  {brands.map(brand => (
                     <option key={brand} value={brand}>{brand}</option>
                   ))}
                 </select>
-              ) : (
-                <p className="text-white">{user.vehicleBrand || <span className="text-slate-500">Belirtilmemiş</span>}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Araç Modeli</label>
-              {editingSection === "vehicle" ? (
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  Model {form.vehicleBrand && <span className="text-red-500">*</span>}
+                </label>
                 <select
-                  name="vehicleModel"
-                  value={formData.vehicleModel}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                  disabled={!formData.vehicleBrand}
+                  value={form.vehicleModel}
+                  onChange={(e) => {
+                    setVehicleTouched(true);
+                    setField("vehicleModel", e.target.value);
+                  }}
+                  disabled={!form.vehicleBrand}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">Model seçin</option>
-                  {formData.vehicleBrand && vehiclesByBrand[formData.vehicleBrand]?.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.model}>{vehicle.model}</option>
+                  {availableModels.map(v => (
+                    <option key={v.id} value={v.model}>{v.model} ({v.range} km)</option>
                   ))}
                 </select>
-              ) : (
-                <p className="text-white">{user.vehicleModel || <span className="text-slate-500">Belirtilmemiş</span>}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Model Yılı</label>
-              {editingSection === "vehicle" ? (
-                <select
-                  name="vehicleYear"
-                  value={formData.vehicleYear}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                >
-                  <option value="">Yıl seçin</option>
-                  {Array.from({ length: 10 }, (_, i) => 2025 - i).map((year) => (
-                    <option key={year} value={year.toString()}>{year}</option>
-                  ))}
-                </select>
-              ) : (
-                <p className="text-white flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-500" />
-                  {user.vehicleYear || <span className="text-slate-500">Belirtilmemiş</span>}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Aylık Ortalama KM</label>
-              {editingSection === "vehicle" ? (
+                {vehicleTouched && form.vehicleBrand && !form.vehicleModel && (
+                  <p className="text-xs text-amber-600 mt-1">Marka seçtiyseniz model de seçmelisiniz</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Model Yılı</label>
                 <input
                   type="number"
-                  name="monthlyKm"
-                  value={formData.monthlyKm}
-                  onChange={handleInputChange}
-                  placeholder="Örn: 1500"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  value={form.vehicleYear || ""}
+                  onChange={(e) => setField("vehicleYear", e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="2024"
+                  min="2000"
+                  max={new Date().getFullYear() + 1}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
-              ) : (
-                <p className="text-white">
-                  {user.monthlyKm ? `${user.monthlyKm.toLocaleString()} km` : <span className="text-slate-500">Belirtilmemiş</span>}
-                </p>
-              )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Aylık Km</label>
+                <input
+                  type="number"
+                  value={form.monthlyKm || ""}
+                  onChange={(e) => setField("monthlyKm", e.target.value ? parseInt(e.target.value) : undefined)}
+                  placeholder="1500"
+                  min="0"
+                  max="20000"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Charging Preferences */}
-        <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-          <SectionHeader title="Şarj Tercihleri" icon={Zap} section="charging" />
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Şarj Sıklığı</label>
-              {editingSection === "charging" ? (
+          {/* Şarj Tercihleri */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-emerald-500" />
+              Şarj Tercihleri
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Tercih Edilen Şarj Tipi</label>
                 <select
-                  name="chargingFrequency"
-                  value={formData.chargingFrequency}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  value={form.preferredChargerType}
+                  onChange={(e) => setField("preferredChargerType", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Seçin</option>
-                  {chargingFrequencies.map((freq) => (
-                    <option key={freq.value} value={freq.value}>{freq.label}</option>
-                  ))}
+                  <option value="AC">AC (Yavaş Şarj)</option>
+                  <option value="DC">DC (Hızlı Şarj)</option>
+                  <option value="both">Her İkisi</option>
                 </select>
-              ) : (
-                <p className="text-white">
-                  {chargingFrequencies.find(f => f.value === user.chargingFrequency)?.label || <span className="text-slate-500">Belirtilmemiş</span>}
-                </p>
-              )}
-            </div>
+              </div>
 
-            <div>
-              <label className="block text-slate-400 text-sm mb-1">Tercih Edilen Şarj Tipi</label>
-              {editingSection === "charging" ? (
+              <div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Şarj Sıklığı</label>
                 <select
-                  name="preferredChargerType"
-                  value={formData.preferredChargerType}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  value={form.chargingFrequency}
+                  onChange={(e) => setField("chargingFrequency", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Seçin</option>
-                  {chargerTypes.map((type) => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
+                  <option value="daily">Günlük</option>
+                  <option value="weekly">Haftalık</option>
+                  <option value="biweekly">İki Haftada Bir</option>
+                  <option value="monthly">Aylık</option>
                 </select>
-              ) : (
-                <p className="text-white flex items-center gap-2">
-                  <Battery className="w-4 h-4 text-slate-500" />
-                  {chargerTypes.find(t => t.value === user.preferredChargerType)?.label || <span className="text-slate-500">Belirtilmemiş</span>}
-                </p>
-              )}
-            </div>
-
-            <div
-              onClick={() => editingSection === "charging" && setFormData(prev => ({ ...prev, homeCharging: !prev.homeCharging }))}
-              className={`flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg ${editingSection === "charging" ? "cursor-pointer hover:bg-slate-700/70" : ""} transition`}
-            >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${(editingSection === "charging" ? formData.homeCharging : user.homeCharging)
-                ? "bg-emerald-500"
-                : "bg-slate-600 border-2 border-slate-500"
-                }`}>
-                {(editingSection === "charging" ? formData.homeCharging : user.homeCharging) && <Check className="w-4 h-4 text-white" />}
               </div>
+
               <div>
-                <div className="text-white font-medium">Evde şarj imkanı</div>
-                <div className="text-slate-400 text-sm">Evde şarj cihazı veya priz mevcut</div>
+                <label className="block text-sm font-medium text-zinc-900 mb-2">Şarj Tercihi</label>
+                <select
+                  value={form.chargingPreference}
+                  onChange={(e) => setField("chargingPreference", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">Seçin</option>
+                  <option value="price">En Ucuz</option>
+                  <option value="speed">En Hızlı</option>
+                  <option value="distance">En Yakın</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Evde Şarj İmkanı</p>
+                  <p className="text-xs text-gray-500 mt-1">Evde şarj cihazınız var mı?</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setField("homeCharging", !form.homeCharging)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.homeCharging ? "bg-emerald-500" : "bg-gray-300"
+                    }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.homeCharging ? "translate-x-6" : "translate-x-1"
+                      }`}
+                  />
+                </button>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Notification Preferences */}
-        <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-          <SectionHeader title="Bildirim Tercihleri" icon={Bell} section="notifications" />
+          {/* Bildirimler */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+              <Bell className="w-5 h-5 text-emerald-500" />
+              Bildirimler
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Fiyat Değişiklikleri</p>
+                  <p className="text-xs text-gray-500 mt-1">Şarj fiyatları değiştiğinde bildir</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setField("notifyPriceChanges", !form.notifyPriceChanges)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.notifyPriceChanges ? "bg-emerald-500" : "bg-gray-300"
+                    }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.notifyPriceChanges ? "translate-x-6" : "translate-x-1"
+                      }`}
+                  />
+                </button>
+              </div>
 
-          <div className="space-y-3">
-            <div
-              onClick={() => editingSection === "notifications" && setFormData(prev => ({ ...prev, notificationsEnabled: !prev.notificationsEnabled }))}
-              className={`flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg ${editingSection === "notifications" ? "cursor-pointer hover:bg-slate-700/70" : ""} transition`}
-            >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${(editingSection === "notifications" ? formData.notificationsEnabled : user.notificationsEnabled)
-                ? "bg-emerald-500"
-                : "bg-slate-600 border-2 border-slate-500"
-                }`}>
-                {(editingSection === "notifications" ? formData.notificationsEnabled : user.notificationsEnabled) && <Check className="w-4 h-4 text-white" />}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Yeni İstasyonlar</p>
+                  <p className="text-xs text-gray-500 mt-1">Yakınınızda yeni istasyon açıldığında bildir</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setField("notifyNewStations", !form.notifyNewStations)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.notifyNewStations ? "bg-emerald-500" : "bg-gray-300"
+                    }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.notifyNewStations ? "translate-x-6" : "translate-x-1"
+                      }`}
+                  />
+                </button>
               </div>
-              <div>
-                <div className="text-white font-medium">Bildirimler</div>
-                <div className="text-slate-400 text-sm">İstasyon durumları hakkında bildirim al</div>
-              </div>
-            </div>
 
-            <div
-              onClick={() => editingSection === "notifications" && setFormData(prev => ({ ...prev, marketingConsent: !prev.marketingConsent }))}
-              className={`flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg ${editingSection === "notifications" ? "cursor-pointer hover:bg-slate-700/70" : ""} transition`}
-            >
-              <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all flex-shrink-0 ${(editingSection === "notifications" ? formData.marketingConsent : user.marketingConsent)
-                ? "bg-emerald-500"
-                : "bg-slate-600 border-2 border-slate-500"
-                }`}>
-                {(editingSection === "notifications" ? formData.marketingConsent : user.marketingConsent) && <Check className="w-4 h-4 text-white" />}
-              </div>
-              <div>
-                <div className="text-white font-medium">Kampanyalar</div>
-                <div className="text-slate-400 text-sm">Fırsatlar ve yenilikler hakkında e-posta al</div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Kampanyalar</p>
+                  <p className="text-xs text-gray-500 mt-1">İndirim ve fırsatlardan haberdar ol</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setField("marketingConsent", !form.marketingConsent)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.marketingConsent ? "bg-emerald-500" : "bg-gray-300"
+                    }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${form.marketingConsent ? "translate-x-6" : "translate-x-1"
+                      }`}
+                  />
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Save Button */}
+          <button
+            onClick={handleSave}
+            disabled={saving || !isDirty}
+            className="w-full py-4 bg-black text-white rounded-full font-medium hover:bg-black/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Kaydediliyor...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                {isDirty ? "Değişiklikleri Kaydet" : "Değişiklik Yok"}
+              </>
+            )}
+          </button>
         </div>
-
-        {/* Account Info */}
-        <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-emerald-400" />
-            Hesap Bilgileri
-          </h3>
-
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center py-2 border-b border-slate-700">
-              <span className="text-slate-400">Üyelik Tarihi</span>
-              <span className="text-white">
-                {user.createdAt ? new Date(user.createdAt).toLocaleDateString("tr-TR") : "-"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-slate-400">Son Giriş</span>
-              <span className="text-white">
-                {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString("tr-TR", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit"
-                }) : "-"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <Link href="/istatistikler" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition border-b border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-emerald-400" />
-            </div>
-            <span className="text-white font-medium">İstatistiklerim</span>
-          </div>
-          <ChevronRight className="w-5 h-5 text-slate-400" />
-        </Link>
-        <div className="bg-slate-800 rounded-2xl overflow-hidden mb-6">
-          <Link href="/favoriler" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition border-b border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
-                <Tag className="w-5 h-5 text-red-400" />
-              </div>
-              <span className="text-white font-medium">Favori İstasyonlarım</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400" />
-          </Link>
-          <Link href="/harita" className="flex items-center justify-between p-4 hover:bg-slate-700/50 transition">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-emerald-400" />
-              </div>
-              <span className="text-white font-medium">Haritayı Aç</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400" />
-          </Link>
-        </div>
-
-        {/* Logout Button */}
-        <button
-          onClick={() => {
-            signOut();
-            router.push("/");
-          }}
-          className="w-full py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-medium transition flex items-center justify-center gap-2"
-        >
-          <LogOut className="w-5 h-5" />
-          Çıkış Yap
-        </button>
       </div>
-
-      {/* Toast Notification */}
-      {toast.show && (
-        <div
-          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-4 rounded-xl shadow-lg flex items-center gap-3 transition-all ${toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
-            }`}
-        >
-          {toast.type === "success" ? (
-            <Check className="w-6 h-6 text-white" />
-          ) : (
-            <X className="w-6 h-6 text-white" />
-          )}
-          <span className="text-white font-medium">{toast.message}</span>
-        </div>
-      )}
     </div>
   );
 }

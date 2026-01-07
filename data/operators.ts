@@ -341,7 +341,7 @@ export const calculateChargingCost = (params: ChargingCostParams): number | null
   if (!operator) return null;
 
   let pricePerKwh: number | undefined;
-  
+
   if (params.operatorId === "tesla" && params.isTeslaOwner) {
     pricePerKwh = operator.pricing.dcTeslaOwner;
   } else {
@@ -369,7 +369,7 @@ export const compareAllOperators = (
 
   operators.forEach(op => {
     let pricePerKwh: number | undefined;
-    
+
     if (op.id === "tesla" && isTeslaOwner) {
       pricePerKwh = op.pricing.dcTeslaOwner;
     } else {
@@ -434,10 +434,10 @@ export const compareFuelCosts = (
 ): FuelComparison => {
   const kWhNeeded = (distanceKm / 100) * evConsumptionKwhPer100km;
   const electricCost = kWhNeeded * chargingCostPerKwh;
-  
+
   const litersNeeded = (distanceKm / 100) * AVG_PETROL_CONSUMPTION;
   const petrolCost = litersNeeded * PETROL_PRICE_PER_LITER;
-  
+
   const savings = petrolCost - electricCost;
   const savingsPercent = (savings / petrolCost) * 100;
   const co2SavedKg = litersNeeded * CO2_PER_LITER_PETROL;
@@ -456,7 +456,7 @@ export const getOperatorStats = () => {
   const totalStations = operators.reduce((sum, op) => sum + op.stationCount, 0);
   const avgAcPrice = operators.filter(op => op.pricing.ac).reduce((sum, op) => sum + (op.pricing.ac || 0), 0) / operators.filter(op => op.pricing.ac).length;
   const avgDcPrice = operators.filter(op => op.pricing.dcMid).reduce((sum, op) => sum + (op.pricing.dcMid || 0), 0) / operators.filter(op => op.pricing.dcMid).length;
-  
+
   const cheapestAc = getCheapestOperator("ac");
   const cheapestDc = getCheapestOperator("dcMid");
 

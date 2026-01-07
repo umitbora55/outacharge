@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import mapboxgl from "mapbox-gl";
-import { 
+import {
   ArrowLeft, MapPin, Navigation, Zap, Battery, Clock, Car,
   ChevronRight, Loader2, Route, AlertCircle, Check, X,
   Circle, Flag
@@ -92,9 +92,32 @@ export default function RotaPlanlaPage() {
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
+    // Wait for container to have dimensions
+    const container = mapContainer.current;
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      const timer = setTimeout(() => {
+        if (mapContainer.current && !map.current) {
+          map.current = new mapboxgl.Map({
+            container: mapContainer.current,
+            style: "mapbox://styles/mapbox/streets-v12",
+            center: [32.8541, 39.9208],
+            zoom: 6,
+          });
+          map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+        }
+      }, 100);
+      return () => {
+        clearTimeout(timer);
+        if (map.current) {
+          map.current.remove();
+          map.current = null;
+        }
+      };
+    }
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: "mapbox://styles/mapbox/streets-v12",
       center: [32.8541, 39.9208],
       zoom: 6,
     });
@@ -102,7 +125,10 @@ export default function RotaPlanlaPage() {
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     return () => {
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
       map.current?.remove();
+      map.current = null;
     };
   }, []);
 
@@ -161,17 +187,17 @@ export default function RotaPlanlaPage() {
   // Fetch charging stations along route
   const fetchStationsAlongRoute = async (coordinates: [number, number][]) => {
     const stations: any[] = [];
-    
+
     // Sample points along the route (every ~50km)
     const samplePoints: [number, number][] = [];
     let totalDist = 0;
-    
+
     for (let i = 1; i < coordinates.length; i++) {
       const [lng1, lat1] = coordinates[i - 1];
       const [lng2, lat2] = coordinates[i];
       const dist = Math.sqrt(Math.pow(lng2 - lng1, 2) + Math.pow(lat2 - lat1, 2)) * 111;
       totalDist += dist;
-      
+
       if (totalDist >= 50) {
         samplePoints.push([lat2, lng2]);
         totalDist = 0;
@@ -185,13 +211,13 @@ export default function RotaPlanlaPage() {
           `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${lat}&longitude=${lng}&distance=30&distanceunit=KM&maxresults=10&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`
         );
         const data = await response.json();
-        
+
         data.forEach((item: any) => {
           if (!stations.find(s => s.id === item.ID)) {
             const connections = item.Connections || [];
             const maxPower = Math.max(...connections.map((c: any) => c.PowerKW || 0), 0);
             const powerType = connections.some((c: any) => c.CurrentTypeID === 30) ? "DC" : "AC";
-            
+
             if (maxPower >= 50) {
               stations.push({
                 id: item.ID,
@@ -256,7 +282,7 @@ export default function RotaPlanlaPage() {
       if (energyNeeded > usableEnergy) {
         // Need charging stops
         const stations = await fetchStationsAlongRoute(route.geometry.coordinates);
-        
+
         let currentEnergy = availableEnergy;
         let prevLat = origin.lat;
         let prevLng = origin.lng;
@@ -281,10 +307,10 @@ export default function RotaPlanlaPage() {
           if (chargeAtStation < minArrivalCharge + 10 && chargeAtStation > 5) {
             const chargeToAdd = 80 - chargeAtStation;
             const energyToAdd = (chargeToAdd / 100) * selectedVehicle.batteryCapacity;
-            
+
             const chargingPower = Math.min(station.power, selectedVehicle.maxDCPower);
             const chargingTime = (energyToAdd / chargingPower) * 60;
-            
+
             const pricePerKwh = station.powerType === "DC" ? 12.5 : 9;
             const chargingCost = energyToAdd * pricePerKwh;
 
@@ -310,7 +336,7 @@ export default function RotaPlanlaPage() {
 
       // Calculate arrival charge
       const totalEnergyUsed = distanceKm * consumption;
-      const totalEnergyCharged = chargingStops.reduce((sum, stop) => 
+      const totalEnergyCharged = chargingStops.reduce((sum, stop) =>
         sum + ((stop.departureCharge - stop.arrivalCharge) / 100) * selectedVehicle.batteryCapacity, 0
       );
       const finalEnergy = availableEnergy - totalEnergyUsed + totalEnergyCharged;
@@ -328,7 +354,7 @@ export default function RotaPlanlaPage() {
 
       // Draw route on map
       if (map.current) {
-        if (map.current.getSource("route")) {
+        if (map.current.isStyleLoaded() && map.current.getSource("route")) {
           map.current.removeLayer("route");
           map.current.removeSource("route");
         }
@@ -411,27 +437,27 @@ export default function RotaPlanlaPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
+    <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 flex-shrink-0">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="text-slate-400 hover:text-white transition">
+      <header className="bg-white border-b border-gray-200 flex-shrink-0">
+        <div className="w-full px-6 py-4 flex items-center gap-4">
+          <Link href="/" className="text-gray-500 hover:text-zinc-900 transition">
             <ArrowLeft className="w-6 h-6" />
           </Link>
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
             <Route className="w-6 h-6 text-emerald-400" />
             Rota Planlayıcı
           </h1>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden h-full">
         {/* Sidebar */}
-        <div className="w-full md:w-96 bg-slate-800 overflow-y-auto flex-shrink-0">
+        <div className="w-full md:w-96 bg-white overflow-y-auto flex-shrink-0">
           <div className="p-4 space-y-4">
             {/* Origin */}
             <div>
-              <label className="block text-slate-400 text-sm mb-2 flex items-center gap-2">
+              <label className="block text-gray-500 text-sm mb-2 flex items-center gap-2">
                 <Circle className="w-4 h-4 text-blue-400" />
                 Başlangıç
               </label>
@@ -444,20 +470,20 @@ export default function RotaPlanlaPage() {
                     searchLocation(e.target.value, "origin");
                   }}
                   placeholder="Şehir veya adres ara..."
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
                 {searchingOrigin && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />
                 )}
                 {originResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                     {originResults.map((result, index) => (
                       <button
                         key={index}
                         onClick={() => selectLocation(result, "origin")}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-slate-600 transition flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2"
                       >
-                        <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="truncate">{result.place_name}</span>
                       </button>
                     ))}
@@ -468,7 +494,7 @@ export default function RotaPlanlaPage() {
 
             {/* Destination */}
             <div>
-              <label className="block text-slate-400 text-sm mb-2 flex items-center gap-2">
+              <label className="block text-gray-500 text-sm mb-2 flex items-center gap-2">
                 <Flag className="w-4 h-4 text-red-400" />
                 Varış
               </label>
@@ -481,20 +507,20 @@ export default function RotaPlanlaPage() {
                     searchLocation(e.target.value, "destination");
                   }}
                   placeholder="Şehir veya adres ara..."
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
                 {searchingDestination && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />
                 )}
                 {destinationResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                     {destinationResults.map((result, index) => (
                       <button
                         key={index}
                         onClick={() => selectLocation(result, "destination")}
-                        className="w-full px-4 py-3 text-left text-white hover:bg-slate-600 transition flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2"
                       >
-                        <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                        <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="truncate">{result.place_name}</span>
                       </button>
                     ))}
@@ -505,28 +531,28 @@ export default function RotaPlanlaPage() {
 
             {/* Vehicle Selection */}
             <div>
-              <label className="block text-slate-400 text-sm mb-2 flex items-center gap-2">
+              <label className="block text-gray-500 text-sm mb-2 flex items-center gap-2">
                 <Car className="w-4 h-4" />
                 Araç
               </label>
               <button
                 onClick={() => setShowVehicleSelect(!showVehicleSelect)}
-                className="w-full bg-slate-700 text-white rounded-lg px-4 py-3 text-left flex items-center justify-between hover:bg-slate-600 transition"
+                className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 text-left flex items-center justify-between hover:bg-gray-200 transition"
               >
                 <span>
-                  {selectedVehicle 
-                    ? `${selectedVehicle.brand} ${selectedVehicle.model}` 
+                  {selectedVehicle
+                    ? `${selectedVehicle.brand} ${selectedVehicle.model}`
                     : "Araç seçin"}
                 </span>
                 <ChevronRight className={`w-5 h-5 transition-transform ${showVehicleSelect ? "rotate-90" : ""}`} />
               </button>
 
               {showVehicleSelect && (
-                <div className="mt-2 bg-slate-700 rounded-lg p-3 space-y-2">
+                <div className="mt-2 bg-gray-100 rounded-lg p-3 space-y-2">
                   <select
                     value={selectedBrand}
                     onChange={(e) => setSelectedBrand(e.target.value)}
-                    className="w-full bg-slate-600 text-white rounded-lg px-3 py-2 text-sm"
+                    className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
                   >
                     <option value="">Marka seçin</option>
                     {brands.map(brand => (
@@ -541,7 +567,7 @@ export default function RotaPlanlaPage() {
                         setSelectedVehicle(vehicle || null);
                         setShowVehicleSelect(false);
                       }}
-                      className="w-full bg-slate-600 text-white rounded-lg px-3 py-2 text-sm"
+                      className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
                     >
                       <option value="">Model seçin</option>
                       {vehiclesByBrand[selectedBrand]?.map(vehicle => (
@@ -555,7 +581,7 @@ export default function RotaPlanlaPage() {
               )}
 
               {selectedVehicle && (
-                <div className="mt-2 text-xs text-slate-400 flex items-center gap-4">
+                <div className="mt-2 text-xs text-gray-500 flex items-center gap-4">
                   <span>🔋 {selectedVehicle.batteryCapacity} kWh</span>
                   <span>📏 {selectedVehicle.range} km</span>
                   <span>⚡ {selectedVehicle.maxDCPower} kW DC</span>
@@ -566,7 +592,7 @@ export default function RotaPlanlaPage() {
             {/* Charge Settings */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 text-xs mb-1">Mevcut Şarj</label>
+                <label className="block text-gray-500 text-xs mb-1">Mevcut Şarj</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="range"
@@ -576,11 +602,11 @@ export default function RotaPlanlaPage() {
                     onChange={(e) => setCurrentCharge(Number(e.target.value))}
                     className="flex-1 accent-emerald-500"
                   />
-                  <span className="text-white text-sm w-12 text-right">%{currentCharge}</span>
+                  <span className="text-zinc-900 text-sm w-12 text-right">%{currentCharge}</span>
                 </div>
               </div>
               <div>
-                <label className="block text-slate-400 text-xs mb-1">Min. Varış Şarjı</label>
+                <label className="block text-gray-500 text-xs mb-1">Min. Varış Şarjı</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="range"
@@ -590,7 +616,7 @@ export default function RotaPlanlaPage() {
                     onChange={(e) => setMinArrivalCharge(Number(e.target.value))}
                     className="flex-1 accent-emerald-500"
                   />
-                  <span className="text-white text-sm w-12 text-right">%{minArrivalCharge}</span>
+                  <span className="text-zinc-900 text-sm w-12 text-right">%{minArrivalCharge}</span>
                 </div>
               </div>
             </div>
@@ -607,7 +633,7 @@ export default function RotaPlanlaPage() {
             <button
               onClick={calculateRoute}
               disabled={calculating || !origin || !destination || !selectedVehicle}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-full font-medium transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded-full font-medium transition flex items-center justify-center gap-2"
             >
               {calculating ? (
                 <>
@@ -623,47 +649,47 @@ export default function RotaPlanlaPage() {
             </button>
 
             {/* Route Result */}
-            {routeResult && (
+            {routeResult && selectedVehicle && (
               <div className="space-y-4">
                 {/* Weather Analysis */}
                 <RouteWeatherAnalysis
                   routeCoordinates={routeResult.geometry.coordinates}
-                  vehicleSpecs={selectedVehicle ? {
+                  vehicleSpecs={{
                     batteryCapacity: selectedVehicle.batteryCapacity,
                     range: selectedVehicle.range,
-                  } : undefined}
+                  }}
                 />
 
                 {/* Summary */}
-                <div className="bg-slate-700/50 rounded-xl p-4">
-                  <h3 className="text-white font-medium mb-3">Rota Özeti</h3>
+                <div className="bg-gray-100 rounded-xl p-4">
+                  <h3 className="text-zinc-900 font-medium mb-3">Rota Özeti</h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
                       <Navigation className="w-4 h-4 text-emerald-400" />
-                      <span className="text-slate-400">Mesafe:</span>
-                      <span className="text-white font-medium">{routeResult.distance} km</span>
+                      <span className="text-gray-500">Mesafe:</span>
+                      <span className="text-zinc-900 font-medium">{routeResult.distance} km</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-emerald-400" />
-                      <span className="text-slate-400">Süre:</span>
-                      <span className="text-white font-medium">{formatDuration(routeResult.duration)}</span>
+                      <span className="text-gray-500">Süre:</span>
+                      <span className="text-zinc-900 font-medium">{formatDuration(routeResult.duration)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-emerald-400" />
-                      <span className="text-slate-400">Şarj:</span>
-                      <span className="text-white font-medium">{formatDuration(routeResult.totalChargingTime)}</span>
+                      <span className="text-gray-500">Şarj:</span>
+                      <span className="text-zinc-900 font-medium">{formatDuration(routeResult.totalChargingTime)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Battery className="w-4 h-4 text-emerald-400" />
-                      <span className="text-slate-400">Varış:</span>
+                      <span className="text-gray-500">Varış:</span>
                       <span className={`font-medium ${routeResult.arrivalCharge < 20 ? "text-red-400" : "text-emerald-400"}`}>
                         %{routeResult.arrivalCharge}
                       </span>
                     </div>
                   </div>
                   {routeResult.totalChargingCost > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-600 flex items-center justify-between">
-                      <span className="text-slate-400">Tahmini Şarj Maliyeti:</span>
+                    <div className="mt-3 pt-3 border-t border-gray-300 flex items-center justify-between">
+                      <span className="text-gray-500">Tahmini Şarj Maliyeti:</span>
                       <span className="text-emerald-400 font-bold text-lg">₺{routeResult.totalChargingCost}</span>
                     </div>
                   )}
@@ -671,18 +697,18 @@ export default function RotaPlanlaPage() {
 
                 {/* Charging Stops */}
                 {routeResult.chargingStops.length > 0 ? (
-                  <div className="bg-slate-700/50 rounded-xl p-4">
-                    <h3 className="text-white font-medium mb-3">Şarj Durakları ({routeResult.chargingStops.length})</h3>
+                  <div className="bg-gray-100 rounded-xl p-4">
+                    <h3 className="text-zinc-900 font-medium mb-3">Şarj Durakları ({routeResult.chargingStops.length})</h3>
                     <div className="space-y-3">
                       {routeResult.chargingStops.map((stop, index) => (
-                        <div key={index} className="bg-slate-800 rounded-lg p-3">
+                        <div key={index} className="bg-white rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-zinc-900 text-xs font-bold">
                               {index + 1}
                             </div>
-                            <span className="text-white font-medium flex-1 truncate">{stop.station.name}</span>
+                            <span className="text-zinc-900 font-medium flex-1 truncate">{stop.station.name}</span>
                           </div>
-                          <div className="text-xs text-slate-400 space-y-1">
+                          <div className="text-xs text-gray-500 space-y-1">
                             <div className="flex justify-between">
                               <span>Operatör: {stop.station.operator}</span>
                               <span>{stop.station.power} kW {stop.station.powerType}</span>
@@ -703,7 +729,7 @@ export default function RotaPlanlaPage() {
                   <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
                     <Check className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
                     <p className="text-emerald-400 font-medium">Şarj durağı gerekmez!</p>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <p className="text-gray-500 text-sm mt-1">
                       Mevcut şarjınızla hedefinize ulaşabilirsiniz.
                     </p>
                   </div>
@@ -712,7 +738,7 @@ export default function RotaPlanlaPage() {
                 {/* Total Time */}
                 <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-300">Toplam Seyahat Süresi:</span>
+                    <span className="text-gray-600">Toplam Seyahat Süresi:</span>
                     <span className="text-emerald-400 font-bold text-xl">
                       {formatDuration(routeResult.duration + routeResult.totalChargingTime)}
                     </span>
@@ -724,7 +750,7 @@ export default function RotaPlanlaPage() {
         </div>
 
         {/* Map */}
-        <div ref={mapContainer} className="flex-1 hidden md:block" />
+        <div ref={mapContainer} className="flex-1 min-h-[400px] md:min-h-0" style={{ background: "#e5e5e5" }} />
       </div>
     </div>
   );
