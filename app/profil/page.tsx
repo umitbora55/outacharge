@@ -4,8 +4,9 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import HeaderWhite from "../components/HeaderWhite";
 import {
-  User, Car, Zap, Bell, Save, Loader2, X
+  User, Mail, Phone, MapPin, Car, Zap, Bell, Save, Loader2, X, ChevronRight, CarFront
 } from "lucide-react";
+import Link from "next/link";
 import { vehicles, brands } from "@/data/vehicles";
 
 type ProfileForm = {
@@ -26,7 +27,7 @@ type ProfileForm = {
 };
 
 // Normalize function for type-safe comparison with correct defaults
-const normalize = (key: keyof ProfileForm, val: string | number | boolean | undefined | null) => {
+const normalize = (key: keyof ProfileForm, val: any) => {
   if (val === undefined || val === null) {
     if (key === "vehicleYear" || key === "monthlyKm") return undefined;
     if (key === "notifyPriceChanges") return true;
@@ -125,7 +126,7 @@ export default function ProfilPage() {
   // Parse user snapshot for comparison
   const userData = useMemo(() => {
     if (!userSnapshot) return null;
-    return JSON.parse(userSnapshot) as Record<string, string | number | boolean | null>;
+    return JSON.parse(userSnapshot) as Record<string, any>;
   }, [userSnapshot]);
 
   // Get only changed fields (normalized comparison) - single source of truth
@@ -135,10 +136,10 @@ export default function ProfilPage() {
 
     (Object.keys(form) as Array<keyof ProfileForm>).forEach((key) => {
       const currentValue = normalize(key, form[key]);
-      const userValue = normalize(key, userData[key] as string | number | boolean | null);
+      const userValue = normalize(key, userData[key]);
 
       if (currentValue !== userValue) {
-        Object.assign(out, { [key]: form[key] });
+        (out as any)[key] = form[key];
       }
     });
 
@@ -227,9 +228,8 @@ export default function ProfilPage() {
       } else {
         setToast({ type: "success", message: "Profil güncellendi!" });
       }
-    } catch (err) {
-      const error = err as Error;
-      setToast({ type: "error", message: error.message || "Bir hata oluştu" });
+    } catch (err: any) {
+      setToast({ type: "error", message: err.message || "Bir hata oluştu" });
     } finally {
       setSaving(false);
     }
@@ -395,6 +395,25 @@ export default function ProfilPage() {
               </div>
             </div>
           </div>
+
+          {/* Araçlarım Linki */}
+          <Link
+            href="/profil/araclarim"
+            className="block bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl shadow-lg p-6 hover:from-emerald-600 hover:to-emerald-700 transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                  <CarFront className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Araçlarım</h3>
+                  <p className="text-emerald-100 text-sm">Tüm araçlarınızı yönetin, marka topluluklarına katılın</p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-white/70 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
 
           {/* Şarj Tercihleri */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
