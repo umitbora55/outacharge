@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import HeaderWhite from "../../components/HeaderWhite";
 import {
     ArrowLeft,
     AlertTriangle,
@@ -172,7 +173,7 @@ export default function YeniEntryPage() {
                             Geri Dön
                         </Link>
                         <Link
-                            href="/?login=true"
+                            href="/giris"
                             className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-full transition-colors"
                         >
                             Giriş Yap
@@ -185,23 +186,44 @@ export default function YeniEntryPage() {
 
     return (
         <div className="min-h-screen bg-white">
-            {/* Header */}
-            <div className="bg-white border-b border-gray-100 sticky top-0 z-40">
-                <div className="max-w-3xl mx-auto px-4 py-4">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/topluluk"
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5 text-gray-500" />
-                        </Link>
-                        <h1 className="text-xl font-bold text-zinc-900">Yeni Entry</h1>
-                    </div>
-                </div>
+            <HeaderWhite />
+
+            <div className="max-w-3xl mx-auto px-4 pt-6">
+                <Link
+                    href="/topluluk"
+                    className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-700 transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Topluluk
+                </Link>
             </div>
 
             <div className="max-w-3xl mx-auto px-4 py-8">
                 <form onSubmit={handleSubmit} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    {/* Brand Community Link */}
+                    {user?.vehicleBrand && (
+                        <div className="p-4 bg-gradient-to-r from-emerald-50 to-cyan-50 border border-emerald-200 rounded-xl mb-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Car className="w-5 h-5 text-emerald-600" />
+                                    <div>
+                                        <p className="text-sm font-medium text-emerald-800">
+                                            {user.vehicleBrand} deneyimi mi paylaşacaksınız?
+                                        </p>
+                                        <p className="text-xs text-emerald-600">
+                                            Marka topluluğunda daha fazla kişiye ulaşın
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href={`/topluluk/markalar/${user.vehicleBrand.toLowerCase().replace(/\s+/g, '-').replace('mercedes-benz', 'mercedes')}`}
+                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors"
+                                >
+                                    Git
+                                </Link>
+                            </div>
+                        </div>
+                    )}
                     {/* Kategori Seçimi */}
                     <div>
                         <label className="block text-sm font-semibold text-zinc-900 mb-4">
