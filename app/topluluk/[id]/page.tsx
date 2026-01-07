@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import HeaderWhite from "../../components/HeaderWhite";
@@ -18,8 +17,7 @@ import {
     Zap,
     MapPin,
     MessageCircle,
-    Eye,
-    MoreHorizontal
+    Eye
 } from "lucide-react";
 
 interface Post {
@@ -43,6 +41,7 @@ interface Post {
     user: {
         id: string;
         full_name: string;
+        avatar_url: string | null;
     };
 }
 
@@ -60,7 +59,31 @@ interface Comment {
         avatar_url: string | null;
     };
     user_liked?: boolean;
-    replies?: Comment[];
+}
+
+// Supabase fetch helper
+async function supabaseFetch(endpoint: string, options?: RequestInit) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
+        ...options,
+        headers: {
+            'apikey': supabaseKey!,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': options?.method === 'POST' ? 'return=representation' : 'return=minimal',
+            ...options?.headers,
+        }
+    });
+
+    if (!response.ok && response.status !== 204) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    if (response.status === 204) return null;
+    return response.json();
 }
 
 export default function KonuDetayPage() {
@@ -81,29 +104,37 @@ export default function KonuDetayPage() {
 
     const fetchPost = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from("posts")
-                .select("*")
-                .eq("id", postId)
-                .single();
+            const data = await supabaseFetch(`posts?id=eq.${postId}&select=*`);
 
-            if (error) throw error;
+            if (!data || data.length === 0) {
+                router.push("/topluluk");
+                return;
+            }
 
-            const { data: userData } = await supabase
-                .from("users")
-                .select("id, full_name")
-                .eq("id", data.user_id)
-                .single();
+            const postData = data[0];
 
-            setPost({
-                ...data,
-                user: userData || { id: data.user_id, full_name: "Anonim" }
-            });
+            // User bilgisi çek
+            let userData = { id: postData.user_id, full_name: "Anonim", avatar_url: null };
+            try {
+                const users = await supabaseFetch(`users?id=eq.${postData.user_id}&select=id,full_name,avatar_url`);
+                if (users && users.length > 0) {
+                    userData = users[0];
+                }
+            } catch (e) {
+                console.log("User fetch failed");
+            }
 
-            await supabase
-                .from("posts")
-                .update({ view_count: (data.view_count || 0) + 1 })
-                .eq("id", postId);
+            setPost({ ...postData, user: userData });
+
+            // View count artır
+            try {
+                await supabaseFetch(`posts?id=eq.${postId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ view_count: (postData.view_count || 0) + 1 })
+                });
+            } catch (e) {
+                console.log("View count update failed");
+            }
 
         } catch (err) {
             console.error("Post fetch error:", err);
@@ -113,85 +144,60 @@ export default function KonuDetayPage() {
 
     const fetchComments = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from("comments")
-                .select("*")
-                .eq("post_id", postId)
-                .eq("is_deleted", false)
-                .order("created_at", { ascending: true });
+            const data = await supabaseFetch(`comments?post_id=eq.${postId}&is_deleted=eq.false&order=created_at.asc`);
 
-            if (error) throw error;
-
-            let commentsWithUsers = data || [];
-
-            if (commentsWithUsers.length > 0) {
-                const userIds = [...new Set(commentsWithUsers.map(c => c.user_id))];
-                const { data: users } = await supabase
-                    .from("users")
-                    .select("id, full_name")
-                    .in("id", userIds);
-
-                const usersMap = new Map(users?.map(u => [u.id, u]) || []);
-
-                commentsWithUsers = commentsWithUsers.map(comment => ({
-                    ...comment,
-                    user: usersMap.get(comment.user_id) || { id: comment.user_id, full_name: "Anonim" }
-                }));
+            if (!data || data.length === 0) {
+                setComments([]);
+                return;
             }
 
-            if (user && commentsWithUsers.length > 0) {
-                const commentIds = commentsWithUsers.map(c => c.id);
-                const { data: likes } = await supabase
-                    .from("comment_likes")
-                    .select("comment_id")
-                    .eq("user_id", user.id)
-                    .in("comment_id", commentIds);
+            // User bilgilerini çek
+            const userIds = [...new Set(data.map((c: any) => c.user_id))];
+            let usersMap = new Map();
 
-                const likedSet = new Set(likes?.map(l => l.comment_id) || []);
-                commentsWithUsers = commentsWithUsers.map(c => ({
-                    ...c,
-                    user_liked: likedSet.has(c.id)
-                }));
+            if (userIds.length > 0) {
+                try {
+                    const users = await supabaseFetch(`users?id=in.(${userIds.join(',')})&select=id,full_name,avatar_url`);
+                    if (users) {
+                        usersMap = new Map(users.map((u: any) => [u.id, u]));
+                    }
+                } catch (e) {
+                    console.log("Users fetch failed");
+                }
             }
 
-            const parentComments = commentsWithUsers.filter(c => !c.parent_id);
-            const replies = commentsWithUsers.filter(c => c.parent_id);
-
-            const commentsWithReplies = parentComments.map(parent => ({
-                ...parent,
-                replies: replies.filter(r => r.parent_id === parent.id)
+            const commentsWithUsers = data.map((comment: any) => ({
+                ...comment,
+                user: usersMap.get(comment.user_id) || { id: comment.user_id, full_name: "Anonim", avatar_url: null }
             }));
 
-            setComments(commentsWithReplies);
+            setComments(commentsWithUsers);
         } catch (err) {
             console.error("Comments fetch error:", err);
+            setComments([]);
         }
-    }, [postId, user]);
+    }, [postId]);
 
     const fetchUserVote = useCallback(async () => {
         if (!user) return;
         try {
-            const { data } = await supabase
-                .from("post_votes")
-                .select("vote_type")
-                .eq("post_id", postId)
-                .eq("user_id", user.id)
-                .single();
-            if (data) setUserVote(data.vote_type);
-        } catch (err) { }
+            const data = await supabaseFetch(`post_votes?post_id=eq.${postId}&user_id=eq.${user.id}&select=vote_type`);
+            if (data && data.length > 0) {
+                setUserVote(data[0].vote_type);
+            }
+        } catch (err) {
+            // No vote
+        }
     }, [postId, user]);
 
     const fetchSavedStatus = useCallback(async () => {
         if (!user) return;
         try {
-            const { data } = await supabase
-                .from("saved_posts")
-                .select("id")
-                .eq("post_id", postId)
-                .eq("user_id", user.id)
-                .single();
-            setIsSaved(!!data);
-        } catch (err) { }
+            const data = await supabaseFetch(`saved_posts?post_id=eq.${postId}&user_id=eq.${user.id}&select=id`);
+            setIsSaved(data && data.length > 0);
+        } catch (err) {
+            // Not saved
+        }
     }, [postId, user]);
 
     useEffect(() => {
@@ -212,7 +218,10 @@ export default function KonuDetayPage() {
 
         try {
             if (userVote === voteType) {
-                await supabase.from("post_votes").delete().eq("post_id", postId).eq("user_id", user.id);
+                // Oyu kaldır
+                await supabaseFetch(`post_votes?post_id=eq.${postId}&user_id=eq.${user.id}`, {
+                    method: 'DELETE'
+                });
                 setUserVote(null);
                 setPost({
                     ...post,
@@ -220,13 +229,31 @@ export default function KonuDetayPage() {
                     downvotes: voteType === -1 ? post.downvotes - 1 : post.downvotes
                 });
             } else {
-                await supabase.from("post_votes").upsert({ post_id: postId, user_id: user.id, vote_type: voteType }, { onConflict: "post_id,user_id" });
+                // Yeni oy veya değiştir
+                if (userVote !== null) {
+                    // Önce eski oyu sil
+                    await supabaseFetch(`post_votes?post_id=eq.${postId}&user_id=eq.${user.id}`, {
+                        method: 'DELETE'
+                    });
+                }
+
+                // Yeni oy ekle
+                await supabaseFetch('post_votes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        post_id: postId,
+                        user_id: user.id,
+                        vote_type: voteType
+                    })
+                });
+
                 let newUpvotes = post.upvotes;
                 let newDownvotes = post.downvotes;
                 if (userVote === 1) newUpvotes--;
                 if (userVote === -1) newDownvotes--;
                 if (voteType === 1) newUpvotes++;
                 if (voteType === -1) newDownvotes++;
+
                 setUserVote(voteType);
                 setPost({ ...post, upvotes: newUpvotes, downvotes: newDownvotes });
             }
@@ -241,9 +268,14 @@ export default function KonuDetayPage() {
         if (!user) return;
         try {
             if (isSaved) {
-                await supabase.from("saved_posts").delete().eq("post_id", postId).eq("user_id", user.id);
+                await supabaseFetch(`saved_posts?post_id=eq.${postId}&user_id=eq.${user.id}`, {
+                    method: 'DELETE'
+                });
             } else {
-                await supabase.from("saved_posts").insert({ post_id: postId, user_id: user.id });
+                await supabaseFetch('saved_posts', {
+                    method: 'POST',
+                    body: JSON.stringify({ post_id: postId, user_id: user.id })
+                });
             }
             setIsSaved(!isSaved);
         } catch (err) {
@@ -256,18 +288,25 @@ export default function KonuDetayPage() {
         setSubmittingComment(true);
 
         try {
-            const { error } = await supabase.from("comments").insert({
-                post_id: postId,
-                user_id: user.id,
-                content: newComment.trim(),
-                parent_id: null
+            await supabaseFetch('comments', {
+                method: 'POST',
+                body: JSON.stringify({
+                    post_id: postId,
+                    user_id: user.id,
+                    content: newComment.trim(),
+                    parent_id: null
+                })
             });
-            if (error) throw error;
 
-            await supabase.from("posts").update({ comment_count: post.comment_count + 1 }).eq("id", postId);
+            // Comment count güncelle
+            await supabaseFetch(`posts?id=eq.${postId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ comment_count: post.comment_count + 1 })
+            });
+
             setNewComment("");
-            fetchComments();
             setPost({ ...post, comment_count: post.comment_count + 1 });
+            fetchComments();
         } catch (err) {
             console.error("Comment error:", err);
         } finally {
@@ -278,13 +317,18 @@ export default function KonuDetayPage() {
     const handleLikeComment = async (commentId: string) => {
         if (!user) return;
         try {
-            const comment = comments.find(c => c.id === commentId) || comments.flatMap(c => c.replies || []).find(r => r.id === commentId);
+            const comment = comments.find(c => c.id === commentId);
             if (!comment) return;
 
             if (comment.user_liked) {
-                await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", user.id);
+                await supabaseFetch(`comment_likes?comment_id=eq.${commentId}&user_id=eq.${user.id}`, {
+                    method: 'DELETE'
+                });
             } else {
-                await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user.id });
+                await supabaseFetch('comment_likes', {
+                    method: 'POST',
+                    body: JSON.stringify({ comment_id: commentId, user_id: user.id })
+                });
             }
             fetchComments();
         } catch (err) {
@@ -294,7 +338,13 @@ export default function KonuDetayPage() {
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        return date.toLocaleDateString("tr-TR", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
     };
 
     const handleShare = () => {
@@ -377,7 +427,7 @@ export default function KonuDetayPage() {
                             {/* Votes */}
                             <button
                                 onClick={() => handleVote(1)}
-                                disabled={voting}
+                                disabled={voting || !user}
                                 className={`p-2 rounded-lg transition-colors ${userVote === 1 ? "bg-emerald-100 text-emerald-600" : "text-zinc-400 hover:bg-zinc-200"}`}
                             >
                                 <ChevronUp className="w-5 h-5" />
@@ -387,7 +437,7 @@ export default function KonuDetayPage() {
                             </span>
                             <button
                                 onClick={() => handleVote(-1)}
-                                disabled={voting}
+                                disabled={voting || !user}
                                 className={`p-2 rounded-lg transition-colors ${userVote === -1 ? "bg-red-100 text-red-500" : "text-zinc-400 hover:bg-zinc-200"}`}
                             >
                                 <ChevronDown className="w-5 h-5" />
@@ -407,7 +457,11 @@ export default function KonuDetayPage() {
                         </div>
 
                         <div className="flex items-center gap-1">
-                            <button onClick={handleSave} className={`p-2 rounded-lg transition-colors ${isSaved ? "bg-amber-100 text-amber-500" : "text-zinc-400 hover:bg-zinc-200"}`}>
+                            <button
+                                onClick={handleSave}
+                                disabled={!user}
+                                className={`p-2 rounded-lg transition-colors ${isSaved ? "bg-amber-100 text-amber-500" : "text-zinc-400 hover:bg-zinc-200"}`}
+                            >
                                 <Bookmark className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
                             </button>
                             <button onClick={handleShare} className="p-2 rounded-lg text-zinc-400 hover:bg-zinc-200 transition-colors">
@@ -467,7 +521,7 @@ export default function KonuDetayPage() {
                                 Henüz yorum yok. İlk yorumu siz yapın!
                             </div>
                         ) : (
-                            comments.map((comment, index) => (
+                            comments.map((comment) => (
                                 <div key={comment.id} className="p-5">
                                     <div className="flex gap-3">
                                         <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center text-zinc-600 text-sm font-bold flex-shrink-0">
@@ -483,10 +537,11 @@ export default function KonuDetayPage() {
                                             <p className="text-[15px] text-zinc-700 leading-relaxed whitespace-pre-wrap mb-3">{comment.content}</p>
                                             <button
                                                 onClick={() => handleLikeComment(comment.id)}
+                                                disabled={!user}
                                                 className={`flex items-center gap-1.5 text-sm transition-colors ${comment.user_liked ? "text-red-500" : "text-zinc-400 hover:text-red-500"}`}
                                             >
                                                 <Heart className={`w-4 h-4 ${comment.user_liked ? "fill-current" : ""}`} />
-                                                {comment.like_count > 0 && <span>{comment.like_count}</span>}
+                                                {(comment.like_count || 0) > 0 && <span>{comment.like_count}</span>}
                                             </button>
                                         </div>
                                     </div>

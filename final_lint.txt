@@ -1,0 +1,83 @@
+
+> outacharge@0.1.0 lint
+> eslint
+
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/admin/page.tsx
+  7:29  warning  'MessageSquare' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/api/stations/route.ts
+  3:7  warning  'CACHE_DURATION' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  4:7  warning  'cache' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/ChatModeSelector.tsx
+  89:10  warning  'hoveredMode' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/RouteChatHub.tsx
+   49:11  warning  'ChannelParticipant' is defined but never used                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  163:8   warning  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array                                                                                                                                                                 react-hooks/exhaustive-deps
+  256:30  warning  The ref value 'tabsContainerRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'tabsContainerRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/RouteWeatherAnalysis.tsx
+   4:19  warning  'ChevronDown' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+   4:32  warning  'ChevronUp' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+  77:6   warning  React Hook useEffect has a missing dependency: 'midPoint'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/StationChat.tsx
+   24:50  warning  'stationName' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   54:6   warning  React Hook useEffect has a missing dependency: 'fetchMessageCount'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  128:6   warning  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+  143:6   warning  React Hook useEffect has a missing dependency: 'messages.length'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  262:14  warning  'err' is defined but never used                                                                                       @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/StationChatAdvanced.tsx
+    3:52  warning  'memo' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+  145:6   warning  React Hook useEffect has a missing dependency: 'fetchMessages'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+  153:6   warning  React Hook useEffect has a missing dependency: 'messages.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  314:14  warning  'err' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+  408:9   warning  'handleInputChange' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  412:9   warning  'handleKeyDown' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+  417:6   warning  React Hook useCallback has a missing dependency: 'sendMessage'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/StationCheckIn.tsx
+   4:41  warning  'LogIn' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+   7:10  warning  'getOperatorById' is defined but never used                                                                       @typescript-eslint/no-unused-vars
+  54:6   warning  React Hook useEffect has a missing dependency: 'fetchCheckIns'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/components/StationReviews.tsx
+   4:31  warning  'User' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  36:6   warning  React Hook useEffect has a missing dependency: 'fetchReviews'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/favoriler/page.tsx
+   8:20  warning  'Filter' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  46:6   warning  React Hook useEffect has a missing dependency: 'fetchFavorites'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  92:14  warning  'err' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/istatistikler/page.tsx
+   8:3   warning  'Car' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+   9:13  warning  'Wind' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  61:6   warning  React Hook useEffect has a missing dependency: 'fetchHistory'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/kullanici/[id]/page.tsx
+  12:5  warning  'Zap' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/mesajlar/page.tsx
+  123:8  warning  React Hook useEffect has a missing dependency: 'startConversation'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  154:8  warning  React Hook useEffect has a missing dependency: 'searchUsers'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/rota-planla/RotaPlanlaContent.tsx
+  93:6  warning  React Hook useEffect has a missing dependency: 'selectedVehicle'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/app/sifre-sifirla/page.tsx
+    6:41  warning  'X' is defined but never used                @typescript-eslint/no-unused-vars
+   10:9   warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   53:16  warning  'err' is defined but never used              @typescript-eslint/no-unused-vars
+  101:14  warning  'err' is defined but never used              @typescript-eslint/no-unused-vars
+
+/Users/umitboragunaydin/Desktop/outacharge/outacharge/lib/weather.ts
+   77:7  warning  'GRAVITY' is assigned a value but never used      @typescript-eslint/no-unused-vars
+  134:3  warning  'Cd' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  135:3  warning  'frontalArea' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 44 problems (0 errors, 44 warnings)
+

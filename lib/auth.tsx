@@ -4,6 +4,31 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { supabase } from "./supabase";
 import { Session } from "@supabase/supabase-js";
 
+// Supabase fetch helper
+async function supabaseFetch(endpoint: string, options?: RequestInit) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
+    ...options,
+    headers: {
+      'apikey': supabaseKey!,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': options?.method === 'POST' ? 'return=representation' : 'return=minimal',
+      ...options?.headers,
+    }
+  });
+
+  if (!response.ok && response.status !== 204) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
 // Kullanıcı profil verisi (public.users tablosundan)
 interface UserProfile {
   id: string;
@@ -30,25 +55,12 @@ interface UserProfile {
   lastLogin?: string;
 }
 
-// Kayıt sırasında alınan ek veriler
-export interface UserRegistrationData {
-  phone?: string;
-  vehicle_brand?: string;
-  vehicle_model?: string;
-  vehicle_year?: number;
-  charging_preference?: string;
-  charging_frequency?: string;
-  preferred_charger_type?: string;
-  home_charging_available?: boolean;
-  home_charging?: boolean;
-}
-
 interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, additionalData?: any) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
@@ -63,91 +75,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Kullanıcı profilini public.users tablosundan çek
   const fetchProfile = useCallback(async (userId: string, email: string) => {
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      const data = await supabaseFetch(`users?id=eq.${userId}&select=*`);
 
-      if (error) {
-        // Profil bulunamadıysa, trigger henüz çalışmamış olabilir - biraz bekle ve tekrar dene
-        if (error.code === "PGRST116") {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const { data: retryData } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", userId)
-            .single();
-
-          if (retryData) {
-            setUser({
-              id: retryData.id,
-              email: email,
-              fullName: retryData.full_name || "",
-              phone: retryData.phone,
-              city: retryData.city,
-              vehicleBrand: retryData.vehicle_brand,
-              vehicleModel: retryData.vehicle_model,
-              vehicleYear: retryData.vehicle_year,
-              monthlyKm: retryData.monthly_km,
-              chargingPreference: retryData.charging_preference,
-              chargingFrequency: retryData.charging_frequency,
-              preferredChargerType: retryData.preferred_charger_type,
-              preferredConnectors: retryData.preferred_connectors,
-              homeCharging: retryData.home_charging,
-              notifyPriceChanges: retryData.notify_price_changes,
-              notifyNewStations: retryData.notify_new_stations,
-              notifyChargingComplete: retryData.notify_charging_complete,
-              notificationsEnabled: retryData.notifications_enabled,
-              marketingConsent: retryData.marketing_consent,
-              isAdmin: retryData.is_admin || false,
-              createdAt: retryData.created_at,
-              lastLogin: retryData.last_login,
-            });
-            return;
-          }
-        }
-
-        console.warn("Profile fetch error or retry failed, using fallback:", error);
-        // Fallback to minimal user from available data
+      if (data && data.length > 0) {
+        const profile = data[0];
+        setUser({
+          id: profile.id,
+          email: email,
+          fullName: profile.full_name || "",
+          phone: profile.phone,
+          city: profile.city,
+          vehicleBrand: profile.vehicle_brand,
+          vehicleModel: profile.vehicle_model,
+          vehicleYear: profile.vehicle_year,
+          monthlyKm: profile.monthly_km,
+          chargingPreference: profile.charging_preference,
+          chargingFrequency: profile.charging_frequency,
+          preferredChargerType: profile.preferred_charger_type,
+          preferredConnectors: profile.preferred_connectors,
+          homeCharging: profile.home_charging,
+          notifyPriceChanges: profile.notify_price_changes,
+          notifyNewStations: profile.notify_new_stations,
+          notifyChargingComplete: profile.notify_charging_complete,
+          notificationsEnabled: profile.notifications_enabled,
+          marketingConsent: profile.marketing_consent,
+          isAdmin: profile.is_admin || false,
+          createdAt: profile.created_at,
+          lastLogin: profile.last_login,
+        });
+      } else {
+        // Profil bulunamadı - fallback
+        console.warn("Profile not found, using fallback");
         setUser({
           id: userId,
           email: email,
           fullName: email.split('@')[0],
           createdAt: new Date().toISOString(),
         });
-        return;
-      }
-
-      if (data) {
-        setUser({
-          id: data.id,
-          email: email,
-          fullName: data.full_name || "",
-          phone: data.phone,
-          city: data.city,
-          vehicleBrand: data.vehicle_brand,
-          vehicleModel: data.vehicle_model,
-          vehicleYear: data.vehicle_year,
-          monthlyKm: data.monthly_km,
-          chargingPreference: data.charging_preference,
-          chargingFrequency: data.charging_frequency,
-          preferredChargerType: data.preferred_charger_type,
-          preferredConnectors: data.preferred_connectors,
-          homeCharging: data.home_charging,
-          notifyPriceChanges: data.notify_price_changes,
-          notifyNewStations: data.notify_new_stations,
-          notifyChargingComplete: data.notify_charging_complete,
-          notificationsEnabled: data.notifications_enabled,
-          marketingConsent: data.marketing_consent,
-          isAdmin: data.is_admin || false,
-          createdAt: data.created_at,
-          lastLogin: data.last_login,
-        });
       }
     } catch (err) {
       console.error("Profile fetch error:", err);
-      setUser(null);
+      // Fallback
+      setUser({
+        id: userId,
+        email: email,
+        fullName: email.split('@')[0],
+        createdAt: new Date().toISOString(),
+      });
     } finally {
       setLoading(false);
     }
@@ -188,13 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       return { error: error?.message || null };
-    } catch (err) {
-      const error = err as Error;
-      return { error: error.message || "Giriş yapılırken bir hata oluştu" };
+    } catch (err: any) {
+      return { error: err.message || "Giriş yapılırken bir hata oluştu" };
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => {
+  const signUp = async (email: string, password: string, fullName: string, additionalData?: any) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -209,10 +182,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) return { error: error.message };
 
-      // Critical Fix: Force sync metadata to public.users if session is created immediately (auto-login)
+      // Force sync metadata to public.users if session is created immediately
       if (data.session?.user) {
-        // Construct the payload for public.users
-        const profileUpdates: Record<string, string | number | boolean | string[] | undefined> = {
+        const profileUpdates: any = {
+          id: data.session.user.id,
+          email: email,
           full_name: fullName,
         };
 
@@ -220,42 +194,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (additionalData?.vehicle_brand) profileUpdates.vehicle_brand = additionalData.vehicle_brand;
         if (additionalData?.vehicle_model) profileUpdates.vehicle_model = additionalData.vehicle_model;
         if (additionalData?.vehicle_year) profileUpdates.vehicle_year = additionalData.vehicle_year;
-        if (additionalData?.charging_preference) profileUpdates.charging_preference = additionalData.charging_preference;
-        if (additionalData?.charging_frequency) profileUpdates.charging_frequency = additionalData.charging_frequency;
-        if (additionalData?.preferred_charger_type) profileUpdates.preferred_charger_type = additionalData.preferred_charger_type;
 
-        // Handle both possible key names for home charging
-        if (additionalData?.home_charging_available !== undefined) {
-          profileUpdates.home_charging_available = additionalData.home_charging_available;
-        } else if (additionalData?.home_charging !== undefined) {
-          // If legacy key used, map to what we think is the column (assuming home_charging_available based on recent usage, or maybe home_charging?)
-          // Safest bet: try to update the one we saw in client code: home_charging_available
-          profileUpdates.home_charging_available = additionalData.home_charging;
-        }
-
-        // Force update the profile - use upsert to handle race condition where trigger might be slow
-        const { error: updateError } = await supabase
-          .from("users")
-          .upsert({
-            id: data.session.user.id,
-            email: email,
-            ...profileUpdates
-          })
-          .select(); // select() sometimes helps retrieve the error or data properly
-
-        if (updateError) {
-          console.error("Profile sync error details:", JSON.stringify(updateError, null, 2));
-          // Don't block signup success, but convert to non-fatal warning
-        } else {
-          // Also update local state immediately so UI reflects it without re-fetch
-          setUser(prev => prev ? ({ ...prev, ...additionalData, fullName, phone: additionalData?.phone }) : null);
+        try {
+          await supabaseFetch('users', {
+            method: 'POST',
+            headers: { 'Prefer': 'resolution=merge-duplicates' },
+            body: JSON.stringify(profileUpdates)
+          });
+        } catch (e) {
+          console.warn("Profile sync warning:", e);
         }
       }
 
       return { error: null };
-    } catch (err) {
-      const error = err as Error;
-      return { error: error.message || "Kayıt olurken bir hata oluştu" };
+    } catch (err: any) {
+      return { error: err.message || "Kayıt olurken bir hata oluştu" };
     }
   };
 
@@ -270,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return { error: "Kullanıcı oturum açmamış" };
 
     try {
-      const dbUpdates: Record<string, string | number | boolean | string[] | undefined> = {};
+      const dbUpdates: any = {};
       if (updates.fullName !== undefined) dbUpdates.full_name = updates.fullName;
       if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
       if (updates.city !== undefined) dbUpdates.city = updates.city;
@@ -289,18 +242,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (updates.notificationsEnabled !== undefined) dbUpdates.notifications_enabled = updates.notificationsEnabled;
       if (updates.marketingConsent !== undefined) dbUpdates.marketing_consent = updates.marketingConsent;
 
-      const { error } = await supabase
-        .from("users")
-        .update(dbUpdates)
-        .eq("id", user.id);
-
-      if (error) throw error;
+      await supabaseFetch(`users?id=eq.${user.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(dbUpdates)
+      });
 
       setUser({ ...user, ...updates });
       return { error: null };
-    } catch (err) {
-      const error = err as Error;
-      return { error: error.message || "Güncelleme sırasında bir hata oluştu" };
+    } catch (err: any) {
+      return { error: err.message || "Güncelleme sırasında bir hata oluştu" };
     }
   };
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import HeaderWhite from "../components/HeaderWhite";
@@ -40,6 +39,7 @@ interface Post {
     user: {
         id: string;
         full_name: string;
+        avatar_url: string | null;
     };
 }
 
@@ -52,6 +52,26 @@ const categories = [
     { id: "haber", label: "Haberler", emoji: "📰" },
 ];
 
+// Supabase fetch helper
+async function supabaseFetch(endpoint: string) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
+        headers: {
+            'apikey': supabaseKey!,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
+}
+
 export default function ToplulukPage() {
     const { user } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
@@ -63,63 +83,77 @@ export default function ToplulukPage() {
 
     const fetchPosts = useCallback(async () => {
         setLoading(true);
+
         try {
-            let query = supabase
-                .from("posts")
-                .select("*")
-                .eq("is_deleted", false);
+            // Query parametrelerini oluştur
+            let query = "posts?select=*";
 
+            // Kategori filtresi
             if (selectedCategory !== "all") {
-                query = query.eq("category", selectedCategory);
+                query += `&category=eq.${selectedCategory}`;
             }
 
-            if (searchQuery.trim()) {
-                query = query.or(`title.ilike.%${searchQuery}%,content.ilike.%${searchQuery}%`);
-            }
+            // is_deleted filtresi
+            query += "&is_deleted=eq.false";
 
+            // Sıralama
             if (sortBy === "popular") {
-                query = query.order("comment_count", { ascending: false });
+                query += "&order=comment_count.desc";
             } else {
-                query = query.order("created_at", { ascending: false });
+                query += "&order=created_at.desc";
             }
 
-            query = query.limit(100);
+            query += "&limit=100";
 
-            const { data, error } = await query;
+            const data = await supabaseFetch(query);
 
-            if (error) {
-                console.error("Supabase error:", error);
+            if (Array.isArray(data) && data.length > 0) {
+                // Arama filtresi (client-side)
+                let filteredData = data;
+                if (searchQuery.trim()) {
+                    const search = searchQuery.toLowerCase();
+                    filteredData = data.filter((post: any) =>
+                        post.title?.toLowerCase().includes(search) ||
+                        post.content?.toLowerCase().includes(search)
+                    );
+                }
+
+                // User bilgilerini çek
+                const userIds = [...new Set(filteredData.map((p: any) => p.user_id))];
+                let usersMap = new Map();
+
+                if (userIds.length > 0) {
+                    try {
+                        const usersQuery = `users?select=id,full_name,avatar_url&id=in.(${userIds.join(',')})`;
+                        const usersData = await supabaseFetch(usersQuery);
+                        if (Array.isArray(usersData)) {
+                            usersMap = new Map(usersData.map((u: any) => [u.id, u]));
+                        }
+                    } catch (e) {
+                        console.log("Users fetch failed, using defaults");
+                    }
+                }
+
+                const postsWithUsers = filteredData.map((post: any) => ({
+                    ...post,
+                    user: usersMap.get(post.user_id) || {
+                        id: post.user_id,
+                        full_name: "Anonim",
+                        avatar_url: null
+                    }
+                }));
+
+                setPosts(postsWithUsers);
+            } else {
                 setPosts([]);
-                setLoading(false);
-                return;
             }
 
-            if (!data || data.length === 0) {
-                setPosts([]);
-                setLoading(false);
-                return;
-            }
-
-            const userIds = [...new Set(data.map(p => p.user_id))];
-            const { data: users } = await supabase
-                .from("users")
-                .select("id, full_name")
-                .in("id", userIds);
-
-            const usersMap = new Map(users?.map(u => [u.id, u]) || []);
-
-            const postsWithUsers = data.map(post => ({
-                ...post,
-                user: usersMap.get(post.user_id) || { id: post.user_id, full_name: "Anonim" }
-            }));
-
-            setPosts(postsWithUsers);
         } catch (err: any) {
-            console.error("Posts fetch error:", err);
+            console.error("Fetch error:", err.message);
             setPosts([]);
-        } finally {
-            setLoading(false);
         }
+
+        setLoading(false);
     }, [selectedCategory, sortBy, searchQuery]);
 
     useEffect(() => {
@@ -193,8 +227,8 @@ export default function ToplulukPage() {
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat.id
-                                        ? "bg-emerald-100 text-emerald-700"
-                                        : "text-zinc-600 hover:bg-zinc-100"
+                                            ? "bg-emerald-100 text-emerald-700"
+                                            : "text-zinc-600 hover:bg-zinc-100"
                                         }`}
                                 >
                                     <span>{cat.emoji}</span>
@@ -217,8 +251,8 @@ export default function ToplulukPage() {
                             <button
                                 onClick={() => setSortBy("new")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${sortBy === "new"
-                                    ? "bg-white text-zinc-900 shadow-sm"
-                                    : "text-zinc-500 hover:text-zinc-700"
+                                        ? "bg-white text-zinc-900 shadow-sm"
+                                        : "text-zinc-500 hover:text-zinc-700"
                                     }`}
                             >
                                 <Clock className="w-3.5 h-3.5" />
@@ -227,8 +261,8 @@ export default function ToplulukPage() {
                             <button
                                 onClick={() => setSortBy("popular")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${sortBy === "popular"
-                                    ? "bg-white text-zinc-900 shadow-sm"
-                                    : "text-zinc-500 hover:text-zinc-700"
+                                        ? "bg-white text-zinc-900 shadow-sm"
+                                        : "text-zinc-500 hover:text-zinc-700"
                                     }`}
                             >
                                 <TrendingUp className="w-3.5 h-3.5" />
@@ -258,8 +292,8 @@ export default function ToplulukPage() {
                                         setShowMobileFilters(false);
                                     }}
                                     className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${selectedCategory === cat.id
-                                        ? "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500"
-                                        : "bg-zinc-100 text-zinc-700"
+                                            ? "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500"
+                                            : "bg-zinc-100 text-zinc-700"
                                         }`}
                                 >
                                     <span className="text-lg">{cat.emoji}</span>
@@ -340,7 +374,7 @@ export default function ToplulukPage() {
                                     <div className="flex items-center gap-3 text-xs text-zinc-400 flex-shrink-0">
                                         <span className="flex items-center gap-1">
                                             <MessageCircle className="w-4 h-4" />
-                                            {post.comment_count}
+                                            {post.comment_count || 0}
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <Eye className="w-4 h-4" />
