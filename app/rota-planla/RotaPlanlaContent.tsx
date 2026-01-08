@@ -6,10 +6,16 @@ import mapboxgl from "mapbox-gl";
 import {
   ArrowLeft, MapPin, Navigation, Zap, Battery, Clock, Car,
   ChevronRight, Loader2, Route, AlertCircle, Check,
-  Circle, Flag, Settings,
-  X, MessageCircle
+  Circle, Flag, Settings, Users, Briefcase, Thermometer,
+  MessageCircle
 } from "lucide-react";
-import { getElevationProfile, elevationStats, gradeEnergyKwhFromProfile, energyBetweenKm, consumptionAtSpeed } from "@/lib/terrain";
+import {
+  getElevationProfile,
+  routeEnergy,
+  VehiclePhysics,
+  WeatherConditions
+} from "@/lib/terrain";
+import { getRouteWeather, RouteWeatherSummary } from "@/lib/weather-service";
 import { useAuth } from "@/lib/auth";
 import { vehicles, vehiclesByBrand, brands, Vehicle } from "@/data/vehicles";
 import RouteWeatherAnalysis from "../components/RouteWeatherAnalysis";
@@ -18,76 +24,45 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-// ===== ROUTE GEOMETRY HELPERS (Gerçek Geometri Hesaplamaları) =====
+// ===== ROUTE GEOMETRY HELPERS =====
 type LngLat = [number, number];
 
-// İki nokta arasındaki gerçek mesafeyi hesaplar (Haversine Formülü)
 function haversineKm(a: LngLat, b: LngLat): number {
   const toRad = (d: number) => (d * Math.PI) / 180;
-
   const [lng1, lat1] = a;
   const [lng2, lat2] = b;
-
-  const R = 6371; // Dünya yarıçapı (km)
+  const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
-
   const sLat1 = toRad(lat1);
   const sLat2 = toRad(lat2);
-
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(sLat1) * Math.cos(sLat2) * Math.sin(dLng / 2) ** 2;
-
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(sLat1) * Math.cos(sLat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-// Rota çizgisi boyunca belirli aralıklarla (stepKm) örnek noktalar alır
-function samplePointsAlongRoute(
-  coords: LngLat[],
-  stepKm: number
-): { lng: number; lat: number; atKm: number; idx: number }[] {
+function samplePointsAlongRoute(coords: LngLat[], stepKm: number): { lng: number; lat: number; atKm: number; idx: number }[] {
   if (!coords || coords.length < 2) return [];
-
   const points: { lng: number; lat: number; atKm: number; idx: number }[] = [];
-  let acc = 0; // Son örnekten beri biriken mesafe
+  let acc = 0;
   let total = 0;
-
-  // İlk noktayı her zaman ekle
   points.push({ lng: coords[0][0], lat: coords[0][1], atKm: 0, idx: 0 });
-
   for (let i = 1; i < coords.length; i++) {
     const segKm = haversineKm(coords[i - 1], coords[i]);
     total += segKm;
     acc += segKm;
-
     if (acc >= stepKm) {
-      points.push({
-        lng: coords[i][0],
-        lat: coords[i][1],
-        atKm: Math.round(total * 10) / 10,
-        idx: i,
-      });
+      points.push({ lng: coords[i][0], lat: coords[i][1], atKm: Math.round(total * 10) / 10, idx: i });
       acc = 0;
     }
   }
-
-  // Son nokta eksik kalmasın (eğer son örneklemeye denk gelmediyse)
   const last = coords.length - 1;
   const lastPt = points[points.length - 1];
   if (!lastPt || lastPt.idx !== last) {
-    points.push({
-      lng: coords[last][0],
-      lat: coords[last][1],
-      atKm: Math.round(total * 10) / 10,
-      idx: last,
-    });
+    points.push({ lng: coords[last][0], lat: coords[last][1], atKm: Math.round(total * 10) / 10, idx: last });
   }
-
   return points;
 }
 
-// Rotanın toplam gerçek uzunluğunu hesaplar
 function routeDistanceKm(coords: LngLat[]): number {
   if (!coords || coords.length < 2) return 0;
   let total = 0;
@@ -96,33 +71,19 @@ function routeDistanceKm(coords: LngLat[]): number {
 }
 
 function pointToSegmentDistanceKm(p: LngLat, a: LngLat, b: LngLat): number {
-  // Equirectangular approx (fast) -> convert degrees to km-ish plane around p latitude
   const toRad = (d: number) => (d * Math.PI) / 180;
   const lat0 = toRad(p[1]);
-  const kx = 111.320 * Math.cos(lat0); // km per degree lon
-  const ky = 110.574;                  // km per degree lat
-
-  const px = (p[0]) * kx;
-  const py = (p[1]) * ky;
-  const ax = (a[0]) * kx;
-  const ay = (a[1]) * ky;
-  const bx = (b[0]) * kx;
-  const by = (b[1]) * ky;
-
-  const abx = bx - ax;
-  const aby = by - ay;
-  const apx = px - ax;
-  const apy = py - ay;
-
+  const kx = 111.320 * Math.cos(lat0);
+  const ky = 110.574;
+  const px = p[0] * kx, py = p[1] * ky;
+  const ax = a[0] * kx, ay = a[1] * ky;
+  const bx = b[0] * kx, by = b[1] * ky;
+  const abx = bx - ax, aby = by - ay;
+  const apx = px - ax, apy = py - ay;
   const ab2 = abx * abx + aby * aby;
   const t = ab2 === 0 ? 0 : Math.max(0, Math.min(1, (apx * abx + apy * aby) / ab2));
-
-  const cx = ax + t * abx;
-  const cy = ay + t * aby;
-
-  const dx = px - cx;
-  const dy = py - cy;
-
+  const cx = ax + t * abx, cy = ay + t * aby;
+  const dx = px - cx, dy = py - cy;
   return Math.sqrt(dx * dx + dy * dy);
 }
 
@@ -131,10 +92,7 @@ function distanceToPolylineKm(route: LngLat[], p: LngLat): { minKm: number; segI
   let segIdx = 0;
   for (let i = 1; i < route.length; i++) {
     const d = pointToSegmentDistanceKm(p, route[i - 1], route[i]);
-    if (d < minKm) {
-      minKm = d;
-      segIdx = i - 1;
-    }
+    if (d < minKm) { minKm = d; segIdx = i - 1; }
   }
   return { minKm, segIdx };
 }
@@ -142,33 +100,20 @@ function distanceToPolylineKm(route: LngLat[], p: LngLat): { minKm: number; segI
 function buildSpeedProfile(route: any) {
   const legs = route.legs || [];
   const segments: { fromKm: number; toKm: number; speedKmh: number }[] = [];
-
   let accKm = 0;
-
   for (const leg of legs) {
     for (const step of leg.steps) {
       const km = step.distance / 1000;
       const hours = step.duration / 3600;
       if (hours <= 0 || km <= 0) continue;
-
       const speed = km / hours;
-
-      segments.push({
-        fromKm: Math.round(accKm * 10) / 10,
-        toKm: Math.round((accKm + km) * 10) / 10,
-        speedKmh: Math.round(speed),
-      });
-
+      segments.push({ fromKm: Math.round(accKm * 10) / 10, toKm: Math.round((accKm + km) * 10) / 10, speedKmh: Math.round(speed) });
       accKm += km;
     }
   }
-
   return segments;
 }
 
-// This function is already imported from "@/lib/terrain".
-// If you intend to override or define it locally, please remove the import.
-// For now, I'm adding it as per your instruction, but be aware of potential conflicts.
 function effectiveChargingPower(soc: number, maxPower: number) {
   if (soc < 55) return maxPower;
   if (soc < 70) return maxPower * 0.7;
@@ -176,6 +121,53 @@ function effectiveChargingPower(soc: number, maxPower: number) {
   return maxPower * 0.25;
 }
 
+// ===== VEHICLE PHYSICS BUILDER =====
+function buildVehiclePhysics(
+  vehicle: Vehicle,
+  passengerCount: number,
+  luggageKg: number,
+  hvacMode: "auto" | "off" | "eco",
+  drivingStyle: "normal" | "eco" | "sport"
+): VehiclePhysics {
+  const passengerWeight = passengerCount * 75;
+  const totalMass = vehicle.massKg + passengerWeight + luggageKg;
+
+  let drivetrainEffMod = 1.0;
+  let regenEffMod = 1.0;
+
+  switch (drivingStyle) {
+    case "eco":
+      drivetrainEffMod = 1.05;
+      regenEffMod = 1.1;
+      break;
+    case "sport":
+      drivetrainEffMod = 0.9;
+      regenEffMod = 0.85;
+      break;
+  }
+
+  let hvacPower = vehicle.hvacPowerKw;
+  switch (hvacMode) {
+    case "off": hvacPower = 0; break;
+    case "eco": hvacPower = vehicle.hvacPowerKw * 0.6; break;
+  }
+
+  return {
+    massKg: totalMass,
+    dragCoefficient: vehicle.dragCoefficient,
+    frontalArea: vehicle.frontalArea,
+    rollingResistance: vehicle.rollingResistance,
+    drivetrainEfficiency: Math.min(0.98, vehicle.drivetrainEfficiency * drivetrainEffMod),
+    regenEfficiency: Math.min(0.85, vehicle.regenEfficiency * regenEffMod),
+    hvacPowerKw: hvacPower,
+    batteryHeatingKw: vehicle.batteryHeatingKw,
+    optimalBatteryTempC: vehicle.optimalBatteryTempC,
+    tempEfficiencyLoss: vehicle.tempEfficiencyLoss,
+    batteryCapacity: vehicle.batteryCapacity,
+  };
+}
+
+// ===== INTERFACES =====
 interface Location {
   name: string;
   lat: number;
@@ -210,16 +202,16 @@ interface ChargingStop {
 interface RouteResult {
   distance: number;
   duration: number;
-  geometry: {
-    type: "LineString";
-    coordinates: [number, number][];
-  };
+  geometry: { type: "LineString"; coordinates: [number, number][] };
   chargingStops: ChargingStop[];
   totalChargingTime: number;
   totalChargingCost: number;
   arrivalCharge: number;
+  energyUsed?: number;
+  efficiency?: number;
 }
 
+// ===== MAIN COMPONENT =====
 export default function RotaPlanlaPage() {
   const { user } = useAuth();
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -227,6 +219,7 @@ export default function RotaPlanlaPage() {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Location states
   const [origin, setOrigin] = useState<Location | null>(null);
   const [destination, setDestination] = useState<Location | null>(null);
   const [originSearch, setOriginSearch] = useState("");
@@ -236,43 +229,46 @@ export default function RotaPlanlaPage() {
   const [searchingOrigin, setSearchingOrigin] = useState(false);
   const [searchingDestination, setSearchingDestination] = useState(false);
 
+  // Vehicle & charge states
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [currentCharge, setCurrentCharge] = useState(80);
   const [minArrivalCharge, setMinArrivalCharge] = useState(20);
 
+  // NEW: Trip settings
+  const [passengerCount, setPassengerCount] = useState(1);
+  const [luggageKg, setLuggageKg] = useState(20);
+  const [hvacMode, setHvacMode] = useState<"auto" | "off" | "eco">("auto");
+  const [drivingStyle, setDrivingStyle] = useState<"normal" | "eco" | "sport">("normal");
+
+  // NEW: Weather state
+  const [routeWeather, setRouteWeather] = useState<RouteWeatherSummary | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+
+  // UI states
   const [calculating, setCalculating] = useState(false);
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
   const [error, setError] = useState("");
-
   const [showVehicleSelect, setShowVehicleSelect] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState("");
   const [showChatHub, setShowChatHub] = useState(false);
   const [strategy, setStrategy] = useState<"fastest" | "fewest">("fastest");
 
-  // Unmount cleanup
+  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      abortRef.current?.abort(); // unmount olunca fetchleri iptal et
-    };
+    return () => { abortRef.current?.abort(); };
   }, []);
 
   // Auto-select user's vehicle
   useEffect(() => {
     if (user && user.vehicleBrand && user.vehicleModel && !selectedVehicle) {
-      const userVehicle = vehicles.find(
-        v => v.brand === user.vehicleBrand && v.model === user.vehicleModel
-      );
-      if (userVehicle) {
-        setSelectedVehicle(userVehicle);
-      }
+      const userVehicle = vehicles.find(v => v.brand === user.vehicleBrand && v.model === user.vehicleModel);
+      if (userVehicle) setSelectedVehicle(userVehicle);
     }
-  }, [user]);
+  }, [user, selectedVehicle]);
 
   // Initialize map
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
-
-    // Wait for container to have dimensions
     const container = mapContainer.current;
     if (container.offsetWidth === 0 || container.offsetHeight === 0) {
       const timer = setTimeout(() => {
@@ -284,32 +280,22 @@ export default function RotaPlanlaPage() {
             zoom: 6,
           });
           map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-          map.current.on("load", () => {
-            map.current?.resize();
-          });
+          map.current.on("load", () => { map.current?.resize(); });
         }
       }, 100);
       return () => {
         clearTimeout(timer);
-        if (map.current) {
-          map.current.remove();
-          map.current = null;
-        }
+        if (map.current) { map.current.remove(); map.current = null; }
       };
     }
-
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/streets-v12",
       center: [32.8541, 39.9208],
       zoom: 6,
     });
-
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-    map.current.on("load", () => {
-      map.current?.resize();
-    });
-
+    map.current.on("load", () => { map.current?.resize(); });
     return () => {
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
@@ -321,52 +307,28 @@ export default function RotaPlanlaPage() {
   // Search location
   const searchLocation = async (query: string, type: "origin" | "destination") => {
     if (!query.trim()) {
-      if (type === "origin") {
-        setOriginResults([]);
-      } else {
-        setDestinationResults([]);
-      }
+      type === "origin" ? setOriginResults([]) : setDestinationResults([]);
       return;
     }
-
-    if (type === "origin") {
-      setSearchingOrigin(true);
-    } else {
-      setSearchingDestination(true);
-    }
-
+    type === "origin" ? setSearchingOrigin(true) : setSearchingDestination(true);
     try {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?country=TR&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
       );
       const data = await response.json();
-
       if (data.features) {
-        if (type === "origin") {
-          setOriginResults(data.features);
-        } else {
-          setDestinationResults(data.features);
-        }
+        type === "origin" ? setOriginResults(data.features) : setDestinationResults(data.features);
       }
     } catch (err) {
       console.error("Search error:", err);
     } finally {
-      if (type === "origin") {
-        setSearchingOrigin(false);
-      } else {
-        setSearchingDestination(false);
-      }
+      type === "origin" ? setSearchingOrigin(false) : setSearchingDestination(false);
     }
   };
 
   // Select location
   const selectLocation = (feature: { place_name: string; center: [number, number] }, type: "origin" | "destination") => {
-    const location: Location = {
-      name: feature.place_name,
-      lat: feature.center[1],
-      lng: feature.center[0],
-    };
-
+    const location: Location = { name: feature.place_name, lat: feature.center[1], lng: feature.center[0] };
     if (type === "origin") {
       setOrigin(location);
       setOriginSearch(feature.place_name);
@@ -376,36 +338,22 @@ export default function RotaPlanlaPage() {
       setDestinationSearch(feature.place_name);
       setDestinationResults([]);
     }
-
-    // Update map
     if (map.current) {
-      map.current.flyTo({
-        center: [location.lng, location.lat],
-        zoom: 10,
-      });
+      map.current.flyTo({ center: [location.lng, location.lat], zoom: 10 });
     }
   };
 
-  // Fetch charging stations along route
+  // Fetch charging stations
   const fetchStationsAlongRoute = useCallback(async (coordinates: [number, number][]) => {
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
 
-    const stations: any[] = []; // Geçici olarak any, yapıyı bozmamak için
-
-    // 1. ADIM: Rota üzerinde gerçek 50km'lik örnek noktalar al
+    const stations: any[] = [];
     const samplePoints = samplePointsAlongRoute(coordinates, 50);
-
-    // LOGLARI BAS
-    console.log("===== ROTA GEOMETRİ ANALİZİ BAŞLANGIÇ =====");
-    console.log(`[route] Polyline nokta sayısı: ${coordinates.length}`);
-    console.log(`[route] Gerçek hesaplanan mesafe: ${routeDistanceKm(coordinates).toFixed(1)} km`);
-
-    const maxSample = samplePoints.length;
     const corridorKm = strategy === "fastest" ? 4 : 10;
 
-    for (const sp of samplePoints.slice(0, maxSample)) {
+    for (const sp of samplePoints) {
       if (ac.signal.aborted) return [];
       try {
         const response = await fetch(
@@ -425,9 +373,7 @@ export default function RotaPlanlaPage() {
           const lat = item.AddressInfo?.Latitude;
           const lng = item.AddressInfo?.Longitude;
           if (typeof lat !== "number" || typeof lng !== "number") continue;
-
-          if (maxPower < 50) continue;         // min power
-          if (powerType !== "DC") continue;    // MVP: DC only
+          if (maxPower < 50 || powerType !== "DC") continue;
 
           const { minKm, segIdx } = distanceToPolylineKm(coordinates, [lng, lat]);
           if (minKm > corridorKm) continue;
@@ -436,8 +382,7 @@ export default function RotaPlanlaPage() {
             id,
             name: item.AddressInfo?.Title || "Bilinmeyen İstasyon",
             operator: item.OperatorInfo?.Title || "Bilinmeyen",
-            lat,
-            lng,
+            lat, lng,
             power: maxPower,
             powerType,
             address: item.AddressInfo?.AddressLine1 || "",
@@ -456,10 +401,8 @@ export default function RotaPlanlaPage() {
       }
     }
 
-    // Build a small candidate set: best 3 per 50km by distanceToRoute (fast filter)
+    // Detour calculation for top candidates
     const candWindowKm = 50;
-    const perWindowCandidates = 3;
-
     const candBuckets = new Map<number, any[]>();
     for (const s of stations) {
       const key = Math.floor(s.routeProgressKm / candWindowKm);
@@ -467,14 +410,12 @@ export default function RotaPlanlaPage() {
       arr.push(s);
       candBuckets.set(key, arr);
     }
-
     const candidates: any[] = [];
     for (const arr of candBuckets.values()) {
-      arr.sort((a, b) => (a.distanceToRouteKm - b.distanceToRouteKm));
-      candidates.push(...arr.slice(0, perWindowCandidates));
+      arr.sort((a, b) => a.distanceToRouteKm - b.distanceToRouteKm);
+      candidates.push(...arr.slice(0, 3));
     }
 
-    // Compute detourMin for candidates only
     for (const s of candidates) {
       if (ac.signal.aborted) return [];
       try {
@@ -482,7 +423,6 @@ export default function RotaPlanlaPage() {
         const url = `https://api.mapbox.com/directions-matrix/v1/mapbox/driving/${coords}?annotations=duration&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`;
         const res = await fetch(url, { signal: ac.signal });
         const data = await res.json();
-
         const aToB = data?.durations?.[0]?.[1];
         const bToA = data?.durations?.[1]?.[0];
         if (typeof aToB === "number" && typeof bToA === "number") {
@@ -493,148 +433,45 @@ export default function RotaPlanlaPage() {
       }
     }
 
-    // Update map source safely
-    if (!ac.signal.aborted && map.current) {
-      const geojson: GeoJSON.FeatureCollection = {
-        type: "FeatureCollection",
-        features: stations.map((s: any) => ({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [s.lng, s.lat] },
-          properties: { name: s.name, power: s.power },
-        })),
-      };
-      updateStationsSource(geojson);
-    }
-
     return stations;
   }, [strategy]);
 
-  const ensureStationsLayer = () => {
-    const m = map.current;
-    if (!m) return false;
-    if (!m.isStyleLoaded()) return false;
-
-    // source yoksa ekle
-    if (!m.getSource("stations")) {
-      m.addSource("stations", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-
-      m.addLayer({
-        id: "stations",
-        type: "circle",
-        source: "stations",
-        paint: {
-          "circle-radius": 6,
-          "circle-color": "#10b981",
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#ffffff",
-        },
-      });
-    }
-
-    return true;
-  };
-
-  const updateStationsSource = (geojson: GeoJSON.FeatureCollection) => {
-    const m = map.current;
-    if (!m) return;
-
-    // style hazır değilse load eventini bekle
-    if (!m.isStyleLoaded()) {
-      m.once("load", () => {
-        if (!ensureStationsLayer()) return;
-        const src = m.getSource("stations") as mapboxgl.GeoJSONSource | undefined;
-        src?.setData(geojson as any);
-      });
-      return;
-    }
-
-    if (!ensureStationsLayer()) return;
-    const src = m.getSource("stations") as mapboxgl.GeoJSONSource | undefined;
-    src?.setData(geojson as any);
-  };
-
-  const drawOnMap = (routeGeo: any, origin: Location, destination: Location, chargingStops: ChargingStop[]) => {
+  // Draw on map
+  const drawOnMap = (routeGeo: any, orig: Location, dest: Location, stops: ChargingStop[]) => {
     const m = map.current;
     if (!m) return;
 
     const applyRoute = () => {
-      const feature: GeoJSON.Feature = {
-        type: "Feature",
-        properties: {},
-        geometry: routeGeo,
-      };
-
-      // source varsa sadece setData
+      const feature: GeoJSON.Feature = { type: "Feature", properties: {}, geometry: routeGeo };
       const src = m.getSource("route") as mapboxgl.GeoJSONSource | undefined;
-      if (src) {
-        src.setData(feature as any);
-        return;
-      }
-
-      // source yoksa ekle + layer ekle
+      if (src) { src.setData(feature as any); return; }
       m.addSource("route", { type: "geojson", data: feature as any });
-
-      const beforeId =
-        m.getLayer("road-label")?.id ||
-        m.getLayer("waterway-label")?.id ||
-        (m.getStyle().layers || []).find(l => l.type === "symbol")?.id;
-
-      m.addLayer(
-        {
-          id: "route",
-          type: "line",
-          source: "route",
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: {
-            "line-color": "#10b981",
-            "line-width": 5,
-            "line-opacity": 1,
-          },
-        },
-        beforeId
-      );
+      const beforeId = m.getLayer("road-label")?.id || m.getLayer("waterway-label")?.id || (m.getStyle().layers || []).find(l => l.type === "symbol")?.id;
+      m.addLayer({
+        id: "route",
+        type: "line",
+        source: "route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#10b981", "line-width": 5, "line-opacity": 1 },
+      }, beforeId);
     };
 
-    // 🔥 asıl kritik: "load" eventine güvenme, retry ile garantiye al
     const tryApply = (attempt = 0) => {
-      try {
-        applyRoute();
-        console.log("[route] applied OK");
-      } catch (e) {
-        // Style not loaded / cannot add source gibi durumlar
-        if (attempt < 30) {
-          requestAnimationFrame(() => tryApply(attempt + 1));
-        } else {
-          console.error("[route] apply failed after retries", e);
-        }
+      try { applyRoute(); } catch (e) {
+        if (attempt < 30) requestAnimationFrame(() => tryApply(attempt + 1));
+        else console.error("[route] apply failed", e);
       }
     };
-
     tryApply();
 
-    // marker'lar
+    // Markers
     try {
-      markersRef.current.forEach((m) => { try { m.remove(); } catch { } });
+      markersRef.current.forEach(mk => { try { mk.remove(); } catch { } });
       markersRef.current = [];
 
       const mkEl = (bg: string, text?: string) => {
         const el = document.createElement("div");
-        el.style.width = "22px";
-        el.style.height = "22px";
-        el.style.borderRadius = "9999px";
-        el.style.background = bg;
-        el.style.border = "3px solid white";
-        el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.35)";
-        el.style.display = "flex";
-        el.style.alignItems = "center";
-        el.style.justifyContent = "center";
-        el.style.color = "white";
-        el.style.fontWeight = "700";
-        el.style.fontSize = "12px";
-        el.style.zIndex = "9999";
+        el.style.cssText = `width:22px;height:22px;border-radius:9999px;background:${bg};border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;z-index:9999;`;
         el.innerText = text ?? "";
         return el;
       };
@@ -644,23 +481,22 @@ export default function RotaPlanlaPage() {
         markersRef.current.push(marker);
       };
 
-      addMarker(origin.lng, origin.lat, mkEl("#3b82f6", "A"));
-      addMarker(destination.lng, destination.lat, mkEl("#ef4444", "B"));
-      chargingStops.forEach((stop, idx) => addMarker(stop.station.lng, stop.station.lat, mkEl("#10b981", String(idx + 1))));
+      addMarker(orig.lng, orig.lat, mkEl("#3b82f6", "A"));
+      addMarker(dest.lng, dest.lat, mkEl("#ef4444", "B"));
+      stops.forEach((stop, idx) => addMarker(stop.station.lng, stop.station.lat, mkEl("#10b981", String(idx + 1))));
     } catch (e) {
       console.log("[map] marker phase FAILED", e);
     }
 
     const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([origin.lng, origin.lat]);
-    bounds.extend([destination.lng, destination.lat]);
-    chargingStops.forEach(s => bounds.extend([s.station.lng, s.station.lat]));
-
+    bounds.extend([orig.lng, orig.lat]);
+    bounds.extend([dest.lng, dest.lat]);
+    stops.forEach(s => bounds.extend([s.station.lng, s.station.lat]));
     m.resize();
     m.fitBounds(bounds, { padding: 50, duration: 800 });
   };
 
-  // Calculate route
+  // ===== MAIN CALCULATE ROUTE =====
   const calculateRoute = async () => {
     if (!origin || !destination || !selectedVehicle) {
       setError("Lütfen başlangıç, bitiş noktası ve araç seçin.");
@@ -670,9 +506,10 @@ export default function RotaPlanlaPage() {
     setCalculating(true);
     setError("");
     setRouteResult(null);
+    setRouteWeather(null);
 
     try {
-      // Get route from Mapbox
+      // 1. Get route from Mapbox
       const routeResponse = await fetch(
         `https://api.mapbox.com/directions/v5/mapbox/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?geometries=geojson&overview=full&steps=true&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
       );
@@ -685,247 +522,132 @@ export default function RotaPlanlaPage() {
       }
 
       const route = routeData.routes[0];
-      const speedProfile = buildSpeedProfile(route);
-
-      console.log("[speed-profile]");
-      speedProfile.slice(0, 10).forEach(s => {
-        console.log(`km ${s.fromKm}–${s.toKm}: ${s.speedKmh} km/h`);
-      });
-
+      const coordinates = route.geometry.coordinates as [number, number][];
       const distanceKm = route.distance / 1000;
       const durationMin = route.duration / 60;
 
-      // Calculate if charging is needed
-      const consumption = selectedVehicle.batteryCapacity / selectedVehicle.range;
-      const energyNeeded = distanceKm * consumption;
+      // 2. Fetch weather data
+      setWeatherLoading(true);
+      let weather: RouteWeatherSummary;
+      try {
+        weather = await getRouteWeather(coordinates, routeDistanceKm, 50);
+        setRouteWeather(weather);
+      } catch (e) {
+        console.error("Weather fetch failed:", e);
+        weather = {
+          points: [],
+          average: { temperature: 20, windSpeed: 10, headwindComponent: 0, precipitation: 0, humidity: 50 },
+          conditions: { isCold: false, isHot: false, isRainy: false, isWindy: false, rainIntensity: 0 },
+          warnings: [],
+        };
+      }
+      setWeatherLoading(false);
+
+      // 3. Build speed profile
+      const speedProfile = buildSpeedProfile(route);
+
+      // 4. Get elevation profile
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+      const elevationProfile = await getElevationProfile(coordinates, token, 50, routeDistanceKm);
+
+      // 5. Calculate average altitude
+      const elevations = elevationProfile.map(p => p.elev).filter((e): e is number => e !== null);
+      const avgAltitude = elevations.length > 0 ? elevations.reduce((a, b) => a + b, 0) / elevations.length : 500;
+
+      // 6. Build vehicle physics with user inputs
+      const vehiclePhysics = buildVehiclePhysics(selectedVehicle, passengerCount, luggageKg, hvacMode, drivingStyle);
+
+      // 7. Build weather conditions
+      const weatherConditions: WeatherConditions = {
+        temperatureC: weather.average.temperature,
+        headwindKmh: weather.average.headwindComponent,
+        rainIntensity: weather.conditions.rainIntensity,
+        altitude: avgAltitude,
+      };
+
+      // 8. Basic energy check
       const availableEnergy = (currentCharge / 100) * selectedVehicle.batteryCapacity;
       const minEnergyAtArrival = (minArrivalCharge / 100) * selectedVehicle.batteryCapacity;
       const usableEnergy = availableEnergy - minEnergyAtArrival;
 
       if (usableEnergy <= 0) {
-        setError(`Mevcut şarj (%${currentCharge}) min. varış şarjından (%${minArrivalCharge}) düşük. Min varış şarjını düşür veya başlangıçta daha fazla şarj et.`);
+        setError(`Mevcut şarj (%${currentCharge}) min. varış şarjından (%${minArrivalCharge}) düşük.`);
         setCalculating(false);
         return;
       }
 
-      // Prepare elevation profile and energy parameters for terrain-aware calculation
-      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
-      const profile = await getElevationProfile(route.geometry.coordinates, token, 50, routeDistanceKm);
-      const massKg = (selectedVehicle as any).massKg ?? 1700;
-      const drivetrainEff = (selectedVehicle as any).drivetrainEfficiency ?? 0.9;
-      const regenEff = (selectedVehicle as any).regenEfficiency ?? 0.65;
+      // 9. Build segments and calculate energy with NEW PHYSICS ENGINE
+      const segments = speedProfile.map((sp) => {
+        const segElevations = elevationProfile.filter(
+          e => e.atKm >= sp.fromKm && e.atKm <= sp.toKm && e.elev !== null
+        );
+        let gradePercent = 0;
+        if (segElevations.length >= 2) {
+          const startElev = segElevations[0].elev!;
+          const endElev = segElevations[segElevations.length - 1].elev!;
+          const deltaElev = endElev - startElev;
+          const deltaKm = segElevations[segElevations.length - 1].atKm - segElevations[0].atKm;
+          if (deltaKm > 0) gradePercent = (deltaElev / (deltaKm * 1000)) * 100;
+        }
+        return {
+          distanceKm: sp.toKm - sp.fromKm,
+          speedKmh: sp.speedKmh,
+          gradePercent,
+        };
+      });
 
+      // Calculate total energy with physics engine
+      const energyResult = routeEnergy(segments, vehiclePhysics, weatherConditions);
+      const totalEnergyNeeded = energyResult.netKwh;
+
+      console.log("[PHYSICS ENGINE]", {
+        totalKm: distanceKm,
+        totalKwh: totalEnergyNeeded.toFixed(2),
+        efficiency: (energyResult.efficiency * 100).toFixed(1) + " Wh/km",
+        breakdown: energyResult.breakdown,
+        weather: weatherConditions,
+        vehicle: { mass: vehiclePhysics.massKg, hvac: vehiclePhysics.hvacPowerKw },
+      });
+
+      // 10. Determine if charging stops needed
       const chargingStops: ChargingStop[] = [];
       let totalChargingTime = 0;
       let totalChargingCost = 0;
 
-      if (energyNeeded > usableEnergy) {
-        console.log("[speed-adjusted-consumption]");
-        speedProfile.slice(0, 8).forEach(s => {
-          const adj = consumptionAtSpeed(consumption, s.speedKmh);
-          console.log(
-            `km ${s.fromKm}-${s.toKm} @ ${s.speedKmh} km/h → ${adj.toFixed(3)} kWh/km`
-          );
-        });
-
-        // Need charging stops
-        const stations = await fetchStationsAlongRoute(route.geometry.coordinates);
-
-        console.log("[stations] fetched total:", stations.length);
-
+      if (totalEnergyNeeded > usableEnergy) {
+        const stations = await fetchStationsAlongRoute(coordinates);
         let currentEnergy = availableEnergy;
         let lastStopProgressKm = 0;
-        let currentSoC = currentCharge;
 
-        // Use route order: sort by progress along route
         const ordered = [...stations].sort((a, b) => a.routeProgressKm - b.routeProgressKm);
-
-        // Only consider stations ahead on the route (skip early-city noise)
-        const startKm = 30; // ignore first 30km for intercity suggestions
-        const candidates = ordered.filter(s => s.routeProgressKm >= startKm);
-
-        console.log("[plan] start", {
-          routeKm: distanceKm,
-          consumptionKwhPerKm: consumption,
-          availableEnergyKwh: availableEnergy,
-          usableEnergyKwh: usableEnergy,
-          currentCharge,
-          minArrivalCharge,
-          candidates: candidates.length,
-        });
-
-        let dbg = 0;
+        const candidates = ordered.filter(s => s.routeProgressKm >= 30);
 
         for (const station of candidates) {
           const deltaKm = Math.max(0, station.routeProgressKm - lastStopProgressKm);
-          if (deltaKm < 20) continue; // 20 km'den kısa stop ASLA alma (şehir içi spam koruması)
-          // terrain-aware energy calculation
-          const stationProgress = station.routeProgressKm;
-          const energyToStationResult = energyBetweenKm(
-            lastStopProgressKm,
-            stationProgress,
-            profile,
-            consumption,
-            speedProfile,
-            massKg,
-            drivetrainEff,
-            regenEff
-          );
-          const energyToStation = energyToStationResult.netKwh;
+          if (deltaKm < 20) continue;
+
+          // Calculate energy to this station proportionally
+          const progressRatio = deltaKm / distanceKm;
+          const energyToStation = totalEnergyNeeded * progressRatio;
           const chargeAtStation = ((currentEnergy - energyToStation) / selectedVehicle.batteryCapacity) * 100;
 
-          if (dbg < 8) {
-            console.log("[plan] probe", {
-              atKm: station.routeProgressKm,
-              name: station.name,
-              deltaKm: Math.round(deltaKm),
-              chargeAtStation: Math.round(chargeAtStation),
-              detourMin: station.detourMin,
-              power: station.power,
-            });
-            dbg++;
-          }
-
-          // If we would arrive too low, plan a stop here
           if (chargeAtStation < minArrivalCharge + 10 && chargeAtStation > 0) {
-            console.log("[plan] STOP_SELECTED", { atKm: station.routeProgressKm, name: station.name, chargeAtStation: Math.round(chargeAtStation) });
-            console.log("[next-leg-preview]", {
-              fromKm: lastStopProgressKm,
-              toKm: station.routeProgressKm,
-              energyNeededKwh: energyToStation.toFixed(2),
-              arrivalSoC: Math.round(chargeAtStation),
-            });
-            const provisionalSoC = strategy === "fastest" ? 65 : 90;
-            const provisionalEnergy = (provisionalSoC / 100) * selectedVehicle.batteryCapacity;
-
-            const pickBridgeStation = (fromKm: number, candidates: any[]) => {
-              const windows = [
-                { min: 60, max: 140 },   // hedef band
-                { min: 40, max: 170 },   // genişlet
-                { min: 20, max: 200 },   // daha da genişlet
-              ];
-
-              for (const w of windows) {
-                const pool = candidates.filter(s =>
-                  (s.routeProgressKm - fromKm) >= w.min &&
-                  (s.routeProgressKm - fromKm) <= w.max
-                );
-
-                if (pool.length > 0) {
-                  // score: detourMin (küçük iyi), power (büyük iyi)
-                  pool.sort((a, b) => {
-                    const da = (a.detourMin ?? 999);
-                    const db = (b.detourMin ?? 999);
-                    if (da !== db) return da - db;
-                    return (b.power ?? 0) - (a.power ?? 0);
-                  });
-                  return pool[0];
-                }
-              }
-              return null;
-            };
-
-            // 1) next leg hedefini bul (bir sonraki "zorunlu durak" ya da varış)
-            let nextKm: number | null = null;
-
-            for (let j = candidates.findIndex(s => s.id === station.id) + 1; j < candidates.length; j++) {
-              const s2 = candidates[j];
-
-              if (
-                strategy === "fastest" &&
-                (s2.routeProgressKm - stationProgress) >= 20 &&
-                (s2.routeProgressKm - stationProgress) <= 120 &&
-                s2.power >= 120 &&
-                (s2.detourMin ?? 999) <= 10
-              ) {
-                nextKm = s2.routeProgressKm;
-                break;
-              }
-              const e = energyBetweenKm(
-                stationProgress,          // <-- DİKKAT: buradan itibaren
-                s2.routeProgressKm,
-                profile,
-                consumption,
-                speedProfile,
-                massKg,
-                drivetrainEff,
-                regenEff
-              ).netKwh;
-
-              const socAtS2 = ((provisionalEnergy - e) / selectedVehicle.batteryCapacity) * 100;
-
-              if (strategy === "fewest") {
-                if (socAtS2 < minArrivalCharge + 10) { // bir sonraki zorunlu stop eşiği
-                  nextKm = s2.routeProgressKm;
-                  break;
-                }
-              }
-            }
-
-            if (strategy === "fastest" && nextKm === null) {
-              const bridge = pickBridgeStation(stationProgress, candidates);
-              nextKm = bridge ? bridge.routeProgressKm : Math.min(stationProgress + 120, distanceKm);
-            }
-
-            if (strategy === "fewest" && nextKm === null) {
-              nextKm = distanceKm;
-            }
-
-            // 2) targetSoC: bu istasyondan nextKm’ye + min arrival buffer ile
-            const eNext = energyBetweenKm(
-              stationProgress,
-              nextKm!,
-              profile,
-              consumption,
-              speedProfile,
-              massKg,
-              drivetrainEff,
-              regenEff
-            ).netKwh;
-
-            const bufferKwh = (minArrivalCharge / 100) * selectedVehicle.batteryCapacity;
-            const requiredSoC = ((eNext + bufferKwh) / selectedVehicle.batteryCapacity) * 100;
-
-            const baseCap = strategy === "fastest" ? 70 : 95;
-            const dynamicCap = strategy === "fastest"
-              ? (requiredSoC > baseCap ? Math.min(90, Math.ceil(requiredSoC + 3)) : baseCap)
-              : 95;
-            const targetSoC = Math.min(dynamicCap, Math.max(Math.ceil(requiredSoC + 5), 10));
-
-            console.log("[dynamic-target]", {
-              station: station.name,
-              stationKm: stationProgress,
-              nextKm,
-              requiredSoC: Number(requiredSoC.toFixed(1)),
-              targetSoC,
-            });
+            const targetSoC = strategy === "fastest" ? 65 : 90;
             const chargeToAdd = Math.max(0, targetSoC - chargeAtStation);
             const energyToAdd = (chargeToAdd / 100) * selectedVehicle.batteryCapacity;
-
             const chargingPower = Math.min(station.power, selectedVehicle.maxDCPower);
 
-            // Simulation loop for charging time with curve
+            // Calculate charge time with curve
             let remainingKwh = energyToAdd;
             let currentTempSoC = chargeAtStation;
             let minutes = 0;
-
             while (remainingKwh > 0 && currentTempSoC < targetSoC) {
               const power = effectiveChargingPower(currentTempSoC, chargingPower);
-              const delta = Math.min(remainingKwh, power / 60); // 1 minute of charging
+              const delta = Math.min(remainingKwh, power / 60);
               remainingKwh -= delta;
               currentTempSoC += (delta / selectedVehicle.batteryCapacity) * 100;
               minutes++;
             }
-            const chargingTime = minutes;
-
-            console.log("[charge-curve]", {
-              station: station.name,
-              arrivalSoC: Math.round(chargeAtStation),
-              targetSoC,
-              energyToAddKwh: Number(energyToAdd.toFixed(2)),
-              minutes: chargingTime,
-              detourMin: station.detourMin ?? null,
-            });
 
             const pricePerKwh = station.powerType === "DC" ? 12.5 : 9;
             const chargingCost = energyToAdd * pricePerKwh;
@@ -934,57 +656,29 @@ export default function RotaPlanlaPage() {
               station,
               arrivalCharge: Math.round(chargeAtStation),
               departureCharge: targetSoC,
-              chargingTime: Math.round(chargingTime),
+              chargingTime: Math.round(minutes),
               chargingCost: Math.round(chargingCost),
               distanceFromPrev: Math.round(deltaKm),
             });
 
-            const detour = station.detourMin ?? 0;
-            totalChargingTime += (chargingTime + detour);
+            totalChargingTime += (minutes + (station.detourMin ?? 0));
             totalChargingCost += chargingCost;
-
-            // update energy state after charging
-            currentEnergy = Math.min(
-              selectedVehicle.batteryCapacity,
-              currentEnergy - energyToStation + energyToAdd
-            );
+            currentEnergy = currentEnergy - energyToStation + energyToAdd;
             lastStopProgressKm = station.routeProgressKm;
-            currentSoC = targetSoC;
 
             if (chargingStops.length >= 3) break;
           }
         }
-
-        console.log("[plan] stops selected:", chargingStops.map(s => ({ atKm: s.station.routeProgressKm, name: s.station.name, arrival: s.arrivalCharge })));
       }
 
-      // Calculate arrival charge
-      const routeEnergyResult = energyBetweenKm(
-        0,
-        distanceKm,
-        profile,
-        consumption,
-        speedProfile,
-        massKg,
-        drivetrainEff,
-        regenEff
-      );
-      const totalEnergyUsed = routeEnergyResult.netKwh;
-
+      // 11. Calculate arrival charge
       const totalEnergyCharged = chargingStops.reduce((sum, stop) =>
         sum + ((stop.departureCharge - stop.arrivalCharge) / 100) * selectedVehicle.batteryCapacity, 0
       );
-      const finalEnergy = availableEnergy - totalEnergyUsed + totalEnergyCharged;
+      const finalEnergy = availableEnergy - totalEnergyNeeded + totalEnergyCharged;
       const arrivalCharge = Math.round((finalEnergy / selectedVehicle.batteryCapacity) * 100);
 
-      console.log("[UI] chargingStops length before setRouteResult:", chargingStops.length);
-      console.log("[UI] chargingStops preview:", chargingStops.map(s => ({
-        name: s.station.name,
-        atKm: s.station.routeProgressKm,
-        arrival: s.arrivalCharge,
-        depart: s.departureCharge,
-      })));
-
+      // 12. Set result
       setRouteResult({
         distance: Math.round(distanceKm),
         duration: Math.round(durationMin),
@@ -993,8 +687,11 @@ export default function RotaPlanlaPage() {
         totalChargingTime: Math.round(totalChargingTime),
         totalChargingCost: Math.round(totalChargingCost),
         arrivalCharge: Math.max(0, Math.min(100, arrivalCharge)),
+        energyUsed: Math.round(totalEnergyNeeded * 10) / 10,
+        efficiency: Math.round(energyResult.efficiency * 1000) / 10,
       });
 
+      // 13. Draw on map
       if (map.current) {
         drawOnMap(route.geometry, origin, destination, chargingStops);
       }
@@ -1004,6 +701,7 @@ export default function RotaPlanlaPage() {
       setError("Rota hesaplanırken bir hata oluştu.");
     } finally {
       setCalculating(false);
+      setWeatherLoading(false);
     }
   };
 
@@ -1014,6 +712,7 @@ export default function RotaPlanlaPage() {
     return `${hours} sa ${mins} dk`;
   };
 
+  // ===== RENDER =====
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -1043,24 +742,15 @@ export default function RotaPlanlaPage() {
                 <input
                   type="text"
                   value={originSearch}
-                  onChange={(e) => {
-                    setOriginSearch(e.target.value);
-                    searchLocation(e.target.value, "origin");
-                  }}
+                  onChange={(e) => { setOriginSearch(e.target.value); searchLocation(e.target.value, "origin"); }}
                   placeholder="Şehir veya adres ara..."
                   className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
-                {searchingOrigin && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />
-                )}
+                {searchingOrigin && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />}
                 {originResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                     {originResults.map((result, index) => (
-                      <button
-                        key={index}
-                        onClick={() => selectLocation(result, "origin")}
-                        className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2"
-                      >
+                      <button key={index} onClick={() => selectLocation(result, "origin")} className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="truncate">{result.place_name}</span>
                       </button>
@@ -1080,24 +770,15 @@ export default function RotaPlanlaPage() {
                 <input
                   type="text"
                   value={destinationSearch}
-                  onChange={(e) => {
-                    setDestinationSearch(e.target.value);
-                    searchLocation(e.target.value, "destination");
-                  }}
+                  onChange={(e) => { setDestinationSearch(e.target.value); searchLocation(e.target.value, "destination"); }}
                   placeholder="Şehir veya adres ara..."
                   className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
-                {searchingDestination && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />
-                )}
+                {searchingDestination && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />}
                 {destinationResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
                     {destinationResults.map((result, index) => (
-                      <button
-                        key={index}
-                        onClick={() => selectLocation(result, "destination")}
-                        className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2"
-                      >
+                      <button key={index} onClick={() => selectLocation(result, "destination")} className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="truncate">{result.place_name}</span>
                       </button>
@@ -1113,51 +794,26 @@ export default function RotaPlanlaPage() {
                 <Car className="w-4 h-4" />
                 Araç
               </label>
-              <button
-                onClick={() => setShowVehicleSelect(!showVehicleSelect)}
-                className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 text-left flex items-center justify-between hover:bg-gray-200 transition"
-              >
-                <span>
-                  {selectedVehicle
-                    ? `${selectedVehicle.brand} ${selectedVehicle.model}`
-                    : "Araç seçin"}
-                </span>
+              <button onClick={() => setShowVehicleSelect(!showVehicleSelect)} className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 text-left flex items-center justify-between hover:bg-gray-200 transition">
+                <span>{selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Araç seçin"}</span>
                 <ChevronRight className={`w-5 h-5 transition-transform ${showVehicleSelect ? "rotate-90" : ""}`} />
               </button>
-
               {showVehicleSelect && (
                 <div className="mt-2 bg-gray-100 rounded-lg p-3 space-y-2">
-                  <select
-                    value={selectedBrand}
-                    onChange={(e) => setSelectedBrand(e.target.value)}
-                    className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
-                  >
+                  <select value={selectedBrand} onChange={(e) => setSelectedBrand(e.target.value)} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
                     <option value="">Marka seçin</option>
-                    {brands.map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
+                    {brands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
                   </select>
                   {selectedBrand && (
-                    <select
-                      value={selectedVehicle?.id || ""}
-                      onChange={(e) => {
-                        const vehicle = vehicles.find(v => v.id === e.target.value);
-                        setSelectedVehicle(vehicle || null);
-                        setShowVehicleSelect(false);
-                      }}
-                      className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
-                    >
+                    <select value={selectedVehicle?.id || ""} onChange={(e) => { const vehicle = vehicles.find(v => v.id === e.target.value); setSelectedVehicle(vehicle || null); setShowVehicleSelect(false); }} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
                       <option value="">Model seçin</option>
                       {vehiclesByBrand[selectedBrand]?.map(vehicle => (
-                        <option key={vehicle.id} value={vehicle.id}>
-                          {vehicle.model} ({vehicle.range} km)
-                        </option>
+                        <option key={vehicle.id} value={vehicle.id}>{vehicle.model} ({vehicle.range} km)</option>
                       ))}
                     </select>
                   )}
                 </div>
               )}
-
               {selectedVehicle && (
                 <div className="mt-2 text-xs text-gray-500 flex items-center gap-4">
                   <span>🔋 {selectedVehicle.batteryCapacity} kWh</span>
@@ -1172,29 +828,67 @@ export default function RotaPlanlaPage() {
               <div>
                 <label className="block text-gray-500 text-xs mb-1">Mevcut Şarj</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={currentCharge}
-                    onChange={(e) => setCurrentCharge(Number(e.target.value))}
-                    className="flex-1 accent-emerald-500"
-                  />
+                  <input type="range" min="10" max="100" value={currentCharge} onChange={(e) => setCurrentCharge(Number(e.target.value))} className="flex-1 accent-emerald-500" />
                   <span className="text-zinc-900 text-sm w-12 text-right">%{currentCharge}</span>
                 </div>
               </div>
               <div>
                 <label className="block text-gray-500 text-xs mb-1">Min. Varış Şarjı</label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="range"
-                    min="10"
-                    max="50"
-                    value={minArrivalCharge}
-                    onChange={(e) => setMinArrivalCharge(Number(e.target.value))}
-                    className="flex-1 accent-emerald-500"
-                  />
+                  <input type="range" min="10" max="50" value={minArrivalCharge} onChange={(e) => setMinArrivalCharge(Number(e.target.value))} className="flex-1 accent-emerald-500" />
                   <span className="text-zinc-900 text-sm w-12 text-right">%{minArrivalCharge}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* NEW: Trip Settings */}
+            <div className="bg-gray-100 rounded-xl p-4">
+              <h3 className="text-zinc-900 font-medium mb-3 flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Seyahat Ayarları
+              </h3>
+              <div className="space-y-3">
+                {/* Passengers */}
+                <div>
+                  <label className="block text-gray-500 text-xs mb-1 flex items-center gap-1">
+                    <Users className="w-3 h-3" /> Yolcu Sayısı
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="1" max="5" value={passengerCount} onChange={(e) => setPassengerCount(Number(e.target.value))} className="flex-1 accent-emerald-500" />
+                    <span className="text-zinc-900 text-sm w-8 text-right">{passengerCount}</span>
+                  </div>
+                </div>
+                {/* Luggage */}
+                <div>
+                  <label className="block text-gray-500 text-xs mb-1 flex items-center gap-1">
+                    <Briefcase className="w-3 h-3" /> Bagaj (kg)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="0" max="100" step="10" value={luggageKg} onChange={(e) => setLuggageKg(Number(e.target.value))} className="flex-1 accent-emerald-500" />
+                    <span className="text-zinc-900 text-sm w-12 text-right">{luggageKg} kg</span>
+                  </div>
+                </div>
+                {/* HVAC Mode */}
+                <div>
+                  <label className="block text-gray-500 text-xs mb-1">Klima</label>
+                  <div className="flex gap-2">
+                    {(["auto", "eco", "off"] as const).map((mode) => (
+                      <button key={mode} onClick={() => setHvacMode(mode)} className={`flex-1 py-1.5 text-xs rounded-lg transition ${hvacMode === mode ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}>
+                        {mode === "auto" ? "Otomatik" : mode === "eco" ? "Eko" : "Kapalı"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Driving Style */}
+                <div>
+                  <label className="block text-gray-500 text-xs mb-1">Sürüş Stili</label>
+                  <div className="flex gap-2">
+                    {(["eco", "normal", "sport"] as const).map((style) => (
+                      <button key={style} onClick={() => setDrivingStyle(style)} className={`flex-1 py-1.5 text-xs rounded-lg transition ${drivingStyle === style ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}>
+                        {style === "eco" ? "🌱 Eko" : style === "normal" ? "🚗 Normal" : "🏎️ Sport"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1208,34 +902,72 @@ export default function RotaPlanlaPage() {
             )}
 
             {/* Calculate Button */}
-            <button
-              onClick={calculateRoute}
-              disabled={calculating || !origin || !destination || !selectedVehicle}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded-full font-medium transition flex items-center justify-center gap-2"
-            >
-              {calculating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Hesaplanıyor...
-                </>
-              ) : (
-                <>
-                  <Route className="w-5 h-5" />
-                  Rotayı Hesapla
-                </>
-              )}
+            <button onClick={calculateRoute} disabled={calculating || !origin || !destination || !selectedVehicle} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded-full font-medium transition flex items-center justify-center gap-2">
+              {calculating ? (<><Loader2 className="w-5 h-5 animate-spin" />Hesaplanıyor...</>) : (<><Route className="w-5 h-5" />Rotayı Hesapla</>)}
             </button>
+
+            {/* Weather Loading */}
+            {weatherLoading && (
+              <div className="flex items-center justify-center gap-2 text-gray-500 text-sm py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Hava durumu alınıyor...
+              </div>
+            )}
+
+            {/* NEW: Weather Display */}
+            {routeWeather && (
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-100">
+                <h3 className="text-zinc-900 font-medium mb-3 flex items-center gap-2">
+                  <Thermometer className="w-4 h-4 text-blue-500" />
+                  Rota Hava Durumu
+                </h3>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🌡️</span>
+                    <div>
+                      <div className="text-gray-500 text-xs">Sıcaklık</div>
+                      <div className="text-zinc-900 font-medium">{routeWeather.average.temperature}°C</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">💨</span>
+                    <div>
+                      <div className="text-gray-500 text-xs">Rüzgar</div>
+                      <div className="text-zinc-900 font-medium">
+                        {routeWeather.average.headwindComponent > 0 ? "Karşı " : routeWeather.average.headwindComponent < 0 ? "Arkadan " : ""}
+                        {Math.abs(Math.round(routeWeather.average.headwindComponent))} km/h
+                      </div>
+                    </div>
+                  </div>
+                  {routeWeather.conditions.isRainy && (
+                    <div className="flex items-center gap-2 col-span-2">
+                      <span className="text-xl">🌧️</span>
+                      <div>
+                        <div className="text-gray-500 text-xs">Yağış</div>
+                        <div className="text-zinc-900 font-medium">
+                          {routeWeather.conditions.rainIntensity === 1 ? "Hafif" : routeWeather.conditions.rainIntensity === 2 ? "Orta" : "Şiddetli"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {routeWeather.warnings.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 space-y-1">
+                    {routeWeather.warnings.map((warning, idx) => (
+                      <div key={idx} className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">{warning}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Route Result */}
             {routeResult && selectedVehicle && (
               <div className="space-y-4">
-                {/* Weather Analysis */}
+                {/* Weather Analysis Component */}
                 <RouteWeatherAnalysis
                   routeCoordinates={routeResult.geometry.coordinates}
-                  vehicleSpecs={{
-                    batteryCapacity: selectedVehicle.batteryCapacity,
-                    range: selectedVehicle.range,
-                  }}
+                  vehicleSpecs={{ batteryCapacity: selectedVehicle.batteryCapacity, range: selectedVehicle.range }}
                 />
 
                 {/* Summary */}
@@ -1260,11 +992,16 @@ export default function RotaPlanlaPage() {
                     <div className="flex items-center gap-2">
                       <Battery className="w-4 h-4 text-emerald-400" />
                       <span className="text-gray-500">Varış:</span>
-                      <span className={`font-medium ${routeResult.arrivalCharge < 20 ? "text-red-400" : "text-emerald-400"}`}>
-                        %{routeResult.arrivalCharge}
-                      </span>
+                      <span className={`font-medium ${routeResult.arrivalCharge < 20 ? "text-red-400" : "text-emerald-400"}`}>%{routeResult.arrivalCharge}</span>
                     </div>
                   </div>
+                  {/* NEW: Energy stats */}
+                  {routeResult.energyUsed && (
+                    <div className="mt-3 pt-3 border-t border-gray-300 grid grid-cols-2 gap-2 text-xs">
+                      <div className="text-gray-500">Toplam Enerji: <span className="text-zinc-900 font-medium">{routeResult.energyUsed} kWh</span></div>
+                      <div className="text-gray-500">Verimlilik: <span className="text-zinc-900 font-medium">{routeResult.efficiency} Wh/km</span></div>
+                    </div>
+                  )}
                   {routeResult.totalChargingCost > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-300 flex items-center justify-between">
                       <span className="text-gray-500">Tahmini Şarj Maliyeti:</span>
@@ -1282,9 +1019,7 @@ export default function RotaPlanlaPage() {
                         {routeResult.chargingStops.map((stop, index) => (
                           <div key={index} className="bg-white rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-zinc-900 text-xs font-bold">
-                                {index + 1}
-                              </div>
+                              <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">{index + 1}</div>
                               <span className="text-zinc-900 font-medium flex-1 truncate">{stop.station.name}</span>
                             </div>
                             <div className="text-xs text-gray-500 space-y-1">
@@ -1295,7 +1030,7 @@ export default function RotaPlanlaPage() {
                               <div className="flex justify-between">
                                 <span>Varış: %{stop.arrivalCharge} → Çıkış: %{stop.departureCharge}</span>
                               </div>
-                              <div className="flex justify-between text-emerald-400">
+                              <div className="flex justify-between text-emerald-500">
                                 <span>⏱ {stop.chargingTime} dk şarj</span>
                                 <span>💰 ₺{stop.chargingCost}</span>
                               </div>
@@ -1304,12 +1039,7 @@ export default function RotaPlanlaPage() {
                         ))}
                       </div>
                     </div>
-
-                    {/* Chat Hub Button */}
-                    <button
-                      onClick={() => setShowChatHub(true)}
-                      className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
-                    >
+                    <button onClick={() => setShowChatHub(true)} className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium transition flex items-center justify-center gap-2">
                       <MessageCircle className="w-5 h-5" />
                       Durak Chat&apos;lerine Katıl
                     </button>
@@ -1317,10 +1047,8 @@ export default function RotaPlanlaPage() {
                 ) : (
                   <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
                     <Check className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-400 font-medium">Şarj durağı gerekmez!</p>
-                    <p className="text-gray-500 text-sm mt-1">
-                      Mevcut şarjınızla hedefinize ulaşabilirsiniz.
-                    </p>
+                    <p className="text-emerald-500 font-medium">Şarj durağı gerekmez!</p>
+                    <p className="text-gray-500 text-sm mt-1">Mevcut şarjınızla hedefinize ulaşabilirsiniz.</p>
                   </div>
                 )}
 
@@ -1328,9 +1056,7 @@ export default function RotaPlanlaPage() {
                 <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Toplam Seyahat Süresi:</span>
-                    <span className="text-emerald-400 font-bold text-xl">
-                      {formatDuration(routeResult.duration + routeResult.totalChargingTime)}
-                    </span>
+                    <span className="text-emerald-500 font-bold text-xl">{formatDuration(routeResult.duration + routeResult.totalChargingTime)}</span>
                   </div>
                 </div>
               </div>
@@ -1344,11 +1070,7 @@ export default function RotaPlanlaPage() {
 
       {/* Route Chat Hub */}
       {routeResult && routeResult.chargingStops.length > 0 && (
-        <RouteChatHub
-          chargingStops={routeResult.chargingStops}
-          isOpen={showChatHub}
-          onClose={() => setShowChatHub(false)}
-        />
+        <RouteChatHub chargingStops={routeResult.chargingStops} isOpen={showChatHub} onClose={() => setShowChatHub(false)} />
       )}
     </div>
   );

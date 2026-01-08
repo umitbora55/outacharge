@@ -3,19 +3,33 @@ export interface Vehicle {
   brand: string;
   model: string;
   year?: string;
-  batteryCapacity: number; // kWh
+  batteryCapacity: number; // kWh (usable)
   maxDCPower: number; // kW
   maxACPower: number; // kW
   connectors: string[]; // desteklenen soket tipleri
-  range: number; // km
+  range: number; // km (WLTP)
   image?: string;
-  massKg?: number; // kg
-  regenEfficiency?: number; // 0-1
-  drivetrainEfficiency?: number; // 0-1
+
+  // ===== FİZİK PARAMETRELERİ =====
+  massKg: number;               // Boş kütle (kg)
+  dragCoefficient: number;      // Cd (hava direnci katsayısı)
+  frontalArea: number;          // A (m²) - ön kesit alanı
+  rollingResistance: number;    // Crr (yuvarlanma direnci)
+  drivetrainEfficiency: number; // Motor+inverter verimliliği (0.85-0.95)
+  regenEfficiency: number;      // Rejeneratif frenleme verimliliği (0.60-0.75)
+
+  // ===== TERMAL PARAMETRELERİ =====
+  hvacPowerKw: number;          // Klima/ısıtma ortalama güç çekişi (kW)
+  batteryHeatingKw: number;     // Batarya ısıtma gücü (kW) - soğuk havada
+  optimalBatteryTempC: number;  // Optimal batarya sıcaklığı (°C)
+  tempEfficiencyLoss: number;   // Her 10°C düşüşte kapasite kaybı (%)
 }
 
+// ===== ARAÇ VERİTABANI =====
+// Kaynaklar: EV-Database, InsideEVs, OEM spesifikasyonları, araç test raporları
+
 export const vehicles: Vehicle[] = [
-  // TOGG
+  // ==================== TOGG ====================
   {
     id: "togg-t10x",
     brand: "TOGG",
@@ -25,6 +39,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 523,
+    // Fizik
+    massKg: 2130,
+    dragCoefficient: 0.30,
+    frontalArea: 2.65,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.68,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 5.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
   {
     id: "togg-t10f",
@@ -35,8 +61,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 350,
+    // Fizik
+    massKg: 2250,
+    dragCoefficient: 0.32,
+    frontalArea: 2.70,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.89,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.5,
+    batteryHeatingKw: 5.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Tesla
+
+  // ==================== TESLA ====================
   {
     id: "tesla-model-3",
     brand: "Tesla",
@@ -46,6 +85,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2", "Tesla"],
     range: 491,
+    // Fizik - Model 3 çok aerodinamik
+    massKg: 1752,
+    dragCoefficient: 0.23,
+    frontalArea: 2.22,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.94,
+    regenEfficiency: 0.72,
+    // Termal - Tesla ısı pompası
+    hvacPowerKw: 2.0,
+    batteryHeatingKw: 6.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
   {
     id: "tesla-model-y",
@@ -56,6 +107,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2", "Tesla"],
     range: 533,
+    // Fizik
+    massKg: 1979,
+    dragCoefficient: 0.23,
+    frontalArea: 2.51,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.93,
+    regenEfficiency: 0.72,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 6.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
   {
     id: "tesla-model-s",
@@ -66,8 +129,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2", "Tesla"],
     range: 652,
+    // Fizik
+    massKg: 2162,
+    dragCoefficient: 0.208,
+    frontalArea: 2.34,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.94,
+    regenEfficiency: 0.73,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 7.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 5,
   },
-  // BMW
+
+  // ==================== BMW ====================
   {
     id: "bmw-ix",
     brand: "BMW",
@@ -77,6 +153,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 630,
+    // Fizik - büyük SUV
+    massKg: 2510,
+    dragCoefficient: 0.25,
+    frontalArea: 2.82,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.91,
+    regenEfficiency: 0.68,
+    // Termal
+    hvacPowerKw: 3.5,
+    batteryHeatingKw: 5.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 7,
   },
   {
     id: "bmw-i4",
@@ -87,6 +175,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 590,
+    // Fizik - sedan
+    massKg: 2050,
+    dragCoefficient: 0.24,
+    frontalArea: 2.41,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.92,
+    regenEfficiency: 0.70,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 5.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 7,
   },
   {
     id: "bmw-ix3",
@@ -97,8 +197,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 460,
+    // Fizik
+    massKg: 2185,
+    dragCoefficient: 0.29,
+    frontalArea: 2.58,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.67,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Mercedes
+
+  // ==================== MERCEDES ====================
   {
     id: "mercedes-eqe",
     brand: "Mercedes",
@@ -108,6 +221,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["CCS Type 2", "Type 2"],
     range: 654,
+    // Fizik - çok aerodinamik sedan
+    massKg: 2175,
+    dragCoefficient: 0.22,
+    frontalArea: 2.42,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.92,
+    regenEfficiency: 0.70,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 5.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 7,
   },
   {
     id: "mercedes-eqs",
@@ -118,6 +243,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["CCS Type 2", "Type 2"],
     range: 782,
+    // Fizik - dünyanın en aerodinamik seri üretim arabası
+    massKg: 2480,
+    dragCoefficient: 0.20,
+    frontalArea: 2.51,
+    rollingResistance: 0.008,
+    drivetrainEfficiency: 0.93,
+    regenEfficiency: 0.72,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 6.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
   {
     id: "mercedes-eqa",
@@ -128,8 +265,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 426,
+    // Fizik - kompakt SUV
+    massKg: 2040,
+    dragCoefficient: 0.28,
+    frontalArea: 2.47,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.89,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Volkswagen
+
+  // ==================== VOLKSWAGEN ====================
   {
     id: "vw-id4",
     brand: "Volkswagen",
@@ -139,6 +289,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 520,
+    // Fizik
+    massKg: 2124,
+    dragCoefficient: 0.28,
+    frontalArea: 2.60,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
   {
     id: "vw-id3",
@@ -149,8 +311,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 426,
+    // Fizik - kompakt hatchback
+    massKg: 1805,
+    dragCoefficient: 0.267,
+    frontalArea: 2.36,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 4.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
-  // Audi
+
+  // ==================== AUDI ====================
   {
     id: "audi-q4-etron",
     brand: "Audi",
@@ -160,6 +335,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 520,
+    // Fizik - MEB platformu
+    massKg: 2135,
+    dragCoefficient: 0.28,
+    frontalArea: 2.56,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
   {
     id: "audi-etron-gt",
@@ -170,8 +357,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["CCS Type 2", "Type 2"],
     range: 488,
+    // Fizik - performans sedan, Taycan kardeşi
+    massKg: 2347,
+    dragCoefficient: 0.24,
+    frontalArea: 2.35,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.91,
+    regenEfficiency: 0.70,
+    // Termal - 800V mimari
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 6.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
-  // Porsche
+
+  // ==================== PORSCHE ====================
   {
     id: "porsche-taycan",
     brand: "Porsche",
@@ -181,8 +381,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["CCS Type 2", "Type 2"],
     range: 484,
+    // Fizik - performans odaklı, 800V
+    massKg: 2295,
+    dragCoefficient: 0.22,
+    frontalArea: 2.33,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.91,
+    regenEfficiency: 0.70,
+    // Termal - mükemmel termal yönetim
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 6.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 5,
   },
-  // Hyundai
+
+  // ==================== HYUNDAI ====================
   {
     id: "hyundai-ioniq5",
     brand: "Hyundai",
@@ -192,6 +405,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 507,
+    // Fizik - E-GMP platformu, 800V
+    massKg: 1985,
+    dragCoefficient: 0.288,
+    frontalArea: 2.64,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.92,
+    regenEfficiency: 0.70,
+    // Termal - ısı pompası standart
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 5.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
   {
     id: "hyundai-ioniq6",
@@ -202,6 +427,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 614,
+    // Fizik - ultra aerodinamik sedan
+    massKg: 1985,
+    dragCoefficient: 0.21,
+    frontalArea: 2.32,
+    rollingResistance: 0.008,
+    drivetrainEfficiency: 0.93,
+    regenEfficiency: 0.72,
+    // Termal
+    hvacPowerKw: 2.0,
+    batteryHeatingKw: 5.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
   {
     id: "hyundai-kona",
@@ -212,8 +449,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 484,
+    // Fizik - küçük SUV
+    massKg: 1685,
+    dragCoefficient: 0.29,
+    frontalArea: 2.35,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 4.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Kia
+
+  // ==================== KIA ====================
   {
     id: "kia-ev6",
     brand: "Kia",
@@ -223,6 +473,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 528,
+    // Fizik - E-GMP, 800V
+    massKg: 2055,
+    dragCoefficient: 0.28,
+    frontalArea: 2.58,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.92,
+    regenEfficiency: 0.70,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 5.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 6,
   },
   {
     id: "kia-niro-ev",
@@ -233,8 +495,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 463,
+    // Fizik - kompakt crossover
+    massKg: 1791,
+    dragCoefficient: 0.29,
+    frontalArea: 2.42,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.89,
+    regenEfficiency: 0.63,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 4.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Renault
+
+  // ==================== RENAULT ====================
   {
     id: "renault-zoe",
     brand: "Renault",
@@ -244,6 +519,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["Type 2"],
     range: 395,
+    // Fizik - şehir içi, hafif
+    massKg: 1502,
+    dragCoefficient: 0.29,
+    frontalArea: 2.19,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.60,
+    // Termal
+    hvacPowerKw: 2.0,
+    batteryHeatingKw: 3.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 10,
   },
   {
     id: "renault-megane-e",
@@ -254,8 +541,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["CCS Type 2", "Type 2"],
     range: 470,
+    // Fizik - yeni platform
+    massKg: 1624,
+    dragCoefficient: 0.29,
+    frontalArea: 2.38,
+    rollingResistance: 0.009,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.67,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Fiat
+
+  // ==================== FIAT ====================
   {
     id: "fiat-500e",
     brand: "Fiat",
@@ -265,8 +565,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 320,
+    // Fizik - mini şehir arabası
+    massKg: 1365,
+    dragCoefficient: 0.31,
+    frontalArea: 2.04,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.60,
+    // Termal
+    hvacPowerKw: 2.0,
+    batteryHeatingKw: 3.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 10,
   },
-  // Volvo
+
+  // ==================== VOLVO ====================
   {
     id: "volvo-xc40",
     brand: "Volvo",
@@ -276,6 +589,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 425,
+    // Fizik - kompakt SUV
+    massKg: 2188,
+    dragCoefficient: 0.32,
+    frontalArea: 2.56,
+    rollingResistance: 0.011,
+    drivetrainEfficiency: 0.89,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
   {
     id: "volvo-c40",
@@ -286,8 +611,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 444,
+    // Fizik - coupe SUV, biraz daha aerodinamik
+    massKg: 2185,
+    dragCoefficient: 0.30,
+    frontalArea: 2.50,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.89,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // Peugeot
+
+  // ==================== PEUGEOT ====================
   {
     id: "peugeot-e208",
     brand: "Peugeot",
@@ -297,6 +635,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 362,
+    // Fizik - e-CMP platformu
+    massKg: 1530,
+    dragCoefficient: 0.29,
+    frontalArea: 2.18,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.62,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 3.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
   {
     id: "peugeot-e2008",
@@ -307,8 +657,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 345,
+    // Fizik
+    massKg: 1612,
+    dragCoefficient: 0.31,
+    frontalArea: 2.41,
+    rollingResistance: 0.011,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.62,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 3.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
-  // Nissan
+
+  // ==================== NISSAN ====================
   {
     id: "nissan-leaf",
     brand: "Nissan",
@@ -318,6 +681,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 6.6,
     connectors: ["CHAdeMO", "Type 2"],
     range: 385,
+    // Fizik - pasif soğutma (!), eski platform
+    massKg: 1670,
+    dragCoefficient: 0.28,
+    frontalArea: 2.42,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.60,
+    // Termal - ZEV AKTİF SOĞUTMA YOK
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 2.0, // çok zayıf
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 12, // Leaf soğukta çok kötü
   },
   {
     id: "nissan-ariya",
@@ -328,8 +703,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 22,
     connectors: ["CCS Type 2", "Type 2"],
     range: 533,
+    // Fizik - yeni platform
+    massKg: 2200,
+    dragCoefficient: 0.297,
+    frontalArea: 2.60,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 5.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 8,
   },
-  // MG
+
+  // ==================== MG ====================
   {
     id: "mg-zs-ev",
     brand: "MG",
@@ -339,6 +727,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 440,
+    // Fizik
+    massKg: 1745,
+    dragCoefficient: 0.33,
+    frontalArea: 2.55,
+    rollingResistance: 0.011,
+    drivetrainEfficiency: 0.87,
+    regenEfficiency: 0.60,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 3.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 10,
   },
   {
     id: "mg-4",
@@ -349,8 +749,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 450,
+    // Fizik - yeni platform, iyi verimlilik
+    massKg: 1655,
+    dragCoefficient: 0.287,
+    frontalArea: 2.36,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 4.0,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
-  // BYD
+
+  // ==================== BYD ====================
   {
     id: "byd-atto3",
     brand: "BYD",
@@ -360,8 +773,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 7,
     connectors: ["CCS Type 2", "Type 2"],
     range: 420,
+    // Fizik - Blade batarya, kompakt SUV
+    massKg: 1750,
+    dragCoefficient: 0.29,
+    frontalArea: 2.45,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.89,
+    regenEfficiency: 0.63,
+    // Termal - LFP batarya (farklı karakteristik)
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 4.0,
+    optimalBatteryTempC: 30, // LFP biraz daha yüksek optimal
+    tempEfficiencyLoss: 7, // LFP soğukta NMC'den daha kötü
   },
-  // Skoda
+
+  // ==================== SKODA ====================
   {
     id: "skoda-enyaq",
     brand: "Skoda",
@@ -371,8 +797,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 510,
+    // Fizik - MEB platformu
+    massKg: 2104,
+    dragCoefficient: 0.266,
+    frontalArea: 2.62,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.90,
+    regenEfficiency: 0.65,
+    // Termal
+    hvacPowerKw: 3.0,
+    batteryHeatingKw: 4.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
-  // Opel
+
+  // ==================== OPEL ====================
   {
     id: "opel-corsa-e",
     brand: "Opel",
@@ -382,6 +821,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 359,
+    // Fizik - e-CMP
+    massKg: 1530,
+    dragCoefficient: 0.29,
+    frontalArea: 2.13,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.62,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 3.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
   {
     id: "opel-mokka-e",
@@ -392,8 +843,21 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 338,
+    // Fizik
+    massKg: 1598,
+    dragCoefficient: 0.32,
+    frontalArea: 2.41,
+    rollingResistance: 0.011,
+    drivetrainEfficiency: 0.87,
+    regenEfficiency: 0.60,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 3.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 10,
   },
-  // Citroen
+
+  // ==================== CITROEN ====================
   {
     id: "citroen-ec4",
     brand: "Citroen",
@@ -403,6 +867,18 @@ export const vehicles: Vehicle[] = [
     maxACPower: 11,
     connectors: ["CCS Type 2", "Type 2"],
     range: 354,
+    // Fizik - e-CMP
+    massKg: 1611,
+    dragCoefficient: 0.30,
+    frontalArea: 2.38,
+    rollingResistance: 0.010,
+    drivetrainEfficiency: 0.88,
+    regenEfficiency: 0.62,
+    // Termal
+    hvacPowerKw: 2.5,
+    batteryHeatingKw: 3.5,
+    optimalBatteryTempC: 25,
+    tempEfficiencyLoss: 9,
   },
 ];
 
