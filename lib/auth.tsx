@@ -30,7 +30,7 @@ async function supabaseFetch(endpoint: string, options?: RequestInit) {
 }
 
 // Kullanıcı profil verisi (public.users tablosundan)
-interface UserProfile {
+export interface UserProfile {
   id: string;
   email: string;
   fullName: string;
@@ -55,12 +55,23 @@ interface UserProfile {
   lastLogin?: string;
 }
 
-interface AuthContextType {
+export interface UserRegistrationData {
+  phone?: string;
+  vehicle_brand?: string;
+  vehicle_model?: string;
+  vehicle_year?: number;
+  charging_preference?: string;
+  charging_frequency?: string;
+  preferred_charger_type?: string;
+  home_charging_available?: boolean | null;
+}
+
+export interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, additionalData?: any) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
 }
@@ -167,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, additionalData?: any) => {
+  const signUp = async (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -194,6 +205,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (additionalData?.vehicle_brand) profileUpdates.vehicle_brand = additionalData.vehicle_brand;
         if (additionalData?.vehicle_model) profileUpdates.vehicle_model = additionalData.vehicle_model;
         if (additionalData?.vehicle_year) profileUpdates.vehicle_year = additionalData.vehicle_year;
+        if (additionalData?.charging_preference) profileUpdates.charging_preference = additionalData.charging_preference;
+        if (additionalData?.charging_frequency) profileUpdates.charging_frequency = additionalData.charging_frequency;
+        if (additionalData?.preferred_charger_type) profileUpdates.preferred_charger_type = additionalData.preferred_charger_type;
+        if (additionalData?.home_charging_available !== undefined) profileUpdates.home_charging = additionalData.home_charging_available;
 
         try {
           await supabaseFetch('users', {
