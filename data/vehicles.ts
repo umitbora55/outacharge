@@ -9,6 +9,9 @@ export interface Vehicle {
   connectors: string[]; // desteklenen soket tipleri
   range: number; // km
   image?: string;
+  massKg?: number; // kg
+  regenEfficiency?: number; // 0-1
+  drivetrainEfficiency?: number; // 0-1
 }
 
 export const vehicles: Vehicle[] = [
@@ -456,7 +459,7 @@ export function calculateCompatibility(
 
   // Guc uyumlulugu
   const maxPower = stationPowerType === "DC" ? vehicle.maxDCPower : vehicle.maxACPower;
-  
+
   if (stationPower >= maxPower) {
     score += 30;
     reasons.push(`Maksimum hızda şarj (${maxPower} kW)`);
