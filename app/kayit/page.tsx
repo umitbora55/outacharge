@@ -108,89 +108,89 @@ export default function KayitPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center px-4 py-8 transition-colors duration-300">
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-2">
             <Zap className="w-8 h-8 text-emerald-500" />
-            <span className="text-2xl font-bold text-zinc-900">
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white">
               Outa<span className="text-emerald-500">Charge</span>
             </span>
           </Link>
-          <h1 className="text-2xl font-bold text-zinc-900 mt-4">Hesap oluşturun</h1>
-          <p className="text-gray-500 mt-2">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mt-4">Hesap oluşturun</h1>
+          <p className="text-gray-500 dark:text-zinc-400 mt-2">
             {step === 1 ? "Kişisel Bilgiler" : "Tercihleriniz"} (Adım {step}/2)
           </p>
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-8 transition-colors">
           <form onSubmit={step === 1 ? handleNext : handleSubmit} className="space-y-4">
 
             {step === 1 && (
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Ad Soyad *
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <input
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Ahmet Yılmaz"
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     E-posta *
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="ornek@email.com"
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 {/* Phone */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Telefon *
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="0532 123 45 67"
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 {/* Password */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Şifre *
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <input
                       type="password"
                       value={password}
@@ -198,18 +198,18 @@ export default function KayitPage() {
                       placeholder="••••••••"
                       required
                       minLength={6}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 {/* Confirm Password */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Şifre Tekrar *
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <input
                       type="password"
                       value={confirmPassword}
@@ -217,22 +217,22 @@ export default function KayitPage() {
                       placeholder="••••••••"
                       required
                       minLength={6}
-                      className={`w-full pl-10 pr-10 py-3 bg-gray-50 border rounded-xl text-zinc-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${showMatchFeedback
+                      className={`w-full pl-10 pr-10 py-3 bg-gray-50 dark:bg-zinc-800 border rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 transition-all ${showMatchFeedback
                         ? passwordsMatch
                           ? "border-emerald-500 focus:ring-emerald-500 focus:border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/10"
                           : "border-red-500 focus:ring-red-500 focus:border-red-500 ring-1 ring-red-500 bg-red-50/10"
-                        : "border-gray-200 focus:ring-emerald-500 focus:border-transparent"
+                        : "border-gray-200 dark:border-zinc-700 focus:ring-emerald-500 focus:border-transparent"
                         }`}
                     />
 
                     {/* Validation Icon */}
                     {showMatchFeedback && (
-                      <div className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full ${passwordsMatch ? "bg-emerald-100" : "bg-red-100"
+                      <div className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full ${passwordsMatch ? "bg-emerald-100 dark:bg-emerald-500/20" : "bg-red-100 dark:bg-red-500/20"
                         }`}>
                         {passwordsMatch ? (
-                          <Check className="w-3 h-3 text-emerald-600" />
+                          <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         ) : (
-                          <X className="w-3 h-3 text-red-600" />
+                          <X className="w-3 h-3 text-red-600 dark:text-red-400" />
                         )}
                       </div>
                     )}
@@ -240,7 +240,7 @@ export default function KayitPage() {
 
                   {/* Validation Text */}
                   {showMatchFeedback && (
-                    <p className={`text-xs mt-1.5 font-medium flex items-center gap-1 ${passwordsMatch ? "text-emerald-600" : "text-red-500"
+                    <p className={`text-xs mt-1.5 font-medium flex items-center gap-1 ${passwordsMatch ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
                       }`}>
                       {passwordsMatch ? "Şifreler eşleşiyor" : "Şifreler eşleşmiyor"}
                     </p>
@@ -253,12 +253,12 @@ export default function KayitPage() {
               <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                 {/* Vehicle Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Araç Bilgileri *
                   </label>
                   <div className="space-y-3">
                     <div className="relative">
-                      <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                       <select
                         value={selectedBrand}
                         onChange={(e) => {
@@ -266,24 +266,24 @@ export default function KayitPage() {
                           setSelectedModel("");
                         }}
                         required
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
                       >
                         <option value="">Marka seçin</option>
                         {brands.map(brand => (
                           <option key={brand} value={brand}>{brand}</option>
                         ))}
                       </select>
-                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                      <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500 rotate-90 pointer-events-none" />
                     </div>
 
                     {selectedBrand && (
                       <div className="relative">
-                        <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                         <select
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
                           required
-                          className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
+                          className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
                         >
                           <option value="">Model seçin</option>
                           {vehiclesByBrand[selectedBrand]?.map(vehicle => (
@@ -292,7 +292,7 @@ export default function KayitPage() {
                             </option>
                           ))}
                         </select>
-                        <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                        <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500 rotate-90 pointer-events-none" />
                       </div>
                     )}
                   </div>
@@ -300,38 +300,38 @@ export default function KayitPage() {
 
                 {/* Preferred Charger Type */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Tercih Edilen Şarj Tipi *
                   </label>
                   <div className="relative">
-                    <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <select
                       value={preferredChargerType}
                       onChange={(e) => setPreferredChargerType(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
                     >
                       <option value="">Seçin</option>
                       <option value="AC">AC (Yavaş Şarj)</option>
                       <option value="DC">DC (Hızlı Şarj)</option>
                       <option value="both">Her İkisi</option>
                     </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500 rotate-90 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Charging Frequency */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Şarj Sıklığı *
                   </label>
                   <div className="relative">
-                    <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Zap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <select
                       value={chargingFrequency}
                       onChange={(e) => setChargingFrequency(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
                     >
                       <option value="">Seçin</option>
                       <option value="daily">Günlük</option>
@@ -339,60 +339,60 @@ export default function KayitPage() {
                       <option value="biweekly">İki Haftada Bir</option>
                       <option value="monthly">Aylık</option>
                     </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500 rotate-90 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Charging Preference */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Şarj Tercihi *
                   </label>
                   <div className="relative">
-                    <Plug className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Plug className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500" />
                     <select
                       value={chargingPreference}
                       onChange={(e) => setChargingPreference(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent appearance-none"
                     >
                       <option value="">Tercih seçin</option>
                       <option value="price">En Ucuz</option>
                       <option value="speed">En Hızlı</option>
                       <option value="distance">En Yakın</option>
                     </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90 pointer-events-none" />
+                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-zinc-500 rotate-90 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Home Charging */}
                 <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">
+                  <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                     Evde şarj imkanınız var mı? *
                   </label>
                   <div className="flex gap-4">
-                    <label className={`flex-1 relative cursor-pointer border rounded-xl p-3 flex items-center gap-3 transition-colors ${homeCharging === true ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                    <label className={`flex-1 relative cursor-pointer border rounded-xl p-3 flex items-center gap-3 transition-colors ${homeCharging === true ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500' : 'bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'}`}>
                       <input
                         type="radio"
                         name="homeCharging"
                         checked={homeCharging === true}
                         onChange={() => setHomeCharging(true)}
-                        className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 border-gray-300"
+                        className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 border-gray-300 dark:border-zinc-700 bg-transparent"
                       />
                       <div className="flex items-center gap-2">
-                        <Home className="w-5 h-5 text-gray-500" />
-                        <span className="text-sm font-medium text-zinc-900">Evet</span>
+                        <Home className="w-5 h-5 text-gray-500 dark:text-zinc-400" />
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Evet</span>
                       </div>
                     </label>
-                    <label className={`flex-1 relative cursor-pointer border rounded-xl p-3 flex items-center gap-3 transition-colors ${homeCharging === false ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}>
+                    <label className={`flex-1 relative cursor-pointer border rounded-xl p-3 flex items-center gap-3 transition-colors ${homeCharging === false ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500' : 'bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'}`}>
                       <input
                         type="radio"
                         name="homeCharging"
                         checked={homeCharging === false}
                         onChange={() => setHomeCharging(false)}
-                        className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 border-gray-300"
+                        className="w-4 h-4 text-emerald-500 focus:ring-emerald-500 border-gray-300 dark:border-zinc-700 bg-transparent"
                       />
-                      <span className="text-sm font-medium text-zinc-900">Hayır</span>
+                      <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Hayır</span>
                     </label>
                   </div>
                 </div>
@@ -401,7 +401,7 @@ export default function KayitPage() {
 
             {/* Error */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 animate-in fade-in slide-in-from-top-2">
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-3 text-sm text-red-600 dark:text-red-400 animate-in fade-in slide-in-from-top-2">
                 {error}
               </div>
             )}
@@ -413,7 +413,7 @@ export default function KayitPage() {
                   type="button"
                   onClick={() => setStep(1)}
                   disabled={loading}
-                  className="px-6 py-3 bg-white text-zinc-900 border border-gray-200 rounded-full font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="px-6 py-3 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-gray-200 dark:border-zinc-700 rounded-full font-medium hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <ArrowLeft className="w-5 h-5" />
                   Geri
@@ -423,7 +423,7 @@ export default function KayitPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 py-3 bg-black text-white rounded-full font-medium hover:bg-black/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full font-medium hover:bg-black dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -447,9 +447,9 @@ export default function KayitPage() {
 
           {/* Links */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
               Zaten hesabınız var mı?{" "}
-              <Link href="/giris" className="text-emerald-600 hover:text-emerald-700 font-medium">
+              <Link href="/giris" className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium">
                 Giriş yapın
               </Link>
             </p>

@@ -1,3 +1,8 @@
+export interface ChargingCurvePoint {
+  soc: number;
+  powerKw: number;
+}
+
 export interface Vehicle {
   id: string;
   brand: string;
@@ -23,6 +28,7 @@ export interface Vehicle {
   batteryHeatingKw: number;     // Batarya ısıtma gücü (kW) - soğuk havada
   optimalBatteryTempC: number;  // Optimal batarya sıcaklığı (°C)
   tempEfficiencyLoss: number;   // Her 10°C düşüşte kapasite kaybı (%)
+  chargingCurve?: ChargingCurvePoint[]; // Opsiyonel şarj eğrisi
 }
 
 // ===== ARAÇ VERİTABANI =====
@@ -960,4 +966,79 @@ export function calculateCompatibility(
   }
 
   return { score: Math.min(score, 100), reasons, warnings };
+}
+/**
+ * Şarj süresini hesapla (SoC %0-100 ölçeğinde)
+ */
+export function calculateChargingTime(
+  vehicle: Vehicle,
+  startSoC: number,
+  targetSoC: number,
+  availablePower: number,
+  ambientTempC: number = 20
+): { minutes: number; energyKwh: number; avgPowerKw: number } {
+  if (startSoC >= targetSoC) return { minutes: 0, energyKwh: 0, avgPowerKw: 0 };
+
+  const batteryCapacity = vehicle.batteryCapacity;
+  const maxVehicleDCPower = vehicle.maxDCPower;
+  const effectiveMaxPower = Math.min(availablePower, maxVehicleDCPower);
+
+  // Termal etki (soğukta şarj hızı düşer)
+  let temperatureFactor = 1.0;
+  if (ambientTempC < 10) temperatureFactor = 0.8;
+  if (ambientTempC < 0) temperatureFactor = 0.6;
+  if (ambientTempC < -10) temperatureFactor = 0.4;
+
+  // Varsayılan bir şarj eğrisi oluştur (eğer araçta yoksa)
+  // Değerler peak güce göre oranlardır (0.1 = %10, 1.0 = %100)
+  const defaultCurve: ChargingCurvePoint[] = [
+    { soc: 0, powerKw: 1.0 },
+    { soc: 10, powerKw: 1.0 },
+    { soc: 60, powerKw: 0.8 },
+    { soc: 80, powerKw: 0.4 },
+    { soc: 100, powerKw: 0.15 },
+  ];
+
+  const curve = vehicle.chargingCurve || defaultCurve;
+
+  let totalMinutes = 0;
+  let totalEnergy = 0;
+  const stepSize = 1; // %1 SoC adımlarla hesapla
+
+  for (let s = Math.floor(startSoC); s < targetSoC; s += stepSize) {
+    // Mevcut SoC için güç katsayısı bul
+    let curveFactor = 1.0;
+    for (let i = 0; i < curve.length - 1; i++) {
+      if (s >= curve[i].soc && s < curve[i+1].soc) {
+        const p1 = curve[i].powerKw;
+        const p2 = curve[i+1].powerKw;
+        const ratio = (s - curve[i].soc) / (curve[i+1].soc - curve[i].soc);
+        curveFactor = p1 + (p2 - p1) * ratio;
+        break;
+      }
+    }
+    
+    // Eğer curve'deki powerKw > 1 ise direkt kW kabul et, <= 1 ise katsayı kabul et
+    let currentPowerKw = curveFactor > 1 
+      ? Math.min(curveFactor, effectiveMaxPower) 
+      : effectiveMaxPower * curveFactor;
+
+    currentPowerKw *= temperatureFactor;
+    
+    // Bu %1'lik dilim için gereken enerji (kWh)
+    const energyNeeded = (stepSize / 100) * batteryCapacity;
+    
+    // Geçen süre (saat) = Enerji / Güç
+    const hours = energyNeeded / Math.max(1, currentPowerKw);
+    totalMinutes += hours * 60;
+    totalEnergy += energyNeeded;
+  }
+
+  const avgPower = totalMinutes > 0 ? (totalEnergy / (totalMinutes / 60)) : 0;
+
+  return {
+    minutes: Math.round(totalMinutes),
+    energyKwh: Math.round(totalEnergy * 10) / 10,
+    avgPowerKw: Math.round(avgPower * 10) / 10
+  };
 }

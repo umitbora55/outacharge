@@ -15,10 +15,11 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-white">
+    <div className="min-h-screen relative overflow-hidden bg-white dark:bg-zinc-950 transition-colors duration-300">
+
       {/* Noise overlay */}
       <div
-        className="fixed inset-0 pointer-events-none opacity-[0.02]"
+        className="fixed inset-0 pointer-events-none opacity-[0.02] dark:opacity-[0.05]"
         style={{
           backgroundImage: `
             radial-gradient(circle at 18% 28%, rgba(0,0,0,0.14) 0.5px, transparent 0.8px),
@@ -35,18 +36,9 @@ export default function HeroSection() {
       {/* Content */}
       <div className="relative z-10">
 
-
         {/* Hero */}
         <main className="relative min-h-[calc(100vh-64px)] flex items-center justify-center px-6">
           <section className="relative text-center max-w-4xl">
-            {/* Readability plate */}
-            <div
-              className="pointer-events-none absolute -inset-x-24 -inset-y-16 md:-inset-x-40 md:-inset-y-24"
-              style={{
-                background: "radial-gradient(900px 520px at 50% 26%, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 60%, rgba(255,255,255,0) 88%)",
-              }}
-            />
-
             <div className="relative">
               {/* Headline */}
               <div className={`transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
@@ -56,7 +48,7 @@ export default function HeroSection() {
                     <span className="heroTitleFx" aria-hidden="true">Geleceğe şarjlı çık.</span>
                   </h1>
                 </div>
-                <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-zinc-500" style={{ letterSpacing: "-0.01em" }}>
+                <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-zinc-500 dark:text-zinc-400" style={{ letterSpacing: "-0.01em" }}>
                   İstasyon, süre, fiyat: tek ekranda.
                 </p>
               </div>
@@ -65,7 +57,7 @@ export default function HeroSection() {
               <div className={`mt-10 flex items-center justify-center gap-3 flex-wrap transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
                 <Link
                   href="/harita"
-                  className="flex items-center gap-2.5 px-6 py-3.5 rounded-full text-sm font-semibold bg-black text-white hover:bg-black/90 transition-colors shadow-sm"
+                  className="flex items-center gap-2.5 px-6 py-3.5 rounded-full text-sm font-semibold bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90 transition-colors shadow-sm"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                     <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -74,7 +66,7 @@ export default function HeroSection() {
                 </Link>
                 <Link
                   href="/rota-planla"
-                  className="flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-semibold bg-white text-zinc-900 border border-black/10 hover:bg-zinc-50 transition-colors"
+                  className="flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-semibold bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white border border-black/10 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                 >
                   Şarjı Planla
                 </Link>
@@ -88,8 +80,8 @@ export default function HeroSection() {
                   { value: "En İyi", label: "Rota" }
                 ].map((stat, i) => (
                   <div key={i} className="text-center">
-                    <div className="text-3xl md:text-4xl font-bold text-zinc-900 mb-1">{stat.value}</div>
-                    <div className="text-sm text-zinc-500 uppercase tracking-wider">{stat.label}</div>
+                    <div className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-white mb-1">{stat.value}</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-500 uppercase tracking-wider">{stat.label}</div>
                   </div>
                 ))}
               </div>
@@ -99,9 +91,6 @@ export default function HeroSection() {
       </div>
 
       <style jsx>{`
-        .heroTitleWrap {
-          filter: drop-shadow(0 10px 24px rgba(0,0,0,0.06));
-        }
         .heroTitle {
           position: relative;
           display: inline-block;

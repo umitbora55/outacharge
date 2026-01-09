@@ -132,11 +132,11 @@ export default function Onboarding() {
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden transition-colors duration-300">
                 {/* Close Button */}
                 <button
                     onClick={handleSkip}
-                    className="absolute top-4 right-4 z-10 p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-full transition-all"
+                    className="absolute top-4 right-4 z-10 p-2 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -145,7 +145,7 @@ export default function Onboarding() {
                 {!isLastStep && (
                     <button
                         onClick={handleSkip}
-                        className="absolute top-4 left-4 z-10 px-4 py-1.5 text-sm text-zinc-400 hover:text-zinc-600 font-medium transition-colors"
+                        className="absolute top-4 left-4 z-10 px-4 py-1.5 text-sm text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 font-medium transition-colors"
                     >
                         Geç
                     </button>
@@ -194,7 +194,7 @@ export default function Onboarding() {
                                 onClick={() => handleDotClick(index)}
                                 className={`h-2 rounded-full transition-all duration-300 ${index === currentStep
                                     ? `w-8 bg-${step.iconColor}-500`
-                                    : 'w-2 bg-zinc-300 hover:bg-zinc-400'
+                                    : 'w-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600'
                                     }`}
                                 style={{
                                     backgroundColor: index === currentStep
@@ -212,14 +212,14 @@ export default function Onboarding() {
                     <div className="p-6 sm:p-8 text-center">
                         <h2
                             key={`title-${currentStep}`}
-                            className={`text-xl sm:text-2xl font-bold text-zinc-900 mb-3 transition-all duration-500 ${direction === 'next' ? 'animate-in slide-in-from-right-4' : 'animate-in slide-in-from-left-4'
+                            className={`text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 transition-all duration-500 ${direction === 'next' ? 'animate-in slide-in-from-right-4' : 'animate-in slide-in-from-left-4'
                                 }`}
                         >
                             {step.title}
                         </h2>
                         <p
                             key={`desc-${currentStep}`}
-                            className={`text-zinc-500 text-sm sm:text-base mb-8 max-w-sm mx-auto transition-all duration-500 delay-75 ${direction === 'next' ? 'animate-in slide-in-from-right-4' : 'animate-in slide-in-from-left-4'
+                            className={`text-zinc-500 dark:text-zinc-400 text-sm sm:text-base mb-8 max-w-sm mx-auto transition-all duration-500 delay-75 ${direction === 'next' ? 'animate-in slide-in-from-right-4' : 'animate-in slide-in-from-left-4'
                                 }`}
                         >
                             {step.description}
@@ -230,7 +230,7 @@ export default function Onboarding() {
                             {currentStep > 0 && (
                                 <button
                                     onClick={handlePrev}
-                                    className="flex items-center gap-1 px-5 py-3 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl font-medium transition-all"
+                                    className="flex items-center gap-1 px-5 py-3 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl font-medium transition-all"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                     Geri
@@ -241,7 +241,7 @@ export default function Onboarding() {
                                 onClick={handleNext}
                                 className={`flex items-center gap-2 px-8 py-3 rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${isLastStep
                                     ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-emerald-500/25'
-                                    : 'bg-zinc-900 hover:bg-zinc-800 text-white shadow-zinc-900/25'
+                                    : 'bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-black shadow-zinc-900/25 dark:shadow-white/10'
                                     }`}
                             >
                                 {isLastStep ? (
@@ -261,7 +261,7 @@ export default function Onboarding() {
                 </div>
 
                 {/* Progress Bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-100">
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 transition-colors">
                     <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-500"
                         style={{ width: `${((currentStep + 1) / onboardingSteps.length) * 100}%` }}

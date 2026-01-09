@@ -310,12 +310,12 @@ export default function AraclarimPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
                 <HeaderWhite />
                 <div className="max-w-2xl mx-auto px-4 py-12 text-center">
                     <Car className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-zinc-900 mb-2">Giriş Yapın</h2>
-                    <p className="text-zinc-500 mb-6">Araçlarınızı görmek için giriş yapmanız gerekiyor.</p>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Giriş Yapın</h2>
+                    <p className="text-zinc-500 dark:text-zinc-400 mb-6">Araçlarınızı görmek için giriş yapmanız gerekiyor.</p>
                     <Link href="/giris" className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl">
                         Giriş Yap
                     </Link>
@@ -325,14 +325,14 @@ export default function AraclarimPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
             <HeaderWhite />
 
             <div className="max-w-3xl mx-auto px-4 py-8">
                 {/* Back */}
                 <Link
                     href="/profil"
-                    className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-700 mb-6 transition-colors"
+                    className="inline-flex items-center gap-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Profil
@@ -341,8 +341,8 @@ export default function AraclarimPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-zinc-900">Araçlarım</h1>
-                        <p className="text-zinc-500">Elektrikli araçlarınızı yönetin</p>
+                        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Araçlarım</h1>
+                        <p className="text-zinc-500 dark:text-zinc-400">Elektrikli araçlarınızı yönetin</p>
                     </div>
                     <button
                         onClick={() => setShowAddModal(true)}
@@ -361,10 +361,10 @@ export default function AraclarimPage() {
                         <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
                     </div>
                 ) : vehicles.length === 0 ? (
-                    <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                        <Car className="w-16 h-16 text-zinc-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-zinc-900 mb-2">Henüz araç eklemediniz</h3>
-                        <p className="text-zinc-500 mb-6">Elektrikli aracınızı ekleyerek marka topluluklarına katılın.</p>
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm p-12 text-center">
+                        <Car className="w-16 h-16 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Henüz araç eklemediniz</h3>
+                        <p className="text-zinc-500 dark:text-zinc-400 mb-6">Elektrikli aracınızı ekleyerek marka topluluklarına katılın.</p>
                         <button
                             onClick={() => setShowAddModal(true)}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors"
@@ -381,34 +381,34 @@ export default function AraclarimPage() {
                             return (
                                 <div
                                     key={vehicle.id}
-                                    className={`bg-white rounded-2xl shadow-sm p-5 border-2 transition-all ${vehicle.is_current ? 'border-emerald-500' : 'border-transparent'
+                                    className={`bg-white dark:bg-zinc-900 rounded-2xl shadow-sm p-5 border-2 transition-all ${vehicle.is_current ? 'border-emerald-500' : 'border-transparent dark:border-zinc-800'
                                         }`}
                                 >
                                     <div className="flex items-start gap-4">
                                         {/* Logo */}
-                                        <div className="w-16 h-16 bg-zinc-100 rounded-xl p-3 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-xl p-3 flex items-center justify-center flex-shrink-0">
                                             {logoUrl ? (
                                                 <img src={logoUrl} alt={vehicle.brand} className="w-full h-full object-contain" />
                                             ) : (
-                                                <Car className="w-8 h-8 text-zinc-400" />
+                                                <Car className="w-8 h-8 text-zinc-400 dark:text-zinc-600" />
                                             )}
                                         </div>
 
                                         {/* Info */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="font-bold text-zinc-900 text-lg">
+                                                <h3 className="font-bold text-zinc-900 dark:text-white text-lg">
                                                     {vehicle.brand} {vehicle.model}
                                                 </h3>
                                                 {vehicle.is_current && (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-full">
                                                         <Star className="w-3 h-3 fill-current" />
                                                         Mevcut
                                                     </span>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center gap-4 text-sm text-zinc-500 mb-3">
+                                            <div className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400 mb-3">
                                                 <span className="flex items-center gap-1.5">
                                                     <Calendar className="w-4 h-4" />
                                                     {vehicle.year} Model
@@ -453,8 +453,8 @@ export default function AraclarimPage() {
 
                                     {/* Document Preview */}
                                     {vehicle.verification_document_url && (
-                                        <div className="mt-4 pt-4 border-t border-zinc-100">
-                                            <div className="flex items-center gap-2 text-sm text-zinc-500">
+                                        <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                                                 <FileText className="w-4 h-4" />
                                                 <span>Belge yüklendi</span>
 
@@ -462,7 +462,7 @@ export default function AraclarimPage() {
                                                     href={vehicle.verification_document_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-blue-600 hover:underline"
+                                                    className="text-blue-600 dark:text-blue-400 hover:underline"
                                                 >
                                                     Görüntüle
                                                 </a>
@@ -479,24 +479,24 @@ export default function AraclarimPage() {
             {/* Add Vehicle Modal */}
             {
                 showAddModal && (
-                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
-                        <div className="bg-white rounded-3xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-                            <h2 className="text-xl font-bold text-zinc-900 mb-6">Yeni Araç Ekle</h2>
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl w-full max-w-lg p-6 transition-colors shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-white mb-6">Yeni Araç Ekle</h2>
 
                             <form onSubmit={handleAddVehicle}>
                                 {error && (
-                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl text-sm text-red-700 dark:text-red-400">
                                         {error}
                                     </div>
                                 )}
 
                                 {/* Brand */}
                                 <div className="mb-4">
-                                    <label className="block text-sm font-medium text-zinc-700 mb-2">Marka</label>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Marka</label>
                                     <select
                                         value={newBrand}
                                         onChange={(e) => setNewBrand(e.target.value)}
-                                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                                        className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                                         required
                                     >
                                         <option value="">Marka seçin</option>
@@ -508,24 +508,24 @@ export default function AraclarimPage() {
 
                                 {/* Model */}
                                 <div className="mb-4">
-                                    <label className="block text-sm font-medium text-zinc-700 mb-2">Model</label>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Model</label>
                                     <input
                                         type="text"
                                         value={newModel}
                                         onChange={(e) => setNewModel(e.target.value)}
                                         placeholder="Örn: Model 3, ZS EV, iX3..."
-                                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                                        className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                                         required
                                     />
                                 </div>
 
                                 {/* Year */}
                                 <div className="mb-4">
-                                    <label className="block text-sm font-medium text-zinc-700 mb-2">Model Yılı</label>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Model Yılı</label>
                                     <select
                                         value={newYear}
                                         onChange={(e) => setNewYear(parseInt(e.target.value))}
-                                        className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                                        className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                                     >
                                         {yearList.map((year) => (
                                             <option key={year} value={year}>{year}</option>
@@ -540,9 +540,9 @@ export default function AraclarimPage() {
                                             type="checkbox"
                                             checked={isCurrent}
                                             onChange={(e) => setIsCurrent(e.target.checked)}
-                                            className="w-5 h-5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+                                            className="w-5 h-5 rounded border-zinc-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 bg-transparent"
                                         />
-                                        <span className="text-sm text-zinc-700">Bu benim mevcut aracım</span>
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-300">Bu benim mevcut aracım</span>
                                     </label>
                                 </div>
 
@@ -551,7 +551,7 @@ export default function AraclarimPage() {
                                     <button
                                         type="button"
                                         onClick={() => setShowAddModal(false)}
-                                        className="flex-1 px-4 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-medium rounded-xl transition-colors"
+                                        className="flex-1 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-xl transition-colors"
                                     >
                                         İptal
                                     </button>

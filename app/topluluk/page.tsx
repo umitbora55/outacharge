@@ -270,11 +270,11 @@ export default function ToplulukPage() {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
             <HeaderWhite />
 
             {/* Hero */}
-            <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white">
+            <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 text-white border-b dark:border-zinc-800">
                 <div className="max-w-6xl mx-auto px-4 py-12">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                         <div>
@@ -295,7 +295,7 @@ export default function ToplulukPage() {
                                     placeholder="Konu ara..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur border border-white/20 rounded-xl text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                    className="w-full pl-12 pr-4 py-3 bg-white/10 dark:bg-zinc-950/30 backdrop-blur border border-white/20 dark:border-zinc-800 rounded-xl text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                 />
                             </div>
                             <Link
@@ -311,12 +311,12 @@ export default function ToplulukPage() {
             </div>
 
             {/* Brand Communities Banner */}
-            <div className="bg-white border-b border-zinc-200">
+            <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
                 <div className="max-w-6xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                            <Car className="w-5 h-5 text-zinc-600" />
-                            <span className="font-semibold text-zinc-900">Marka Toplulukları</span>
+                            <Car className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">Marka Toplulukları</span>
                         </div>
                         <Link
                             href="/topluluk/markalar"
@@ -334,15 +334,15 @@ export default function ToplulukPage() {
                                     key={brand.id}
                                     href={`/topluluk/markalar/${brand.slug}`}
                                     className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 transition-all hover:shadow-md flex-shrink-0 ${selectedBrand === brand.brand
-                                        ? 'border-emerald-500 bg-emerald-50'
-                                        : 'border-zinc-200 bg-white hover:border-zinc-300'
+                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10'
+                                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-zinc-300 dark:hover:border-zinc-700'
                                         }`}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         setSelectedBrand(selectedBrand === brand.brand ? null : brand.brand);
                                     }}
                                 >
-                                    <div className="w-8 h-8 bg-zinc-100 rounded-lg p-1.5 flex items-center justify-center">
+                                    <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1.5 flex items-center justify-center">
                                         {logoUrl ? (
                                             <img src={logoUrl} alt={brand.brand} className="w-full h-full object-contain" />
                                         ) : (
@@ -350,8 +350,8 @@ export default function ToplulukPage() {
                                         )}
                                     </div>
                                     <div>
-                                        <p className="font-medium text-zinc-900 text-sm">{brand.brand}</p>
-                                        <p className="text-xs text-zinc-500">{brand.post_count} konu</p>
+                                        <p className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{brand.brand}</p>
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{brand.post_count} konu</p>
                                     </div>
                                 </Link>
                             );
@@ -367,15 +367,15 @@ export default function ToplulukPage() {
                         {/* Mobile Filter Button */}
                         <button
                             onClick={() => setShowMobileFilters(true)}
-                            className="lg:hidden w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-zinc-200 rounded-xl mb-4"
+                            className="lg:hidden w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl mb-4 text-zinc-900 dark:text-white"
                         >
                             <Filter className="w-5 h-5" />
                             Filtrele
                         </button>
 
                         {/* Desktop Sidebar */}
-                        <div className="hidden lg:block bg-white rounded-2xl shadow-sm p-4 sticky top-4">
-                            <h3 className="font-semibold text-zinc-900 mb-3">Kategoriler</h3>
+                        <div className="hidden lg:block bg-white dark:bg-zinc-900 rounded-2xl shadow-sm p-4 border border-zinc-100 dark:border-zinc-800 sticky top-4">
+                            <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">Kategoriler</h3>
                             <div className="space-y-1">
                                 {categories.map((cat) => {
                                     const Icon = cat.icon;
@@ -385,8 +385,8 @@ export default function ToplulukPage() {
                                             key={cat.id}
                                             onClick={() => setSelectedCategory(cat.id)}
                                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${isSelected
-                                                ? 'bg-emerald-50 text-emerald-700'
-                                                : 'text-zinc-600 hover:bg-zinc-50'
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+                                                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'
                                                 }`}
                                         >
                                             <Icon className="w-4 h-4" />
@@ -403,13 +403,13 @@ export default function ToplulukPage() {
                         {showMobileFilters && (
                             <div className="fixed inset-0 bg-black/50 z-50 lg:hidden" onClick={() => setShowMobileFilters(false)}>
                                 <div
-                                    className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto"
+                                    className="absolute bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="font-semibold text-lg text-zinc-900">Kategoriler</h3>
+                                        <h3 className="font-semibold text-lg text-zinc-900 dark:text-white">Kategoriler</h3>
                                         <button onClick={() => setShowMobileFilters(false)}>
-                                            <X className="w-6 h-6 text-zinc-500" />
+                                            <X className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
@@ -425,7 +425,7 @@ export default function ToplulukPage() {
                                                     }}
                                                     className={`flex items-center gap-2 px-4 py-3 rounded-xl text-left transition-all ${isSelected
                                                         ? 'bg-emerald-500 text-white'
-                                                        : 'bg-zinc-100 text-zinc-700'
+                                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                                         }`}
                                                 >
                                                     <Icon className="w-4 h-4" />
@@ -471,15 +471,15 @@ export default function ToplulukPage() {
 
                         {/* Sort */}
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-semibold text-zinc-900">
+                            <h2 className="font-semibold text-zinc-900 dark:text-white">
                                 {loading ? 'Yükleniyor...' : `${posts.length} konu`}
                             </h2>
-                            <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-sm">
+                            <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-1 shadow-sm">
                                 <button
                                     onClick={() => setSortBy('new')}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${sortBy === 'new'
-                                        ? 'bg-zinc-900 text-white'
-                                        : 'text-zinc-500 hover:text-zinc-700'
+                                        ? 'bg-zinc-900 dark:bg-zinc-700 text-white'
+                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                                         }`}
                                 >
                                     <Clock className="w-3.5 h-3.5" />
@@ -488,8 +488,8 @@ export default function ToplulukPage() {
                                 <button
                                     onClick={() => setSortBy('popular')}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${sortBy === 'popular'
-                                        ? 'bg-zinc-900 text-white'
-                                        : 'text-zinc-500 hover:text-zinc-700'
+                                        ? 'bg-zinc-900 dark:bg-zinc-700 text-white'
+                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                                         }`}
                                 >
                                     <TrendingUp className="w-3.5 h-3.5" />
@@ -504,10 +504,10 @@ export default function ToplulukPage() {
                                 <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
                             </div>
                         ) : posts.length === 0 ? (
-                            <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-                                <MessageCircle className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-semibold text-zinc-900 mb-2">Henüz konu yok</h3>
-                                <p className="text-zinc-500 mb-6">Bu kriterlere uygun konu bulunamadı.</p>
+                            <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm p-12 text-center">
+                                <MessageCircle className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">Henüz konu yok</h3>
+                                <p className="text-zinc-500 dark:text-zinc-400 mb-6">Bu kriterlere uygun konu bulunamadı.</p>
                                 <Link
                                     href="/topluluk/yeni"
                                     className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors"
@@ -527,12 +527,12 @@ export default function ToplulukPage() {
                                         <Link
                                             key={post.id}
                                             href={`/topluluk/${post.id}`}
-                                            className="block bg-white rounded-2xl shadow-sm hover:shadow-md transition-all p-5 group"
+                                            className="block bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-all p-5 group"
                                         >
                                             <div className="flex gap-4">
                                                 {/* Brand Logo (if brand post) */}
                                                 {post.brand_community_id && brandLogo && (
-                                                    <div className="hidden sm:flex w-12 h-12 bg-zinc-100 rounded-xl p-2 items-center justify-center flex-shrink-0">
+                                                    <div className="hidden sm:flex w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-xl p-2 items-center justify-center flex-shrink-0">
                                                         <img src={brandLogo} alt={post.operator_name || ''} className="w-full h-full object-contain" />
                                                     </div>
                                                 )}
@@ -541,13 +541,13 @@ export default function ToplulukPage() {
                                                     {/* Tags */}
                                                     <div className="flex flex-wrap items-center gap-2 mb-2">
                                                         {/* Category Badge */}
-                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${categoryStyle.bg} ${categoryStyle.text} border ${categoryStyle.border}`}>
+                                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${categoryStyle.bg} dark:bg-opacity-10 ${categoryStyle.text} border ${categoryStyle.border} dark:border-opacity-20`}>
                                                             <CategoryIcon className="w-3.5 h-3.5" />
                                                             {getCategoryLabel(post.category)}
                                                         </span>
 
                                                         {post.operator_name && (
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 text-white rounded-lg text-xs font-medium">
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 dark:bg-zinc-800 text-white rounded-lg text-xs font-medium border border-zinc-800 dark:border-zinc-700">
                                                                 <Car className="w-3.5 h-3.5" />
                                                                 {post.operator_name}
                                                             </span>
@@ -555,7 +555,7 @@ export default function ToplulukPage() {
 
                                                         {/* Model & Year Badge */}
                                                         {(post.vehicle_model || post.vehicle_year) && (
-                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium border border-blue-200 dark:border-blue-900/20">
                                                                 {post.vehicle_model && <span>{post.vehicle_model}</span>}
                                                                 {post.vehicle_model && post.vehicle_year && <span>•</span>}
                                                                 {post.vehicle_year && <span>{post.vehicle_year}</span>}
@@ -564,24 +564,24 @@ export default function ToplulukPage() {
                                                     </div>
 
                                                     {/* Title */}
-                                                    <h3 className="font-semibold text-zinc-900 mb-1 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                                                    <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1 line-clamp-2 group-hover:text-emerald-600 transition-colors">
                                                         {post.title}
                                                     </h3>
 
                                                     {/* Meta */}
-                                                    <div className="flex items-center gap-4 text-sm text-zinc-500">
-                                                        <span className="font-medium text-zinc-700">{post.user.full_name}</span>
+                                                    <div className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">
+                                                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{post.user.full_name}</span>
                                                         <span>{formatDate(post.created_at)}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Stats */}
-                                                <div className="hidden sm:flex flex-col items-end gap-2 text-sm text-zinc-400">
-                                                    <span className="flex items-center gap-1.5">
+                                                <div className="hidden sm:flex flex-col items-end gap-2 text-sm text-zinc-400 dark:text-zinc-500">
+                                                    <span className="flex items-center gap-1.5 transition-colors group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
                                                         <MessageCircle className="w-4 h-4" />
                                                         {post.comment_count || 0}
                                                     </span>
-                                                    <span className="flex items-center gap-1.5">
+                                                    <span className="flex items-center gap-1.5 transition-colors group-hover:text-zinc-600 dark:group-hover:text-zinc-300">
                                                         <Eye className="w-4 h-4" />
                                                         {post.view_count || 0}
                                                     </span>

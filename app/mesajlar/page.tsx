@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import HeaderWhite from "../components/HeaderWhite";
 import {
     ArrowLeft,
     MessageSquare,
@@ -208,14 +209,16 @@ function MesajlarContent() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="bg-white border border-gray-200 rounded-xl p-8 text-center max-w-md">
-                    <Mail className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-zinc-900 mb-2">Giriş Gerekli</h2>
-                    <p className="text-gray-500 mb-6">Mesajlarınızı görmek için giriş yapmalısınız.</p>
+            <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 text-center max-w-md shadow-xl">
+                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Mail className="w-10 h-10 text-emerald-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Giriş Gerekli</h2>
+                    <p className="text-gray-500 dark:text-zinc-400 mb-8">Mesajlarınıza ulaşmak ve sürücülerle iletişimde kalmak için giriş yapmalısınız.</p>
                     <Link
                         href="/?login=true"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors"
+                        className="inline-flex items-center justify-center w-full gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                     >
                         Giriş Yap
                     </Link>
@@ -225,140 +228,165 @@ function MesajlarContent() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b border-gray-200 sticky top-0 z-40 backdrop-blur-sm">
-                <div className="max-w-2xl mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between mb-4">
+        <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 transition-colors">
+            <HeaderWhite />
+
+            <div className="max-w-2xl mx-auto px-4 py-8">
+                {/* Header Section */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 mb-8 shadow-sm">
+                    <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <Link
                                 href="/topluluk"
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="w-10 h-10 rounded-full bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 flex items-center justify-center text-gray-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm"
                             >
-                                <ArrowLeft className="w-5 h-5 text-gray-500" />
+                                <ArrowLeft className="w-5 h-5" />
                             </Link>
-                            <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-                                <Mail className="w-6 h-6 text-emerald-500" />
+                            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                                <Mail className="w-7 h-7 text-emerald-500" />
                                 Mesajlar
                             </h1>
                         </div>
                         <button
                             onClick={() => setShowNewChat(!showNewChat)}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors text-sm"
+                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 ${showNewChat
+                                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-none"
+                                : "bg-emerald-500 hover:bg-emerald-600 text-zinc-950 shadow-emerald-500/20"
+                                }`}
                         >
-                            Yeni Mesaj
+                            {showNewChat ? "İptal" : "Yeni Mesaj"}
                         </button>
                     </div>
 
                     {/* New Chat Search */}
                     {showNewChat && (
-                        <div className="mb-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                        <div className="mt-6 animate-in slide-in-from-top-2 duration-300">
+                            <div className="relative group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
                                 <input
                                     type="text"
-                                    placeholder="Kullanıcı ara..."
+                                    placeholder="Kullanıcı adı ile ara..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-gray-300 rounded-lg text-zinc-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl text-zinc-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
                                     autoFocus
                                 />
                             </div>
 
                             {/* Search Results */}
                             {searchQuery.length >= 2 && (
-                                <div className="mt-2 bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                <div className="mt-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
                                     {searching ? (
-                                        <div className="p-4 text-center">
-                                            <Loader2 className="w-5 h-5 text-emerald-500 animate-spin mx-auto" />
+                                        <div className="p-8 text-center">
+                                            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mx-auto" />
                                         </div>
                                     ) : searchResults.length === 0 ? (
-                                        <div className="p-4 text-center text-gray-400">
-                                            Kullanıcı bulunamadı
+                                        <div className="p-8 text-center">
+                                            <p className="text-gray-500 dark:text-zinc-400 font-medium">Kullanıcı bulunamadı</p>
                                         </div>
                                     ) : (
-                                        searchResults.map((result) => (
-                                            <button
-                                                key={result.id}
-                                                onClick={() => startConversation(result.id)}
-                                                className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 transition-colors"
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-zinc-900 font-bold">
-                                                    {result.full_name?.charAt(0) || "?"}
-                                                </div>
-                                                <span className="text-zinc-900">{result.full_name}</span>
-                                            </button>
-                                        ))
+                                        <div className="divide-y divide-gray-100 dark:divide-zinc-800">
+                                            {searchResults.map((result) => (
+                                                <button
+                                                    key={result.id}
+                                                    onClick={() => startConversation(result.id)}
+                                                    className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all group"
+                                                >
+                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 p-[2px] group-hover:scale-110 transition-transform">
+                                                        <div className="w-full h-full rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-lg overflow-hidden">
+                                                            {result.avatar_url ? (
+                                                                <img src={result.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span>{result.full_name?.charAt(0) || "?"}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-zinc-900 dark:text-white font-bold">{result.full_name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* Conversations List */}
-            <div className="max-w-2xl mx-auto">
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                    </div>
-                ) : conversations.length === 0 ? (
-                    <div className="text-center py-12">
-                        <MessageSquare className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                        <h3 className="text-xl text-gray-500 mb-2">Henüz mesajınız yok</h3>
-                        <p className="text-gray-400 mb-4">Yeni bir sohbet başlatın!</p>
-                        <button
-                            onClick={() => setShowNewChat(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-zinc-900 rounded-lg transition-colors"
-                        >
-                            <Users className="w-5 h-5" />
-                            Kullanıcı Ara
-                        </button>
-                    </div>
-                ) : (
-                    <div className="divide-y divide-slate-700/50">
-                        {conversations.map((conv) => (
-                            <Link
-                                key={conv.id}
-                                href={`/mesajlar/${conv.id}`}
-                                className="flex items-center gap-4 p-4 hover:bg-white transition-colors"
+                {/* Conversations List */}
+                <div className="space-y-4">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+                        </div>
+                    ) : conversations.length === 0 ? (
+                        <div className="text-center py-24 bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800">
+                            <div className="w-24 h-24 bg-gray-50 dark:bg-zinc-950 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                                <MessageSquare className="w-10 h-10 text-gray-300 dark:text-zinc-700" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Sohbetler Boş</h3>
+                            <p className="text-gray-500 dark:text-zinc-400 mb-8 max-w-xs mx-auto">Henüz kimseyle mesajlaşmadınız. Yeni bir sohbet başlatmak için yukarıdaki butonu kullanın.</p>
+                            <button
+                                onClick={() => setShowNewChat(true)}
+                                className="inline-flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
                             >
-                                <div className="relative">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-zinc-900 font-bold text-lg">
-                                        {conv.other_user.full_name?.charAt(0) || "?"}
-                                    </div>
-                                    {conv.unread_count > 0 && (
-                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-xs text-zinc-900 font-bold">
-                                            {conv.unread_count > 9 ? "9+" : conv.unread_count}
+                                <Users className="w-5 h-5" />
+                                Kullanıcı Ara
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+                            <div className="divide-y divide-gray-50 dark:divide-zinc-800/50">
+                                {conversations.map((conv) => (
+                                    <Link
+                                        key={conv.id}
+                                        href={`/mesajlar/${conv.id}`}
+                                        className="flex items-center gap-5 p-5 hover:bg-gray-50 dark:hover:bg-zinc-800/40 transition-all group"
+                                    >
+                                        <div className="relative flex-shrink-0">
+                                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 p-[2px] group-hover:scale-105 transition-transform">
+                                                <div className="w-full h-full rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-xl overflow-hidden shadow-inner">
+                                                    {conv.other_user.avatar_url ? (
+                                                        <img src={conv.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span>{conv.other_user.full_name?.charAt(0) || "?"}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {conv.unread_count > 0 && (
+                                                <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full flex items-center justify-center px-1 text-[10px] text-zinc-950 font-black shadow-lg">
+                                                    {conv.unread_count > 9 ? "9+" : conv.unread_count}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className={`font-medium ${conv.unread_count > 0 ? "text-zinc-900" : "text-gray-600"}`}>
-                                            {conv.other_user.full_name}
-                                        </span>
-                                        <span className="text-xs text-gray-400">
-                                            {formatTime(conv.last_message_at)}
-                                        </span>
-                                    </div>
-                                    {conv.last_message && (
-                                        <p className={`text-sm truncate ${conv.unread_count > 0 ? "text-gray-600" : "text-gray-400"}`}>
-                                            {conv.last_message.sender_id === user.id && "Sen: "}
-                                            {conv.last_message.content}
-                                        </p>
-                                    )}
-                                </div>
+                                        <div className="flex-1 min-w-0 pr-4">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span className={`text-[17px] truncate ${conv.unread_count > 0 ? "text-zinc-900 dark:text-white font-bold" : "text-gray-800 dark:text-zinc-200 font-bold"}`}>
+                                                    {conv.other_user.full_name}
+                                                </span>
+                                                <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest flex-shrink-0 ml-4">
+                                                    {formatTime(conv.last_message_at)}
+                                                </span>
+                                            </div>
+                                            {conv.last_message && (
+                                                <p className={`text-sm truncate leading-relaxed ${conv.unread_count > 0 ? "text-gray-950 dark:text-zinc-100 font-bold" : "text-gray-500 dark:text-zinc-400 font-medium"}`}>
+                                                    {conv.last_message.sender_id === user.id && (
+                                                        <span className="text-emerald-500/80 mr-1 font-bold italic">Siz:</span>
+                                                    )}
+                                                    {conv.last_message.content}
+                                                </p>
+                                            )}
+                                        </div>
 
-                                {conv.unread_count > 0 && (
-                                    <Circle className="w-3 h-3 text-emerald-500 fill-emerald-500 flex-shrink-0" />
-                                )}
-                            </Link>
-                        ))}
-                    </div>
-                )}
+                                        {conv.unread_count > 0 && (
+                                            <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/40 animate-pulse flex-shrink-0" />
+                                        )}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

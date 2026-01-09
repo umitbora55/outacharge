@@ -16,10 +16,14 @@ import {
   WeatherConditions
 } from "@/lib/terrain";
 import { getRouteWeather, RouteWeatherSummary } from "@/lib/weather-service";
+import { optimizeChargingStops, OptimizationResult, compareChargingStrategies } from "@/lib/route-optimizer";
 import { useAuth } from "@/lib/auth";
-import { vehicles, vehiclesByBrand, brands, Vehicle } from "@/data/vehicles";
+import { vehicles as localVehicles, vehiclesByBrand, brands as localBrands, Vehicle, calculateChargingTime, ChargingCurvePoint } from "@/data/vehicles";
+import { fetchVehicle, toVehicleFormat, SUPPORTED_MAKES } from "@/lib/ev-api";
 import RouteWeatherAnalysis from "../components/RouteWeatherAnalysis";
 import RouteChatHub from "../components/RouteChatHub";
+import RouteJourney from "../components/RouteJourney";
+import RouteComparison from "../components/RouteComparison";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -112,13 +116,6 @@ function buildSpeedProfile(route: any) {
     }
   }
   return segments;
-}
-
-function effectiveChargingPower(soc: number, maxPower: number) {
-  if (soc < 55) return maxPower;
-  if (soc < 70) return maxPower * 0.7;
-  if (soc < 80) return maxPower * 0.45;
-  return maxPower * 0.25;
 }
 
 // ===== VEHICLE PHYSICS BUILDER =====
@@ -234,6 +231,12 @@ export default function RotaPlanlaPage() {
   const [currentCharge, setCurrentCharge] = useState(80);
   const [minArrivalCharge, setMinArrivalCharge] = useState(20);
 
+  // NEW: API-based vehicle search
+  const [vehicleSearchMode, setVehicleSearchMode] = useState<"local" | "api">("local");
+  const [apiModelSearch, setApiModelSearch] = useState("");
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
+
   // NEW: Trip settings
   const [passengerCount, setPassengerCount] = useState(1);
   const [luggageKg, setLuggageKg] = useState(20);
@@ -251,7 +254,12 @@ export default function RotaPlanlaPage() {
   const [showVehicleSelect, setShowVehicleSelect] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState("");
   const [showChatHub, setShowChatHub] = useState(false);
-  const [strategy, setStrategy] = useState<"fastest" | "fewest">("fastest");
+  const [strategy, setStrategy] = useState<"fastest" | "fewest" | "cheapest">("fastest");
+  const [comparisonResults, setComparisonResults] = useState<{
+    fastest: any;
+    fewest: any;
+    cheapest: any;
+  } | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -261,10 +269,53 @@ export default function RotaPlanlaPage() {
   // Auto-select user's vehicle
   useEffect(() => {
     if (user && user.vehicleBrand && user.vehicleModel && !selectedVehicle) {
-      const userVehicle = vehicles.find(v => v.brand === user.vehicleBrand && v.model === user.vehicleModel);
+      const userVehicle = localVehicles.find(v => v.brand === user.vehicleBrand && v.model === user.vehicleModel);
       if (userVehicle) setSelectedVehicle(userVehicle);
     }
   }, [user, selectedVehicle]);
+
+  // API'den araç getirme fonksiyonu
+  const fetchVehicleFromAPI = async (brand: string, model: string) => {
+    setApiLoading(true);
+    setApiError("");
+    try {
+      const data = await fetchVehicle(brand, model);
+      if (data) {
+        const formatted = toVehicleFormat(data);
+        // Vehicle tipine dönüştür
+        const vehicle: Vehicle = {
+          id: formatted.id,
+          brand: formatted.brand,
+          model: formatted.model,
+          year: formatted.year,
+          batteryCapacity: formatted.batteryCapacity,
+          maxDCPower: formatted.maxDCPower,
+          maxACPower: formatted.maxACPower,
+          connectors: formatted.connectors,
+          range: formatted.range,
+          massKg: formatted.massKg,
+          dragCoefficient: formatted.dragCoefficient,
+          frontalArea: formatted.frontalArea,
+          rollingResistance: formatted.rollingResistance,
+          drivetrainEfficiency: formatted.drivetrainEfficiency,
+          regenEfficiency: formatted.regenEfficiency,
+          hvacPowerKw: formatted.hvacPowerKw,
+          batteryHeatingKw: formatted.batteryHeatingKw,
+          optimalBatteryTempC: formatted.optimalBatteryTempC,
+          tempEfficiencyLoss: formatted.tempEfficiencyLoss,
+          chargingCurve: formatted.chargingCurve as ChargingCurvePoint[],
+        };
+        setSelectedVehicle(vehicle);
+        setShowVehicleSelect(false);
+        console.log("[API] Araç yüklendi:", vehicle);
+      } else {
+        setApiError("Araç bulunamadı");
+      }
+    } catch (err) {
+      setApiError("API hatası: " + String(err));
+    }
+    setApiLoading(false);
+  };
 
   // Initialize map
   useEffect(() => {
@@ -497,7 +548,8 @@ export default function RotaPlanlaPage() {
   };
 
   // ===== MAIN CALCULATE ROUTE =====
-  const calculateRoute = async () => {
+  const calculateRoute = async (forcedStrategy?: "fastest" | "fewest" | "cheapest") => {
+    const currentStrategy = forcedStrategy || strategy;
     if (!origin || !destination || !selectedVehicle) {
       setError("Lütfen başlangıç, bitiş noktası ve araç seçin.");
       return;
@@ -609,76 +661,173 @@ export default function RotaPlanlaPage() {
         vehicle: { mass: vehiclePhysics.massKg, hvac: vehiclePhysics.hvacPowerKw },
       });
 
-      // 10. Determine if charging stops needed
+      // 10. Determine if charging stops needed - GRAPH-BASED OPTIMIZATION
       const chargingStops: ChargingStop[] = [];
       let totalChargingTime = 0;
       let totalChargingCost = 0;
+      let arrivalCharge = 0;
 
       if (totalEnergyNeeded > usableEnergy) {
         const stations = await fetchStationsAlongRoute(coordinates);
-        let currentEnergy = availableEnergy;
-        let lastStopProgressKm = 0;
 
-        const ordered = [...stations].sort((a, b) => a.routeProgressKm - b.routeProgressKm);
-        const candidates = ordered.filter(s => s.routeProgressKm >= 30);
-
-        for (const station of candidates) {
-          const deltaKm = Math.max(0, station.routeProgressKm - lastStopProgressKm);
-          if (deltaKm < 20) continue;
-
-          // Calculate energy to this station proportionally
-          const progressRatio = deltaKm / distanceKm;
-          const energyToStation = totalEnergyNeeded * progressRatio;
-          const chargeAtStation = ((currentEnergy - energyToStation) / selectedVehicle.batteryCapacity) * 100;
-
-          if (chargeAtStation < minArrivalCharge + 10 && chargeAtStation > 0) {
-            const targetSoC = strategy === "fastest" ? 65 : 90;
-            const chargeToAdd = Math.max(0, targetSoC - chargeAtStation);
-            const energyToAdd = (chargeToAdd / 100) * selectedVehicle.batteryCapacity;
-            const chargingPower = Math.min(station.power, selectedVehicle.maxDCPower);
-
-            // Calculate charge time with curve
-            let remainingKwh = energyToAdd;
-            let currentTempSoC = chargeAtStation;
-            let minutes = 0;
-            while (remainingKwh > 0 && currentTempSoC < targetSoC) {
-              const power = effectiveChargingPower(currentTempSoC, chargingPower);
-              const delta = Math.min(remainingKwh, power / 60);
-              remainingKwh -= delta;
-              currentTempSoC += (delta / selectedVehicle.batteryCapacity) * 100;
-              minutes++;
+        let optimizationResult: OptimizationResult;
+        try {
+          // 10.1 Compare all strategies
+          const comparison = compareChargingStrategies(
+            selectedVehicle,
+            { name: origin.name, lng: origin.lng, lat: origin.lat },
+            { name: destination.name, lng: destination.lng, lat: destination.lat },
+            stations.map(s => ({
+              id: s.id.toString(),
+              name: s.name,
+              lng: s.lng,
+              lat: s.lat,
+              power: s.power,
+              powerType: s.powerType as "DC" | "AC",
+              operator: s.operator,
+              routeProgressKm: s.routeProgressKm,
+              detourKm: s.distanceToRouteKm,
+              detourMin: s.detourMin ?? undefined,
+            })),
+            {
+              distanceKm,
+              durationMin,
+              energyPerKm: energyResult.efficiency * 1000,
+            },
+            {
+              startSoC: currentCharge,
+              minArrivalSoC: minArrivalCharge,
+              batteryTemp: weather.average.temperature,
             }
+          );
 
-            const pricePerKwh = station.powerType === "DC" ? 12.5 : 9;
-            const chargingCost = energyToAdd * pricePerKwh;
+          setComparisonResults({
+            fastest: { ...comparison.fastest, strategy: "fastest", label: "En Hızlı", icon: "⚡" },
+            fewest: { ...comparison.fewest, strategy: "fewest", label: "Az Durak", icon: "📍" },
+            cheapest: { ...comparison.cheapest, strategy: "cheapest", label: "En Ucuz", icon: "💰" },
+          });
+
+          // Use graph-based optimizer for current strategy
+          optimizationResult = (comparison as any)[currentStrategy];
+        } catch (err) {
+          console.error("[OPTIMIZER ERROR]", err);
+          optimizationResult = {
+            success: false,
+            stops: [],
+            nodesExplored: 0,
+            totalDrivingMin: 0,
+            totalChargingMin: 0,
+            totalTimeMin: 0,
+            totalCostTL: 0,
+            arrivalSoC: 0
+          };
+        }
+
+        console.log("[OPTIMIZER RESULT]", {
+          success: optimizationResult.success,
+          stops: optimizationResult.stops?.length || 0,
+          nodesExplored: optimizationResult.nodesExplored,
+          totalTimeMin: optimizationResult.totalTimeMin,
+          arrivalSoC: optimizationResult.arrivalSoC,
+        });
+
+        if (optimizationResult.success) {
+          // Convert optimizer stops to ChargingStop format
+          let lastProgressKm = 0;
+          for (const stop of optimizationResult.stops) {
+            const originalStation = stations.find(s => s.id.toString() === stop.station.id);
+            if (!originalStation) continue;
 
             chargingStops.push({
-              station,
-              arrivalCharge: Math.round(chargeAtStation),
-              departureCharge: targetSoC,
-              chargingTime: Math.round(minutes),
-              chargingCost: Math.round(chargingCost),
-              distanceFromPrev: Math.round(deltaKm),
+              station: originalStation,
+              arrivalCharge: stop.arrivalSoC,
+              departureCharge: stop.departureSoC,
+              chargingTime: stop.chargingTimeMin,
+              chargingCost: stop.chargingCostTL,
+              distanceFromPrev: Math.round(stop.station.routeProgressKm - lastProgressKm),
             });
 
-            totalChargingTime += (minutes + (station.detourMin ?? 0));
-            totalChargingCost += chargingCost;
-            currentEnergy = currentEnergy - energyToStation + energyToAdd;
-            lastStopProgressKm = station.routeProgressKm;
+            console.log("[CHARGING]", {
+              station: stop.station.name,
+              arrivalSoC: stop.arrivalSoC,
+              targetSoC: stop.departureSoC,
+              stationPower: stop.station.power,
+              vehicleMaxPower: selectedVehicle.maxDCPower,
+              minutes: stop.chargingTimeMin,
+              energyKwh: stop.energyChargedKwh,
+            });
 
-            if (chargingStops.length >= 3) break;
+            lastProgressKm = stop.station.routeProgressKm;
           }
+
+          totalChargingTime = optimizationResult.totalChargingMin;
+          totalChargingCost = optimizationResult.totalCostTL;
+          arrivalCharge = optimizationResult.arrivalSoC;
+        } else {
+          // Fallback: Basit greedy algoritma
+          console.warn("[OPTIMIZER] Failed, using greedy fallback");
+          let currentEnergy = availableEnergy;
+          let lastStopProgressKm = 0;
+
+          const ordered = [...stations].sort((a, b) => a.routeProgressKm - b.routeProgressKm);
+          const candidates = ordered.filter(s => s.routeProgressKm >= 30);
+
+          for (const station of candidates) {
+            const deltaKm = Math.max(0, station.routeProgressKm - lastStopProgressKm);
+            if (deltaKm < 20) continue;
+
+            const progressRatio = deltaKm / distanceKm;
+            const energyToStation = totalEnergyNeeded * progressRatio;
+            const chargeAtStation = ((currentEnergy - energyToStation) / selectedVehicle.batteryCapacity) * 100;
+
+            if (chargeAtStation < minArrivalCharge + 10 && chargeAtStation > 0) {
+              const targetSoC = strategy === "fastest" ? 65 : 90;
+              const chargingPower = Math.min(station.power, selectedVehicle.maxDCPower);
+              const batteryTemp = weather.average.temperature;
+
+              const chargeResult = calculateChargingTime(
+                selectedVehicle,
+                chargeAtStation,
+                targetSoC,
+                chargingPower,
+                batteryTemp
+              );
+
+              const pricePerKwh = station.powerType === "DC" ? 12.5 : 9;
+              const chargingCost = chargeResult.energyKwh * pricePerKwh;
+
+              chargingStops.push({
+                station,
+                arrivalCharge: Math.round(chargeAtStation),
+                departureCharge: targetSoC,
+                chargingTime: chargeResult.minutes,
+                chargingCost: Math.round(chargingCost),
+                distanceFromPrev: Math.round(deltaKm),
+              });
+
+              totalChargingTime += (chargeResult.minutes + (station.detourMin ?? 0));
+              totalChargingCost += chargingCost;
+              currentEnergy = currentEnergy - energyToStation + chargeResult.energyKwh;
+              lastStopProgressKm = station.routeProgressKm;
+
+              if (chargingStops.length >= 3) break;
+            }
+          }
+
+          // Calculate arrival charge for fallback
+          const totalEnergyCharged = chargingStops.reduce((sum, stop) =>
+            sum + ((stop.departureCharge - stop.arrivalCharge) / 100) * selectedVehicle.batteryCapacity, 0
+          );
+          const finalEnergy = availableEnergy - totalEnergyNeeded + totalEnergyCharged;
+          arrivalCharge = Math.round((finalEnergy / selectedVehicle.batteryCapacity) * 100);
         }
+      } else {
+        // No charging needed
+        const finalEnergy = availableEnergy - totalEnergyNeeded;
+        arrivalCharge = Math.round((finalEnergy / selectedVehicle.batteryCapacity) * 100);
       }
 
-      // 11. Calculate arrival charge
-      const totalEnergyCharged = chargingStops.reduce((sum, stop) =>
-        sum + ((stop.departureCharge - stop.arrivalCharge) / 100) * selectedVehicle.batteryCapacity, 0
-      );
-      const finalEnergy = availableEnergy - totalEnergyNeeded + totalEnergyCharged;
-      const arrivalCharge = Math.round((finalEnergy / selectedVehicle.batteryCapacity) * 100);
-
-      // 12. Set result
+      // 11. Set result (arrivalCharge already calculated above)
       setRouteResult({
         distance: Math.round(distanceKm),
         duration: Math.round(durationMin),
@@ -691,7 +840,7 @@ export default function RotaPlanlaPage() {
         efficiency: Math.round(energyResult.efficiency * 1000) / 10,
       });
 
-      // 13. Draw on map
+      // 12. Draw on map
       if (map.current) {
         drawOnMap(route.geometry, origin, destination, chargingStops);
       }
@@ -799,18 +948,89 @@ export default function RotaPlanlaPage() {
                 <ChevronRight className={`w-5 h-5 transition-transform ${showVehicleSelect ? "rotate-90" : ""}`} />
               </button>
               {showVehicleSelect && (
-                <div className="mt-2 bg-gray-100 rounded-lg p-3 space-y-2">
-                  <select value={selectedBrand} onChange={(e) => setSelectedBrand(e.target.value)} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
-                    <option value="">Marka seçin</option>
-                    {brands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
-                  </select>
-                  {selectedBrand && (
-                    <select value={selectedVehicle?.id || ""} onChange={(e) => { const vehicle = vehicles.find(v => v.id === e.target.value); setSelectedVehicle(vehicle || null); setShowVehicleSelect(false); }} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
-                      <option value="">Model seçin</option>
-                      {vehiclesByBrand[selectedBrand]?.map(vehicle => (
-                        <option key={vehicle.id} value={vehicle.id}>{vehicle.model} ({vehicle.range} km)</option>
-                      ))}
-                    </select>
+                <div className="mt-2 bg-gray-100 rounded-lg p-3 space-y-3">
+                  {/* Mode Toggle */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setVehicleSearchMode("local")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${vehicleSearchMode === "local"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-gray-200 text-zinc-700 hover:bg-gray-300"
+                        }`}
+                    >
+                      📋 Kayıtlı ({localVehicles.length})
+                    </button>
+                    <button
+                      onClick={() => setVehicleSearchMode("api")}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${vehicleSearchMode === "api"
+                        ? "bg-emerald-500 text-white"
+                        : "bg-gray-200 text-zinc-700 hover:bg-gray-300"
+                        }`}
+                    >
+                      🌐 API&apos;den Ara
+                    </button>
+                  </div>
+
+                  {/* Local Vehicle Selection */}
+                  {vehicleSearchMode === "local" && (
+                    <>
+                      <select value={selectedBrand} onChange={(e) => setSelectedBrand(e.target.value)} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Marka seçin</option>
+                        {localBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+                      </select>
+                      {selectedBrand && (
+                        <select value={selectedVehicle?.id || ""} onChange={(e) => { const vehicle = localVehicles.find(v => v.id === e.target.value); setSelectedVehicle(vehicle || null); setShowVehicleSelect(false); }} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
+                          <option value="">Model seçin</option>
+                          {vehiclesByBrand[selectedBrand]?.map(vehicle => (
+                            <option key={vehicle.id} value={vehicle.id}>{vehicle.model} ({vehicle.range} km)</option>
+                          ))}
+                        </select>
+                      )}
+                    </>
+                  )}
+
+                  {/* API Vehicle Search */}
+                  {vehicleSearchMode === "api" && (
+                    <>
+                      <select value={selectedBrand} onChange={(e) => { setSelectedBrand(e.target.value); setApiModelSearch(""); }} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Marka seçin</option>
+                        {SUPPORTED_MAKES.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+                      </select>
+                      {selectedBrand && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={apiModelSearch}
+                            onChange={(e) => setApiModelSearch(e.target.value)}
+                            placeholder="Model adı yazın (örn: Model 3)"
+                            className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
+                          />
+                          <button
+                            onClick={() => fetchVehicleFromAPI(selectedBrand, apiModelSearch)}
+                            disabled={!apiModelSearch.trim() || apiLoading}
+                            className="w-full bg-emerald-500 text-white rounded-lg py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {apiLoading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Aranıyor...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-4 h-4" />
+                                API&apos;den Getir
+                              </>
+                            )}
+                          </button>
+                          {apiError && (
+                            <p className="text-red-500 text-xs">{apiError}</p>
+                          )}
+                          <p className="text-gray-500 text-xs">
+                            💡 Model adını tam yazın: &quot;Model 3&quot;, &quot;IONIQ 5&quot;, &quot;ID.4&quot; gibi
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -890,6 +1110,22 @@ export default function RotaPlanlaPage() {
                     ))}
                   </div>
                 </div>
+                {/* Optimization Strategy */}
+                <div>
+                  <label className="block text-gray-500 text-xs mb-1">Şarj Stratejisi</label>
+                  <div className="flex gap-2">
+                    {(["fastest", "fewest", "cheapest"] as const).map((s) => (
+                      <button key={s} onClick={() => setStrategy(s)} className={`flex-1 py-1.5 text-xs rounded-lg transition ${strategy === s ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}>
+                        {s === "fastest" ? "⚡ En Hızlı" : s === "fewest" ? "📍 Az Durak" : "💰 En Ucuz"}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {strategy === "fastest" && "Toplam süreyi minimize eder"}
+                    {strategy === "fewest" && "En az durak sayısı ile gider"}
+                    {strategy === "cheapest" && "Şarj maliyetini minimize eder"}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -902,7 +1138,7 @@ export default function RotaPlanlaPage() {
             )}
 
             {/* Calculate Button */}
-            <button onClick={calculateRoute} disabled={calculating || !origin || !destination || !selectedVehicle} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded-full font-medium transition flex items-center justify-center gap-2">
+            <button onClick={() => calculateRoute()} disabled={calculating || !origin || !destination || !selectedVehicle} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded-full font-medium transition flex items-center justify-center gap-2">
               {calculating ? (<><Loader2 className="w-5 h-5 animate-spin" />Hesaplanıyor...</>) : (<><Route className="w-5 h-5" />Rotayı Hesapla</>)}
             </button>
 
@@ -964,101 +1200,50 @@ export default function RotaPlanlaPage() {
             {/* Route Result */}
             {routeResult && selectedVehicle && (
               <div className="space-y-4">
+                {/* Strategy Comparison */}
+                {comparisonResults && (
+                  <RouteComparison
+                    results={comparisonResults}
+                    selectedStrategy={strategy}
+                    onSelect={(s) => {
+                      setStrategy(s);
+                      // Re-calculate with new strategy immediately
+                      calculateRoute(s);
+                    }}
+                  />
+                )}
+
+                {/* NEW: Beautiful Journey Component */}
+                <RouteJourney
+                  origin={origin?.name || "Başlangıç"}
+                  destination={destination?.name || "Varış"}
+                  totalDistance={routeResult.distance}
+                  totalDuration={routeResult.duration}
+                  totalChargingTime={routeResult.totalChargingTime}
+                  totalChargingCost={routeResult.totalChargingCost}
+                  startCharge={currentCharge}
+                  arrivalCharge={routeResult.arrivalCharge}
+                  energyUsed={routeResult.energyUsed || 0}
+                  efficiency={routeResult.efficiency || 0}
+                  chargingStops={routeResult.chargingStops}
+                  vehicleName={`${selectedVehicle.brand} ${selectedVehicle.model}`}
+                  vehicleRange={selectedVehicle.range}
+                  batteryCapacity={selectedVehicle.batteryCapacity}
+                />
+
                 {/* Weather Analysis Component */}
                 <RouteWeatherAnalysis
                   routeCoordinates={routeResult.geometry.coordinates}
                   vehicleSpecs={{ batteryCapacity: selectedVehicle.batteryCapacity, range: selectedVehicle.range }}
                 />
 
-                {/* Summary */}
-                <div className="bg-gray-100 rounded-xl p-4">
-                  <h3 className="text-zinc-900 font-medium mb-3">Rota Özeti</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Navigation className="w-4 h-4 text-emerald-400" />
-                      <span className="text-gray-500">Mesafe:</span>
-                      <span className="text-zinc-900 font-medium">{routeResult.distance} km</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-emerald-400" />
-                      <span className="text-gray-500">Süre:</span>
-                      <span className="text-zinc-900 font-medium">{formatDuration(routeResult.duration)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-emerald-400" />
-                      <span className="text-gray-500">Şarj:</span>
-                      <span className="text-zinc-900 font-medium">{formatDuration(routeResult.totalChargingTime)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Battery className="w-4 h-4 text-emerald-400" />
-                      <span className="text-gray-500">Varış:</span>
-                      <span className={`font-medium ${routeResult.arrivalCharge < 20 ? "text-red-400" : "text-emerald-400"}`}>%{routeResult.arrivalCharge}</span>
-                    </div>
-                  </div>
-                  {/* NEW: Energy stats */}
-                  {routeResult.energyUsed && (
-                    <div className="mt-3 pt-3 border-t border-gray-300 grid grid-cols-2 gap-2 text-xs">
-                      <div className="text-gray-500">Toplam Enerji: <span className="text-zinc-900 font-medium">{routeResult.energyUsed} kWh</span></div>
-                      <div className="text-gray-500">Verimlilik: <span className="text-zinc-900 font-medium">{routeResult.efficiency} Wh/km</span></div>
-                    </div>
-                  )}
-                  {routeResult.totalChargingCost > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-300 flex items-center justify-between">
-                      <span className="text-gray-500">Tahmini Şarj Maliyeti:</span>
-                      <span className="text-emerald-400 font-bold text-lg">₺{routeResult.totalChargingCost}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Charging Stops */}
-                {routeResult.chargingStops.length > 0 ? (
-                  <>
-                    <div className="bg-gray-100 rounded-xl p-4">
-                      <h3 className="text-zinc-900 font-medium mb-3">Şarj Durakları ({routeResult.chargingStops.length})</h3>
-                      <div className="space-y-3">
-                        {routeResult.chargingStops.map((stop, index) => (
-                          <div key={index} className="bg-white rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xs font-bold">{index + 1}</div>
-                              <span className="text-zinc-900 font-medium flex-1 truncate">{stop.station.name}</span>
-                            </div>
-                            <div className="text-xs text-gray-500 space-y-1">
-                              <div className="flex justify-between">
-                                <span>Operatör: {stop.station.operator}</span>
-                                <span>{stop.station.power} kW {stop.station.powerType}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Varış: %{stop.arrivalCharge} → Çıkış: %{stop.departureCharge}</span>
-                              </div>
-                              <div className="flex justify-between text-emerald-500">
-                                <span>⏱ {stop.chargingTime} dk şarj</span>
-                                <span>💰 ₺{stop.chargingCost}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <button onClick={() => setShowChatHub(true)} className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium transition flex items-center justify-center gap-2">
-                      <MessageCircle className="w-5 h-5" />
-                      Durak Chat&apos;lerine Katıl
-                    </button>
-                  </>
-                ) : (
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
-                    <Check className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-500 font-medium">Şarj durağı gerekmez!</p>
-                    <p className="text-gray-500 text-sm mt-1">Mevcut şarjınızla hedefinize ulaşabilirsiniz.</p>
-                  </div>
+                {/* Chat Hub Button */}
+                {routeResult.chargingStops.length > 0 && (
+                  <button onClick={() => setShowChatHub(true)} className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium transition flex items-center justify-center gap-2">
+                    <MessageCircle className="w-5 h-5" />
+                    Durak Chat&apos;lerine Katıl
+                  </button>
                 )}
-
-                {/* Total Time */}
-                <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Toplam Seyahat Süresi:</span>
-                    <span className="text-emerald-500 font-bold text-xl">{formatDuration(routeResult.duration + routeResult.totalChargingTime)}</span>
-                  </div>
-                </div>
               </div>
             )}
           </div>

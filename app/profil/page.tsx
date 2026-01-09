@@ -237,7 +237,7 @@ export default function ProfilPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center transition-colors duration-300">
         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
       </div>
     );
@@ -248,7 +248,7 @@ export default function ProfilPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 transition-colors duration-300">
       <HeaderWhite />
 
       {/* Toast */}
@@ -269,69 +269,69 @@ export default function ProfilPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-2">Profil Ayarları</h1>
-          <p className="text-gray-500">Hesap bilgilerinizi ve tercihlerinizi yönetin</p>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Profil Ayarları</h1>
+          <p className="text-gray-500 dark:text-zinc-400">Hesap bilgilerinizi ve tercihlerinizi yönetin</p>
         </div>
 
         <div className="space-y-6">
           {/* Kişisel Bilgiler */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6 transition-colors duration-300">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
               <User className="w-5 h-5 text-emerald-500" />
               Kişisel Bilgiler
             </h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Ad Soyad *</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Ad Soyad *</label>
                 <input
                   type="text"
                   value={form.fullName}
                   onChange={(e) => setField("fullName", e.target.value)}
                   required
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">E-posta</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">E-posta</label>
                 <input
                   type="email"
                   value={user.email}
                   disabled
-                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-gray-100 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-xl text-gray-500 dark:text-zinc-500 cursor-not-allowed"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Telefon</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Telefon</label>
                 <input
                   type="tel"
                   value={form.phone}
                   onChange={(e) => setField("phone", e.target.value)}
                   placeholder="0532 123 45 67"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Şehir</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Şehir</label>
                 <input
                   type="text"
                   value={form.city}
                   onChange={(e) => setField("city", e.target.value)}
                   placeholder="İstanbul"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
           </div>
 
           {/* Araç Bilgileri */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6 transition-colors duration-300">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
               <Car className="w-5 h-5 text-emerald-500" />
               Araç Bilgileri
             </h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Marka</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Marka</label>
                 <select
                   value={form.vehicleBrand}
                   onChange={(e) => {
@@ -339,7 +339,7 @@ export default function ProfilPage() {
                     setField("vehicleBrand", e.target.value);
                     setField("vehicleModel", "");
                   }}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Marka seçin</option>
                   {brands.map(brand => (
@@ -348,7 +348,7 @@ export default function ProfilPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">
                   Model {form.vehicleBrand && <span className="text-red-500">*</span>}
                 </label>
                 <select
@@ -358,7 +358,7 @@ export default function ProfilPage() {
                     setField("vehicleModel", e.target.value);
                   }}
                   disabled={!form.vehicleBrand}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">Model seçin</option>
                   {availableModels.map(v => (
@@ -370,7 +370,7 @@ export default function ProfilPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Model Yılı</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Model Yılı</label>
                 <input
                   type="number"
                   value={form.vehicleYear || ""}
@@ -378,11 +378,11 @@ export default function ProfilPage() {
                   placeholder="2024"
                   min="2000"
                   max={new Date().getFullYear() + 1}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Aylık Km</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Aylık Km</label>
                 <input
                   type="number"
                   value={form.monthlyKm || ""}
@@ -390,7 +390,7 @@ export default function ProfilPage() {
                   placeholder="1500"
                   min="0"
                   max="20000"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -416,18 +416,18 @@ export default function ProfilPage() {
           </Link>
 
           {/* Şarj Tercihleri */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6 transition-colors duration-300">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-emerald-500" />
               Şarj Tercihleri
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Tercih Edilen Şarj Tipi</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Tercih Edilen Şarj Tipi</label>
                 <select
                   value={form.preferredChargerType}
                   onChange={(e) => setField("preferredChargerType", e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Seçin</option>
                   <option value="AC">AC (Yavaş Şarj)</option>
@@ -437,11 +437,11 @@ export default function ProfilPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Şarj Sıklığı</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Şarj Sıklığı</label>
                 <select
                   value={form.chargingFrequency}
                   onChange={(e) => setField("chargingFrequency", e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Seçin</option>
                   <option value="daily">Günlük</option>
@@ -452,11 +452,11 @@ export default function ProfilPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-900 mb-2">Şarj Tercihi</label>
+                <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-2">Şarj Tercihi</label>
                 <select
                   value={form.chargingPreference}
                   onChange={(e) => setField("chargingPreference", e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-zinc-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Seçin</option>
                   <option value="price">En Ucuz</option>
@@ -465,15 +465,15 @@ export default function ProfilPage() {
                 </select>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800 rounded-xl transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-zinc-900">Evde Şarj İmkanı</p>
-                  <p className="text-xs text-gray-500 mt-1">Evde şarj cihazınız var mı?</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white">Evde Şarj İmkanı</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Evde şarj cihazınız var mı?</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setField("homeCharging", !form.homeCharging)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.homeCharging ? "bg-emerald-500" : "bg-gray-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.homeCharging ? "bg-emerald-500" : "bg-gray-300 dark:bg-zinc-700"
                     }`}
                 >
                   <span
@@ -486,21 +486,21 @@ export default function ProfilPage() {
           </div>
 
           {/* Bildirimler */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-zinc-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 p-6 transition-colors duration-300">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4 flex items-center gap-2">
               <Bell className="w-5 h-5 text-emerald-500" />
               Bildirimler
             </h2>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800 rounded-xl transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-zinc-900">Fiyat Değişiklikleri</p>
-                  <p className="text-xs text-gray-500 mt-1">Şarj fiyatları değiştiğinde bildir</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white">Fiyat Değişiklikleri</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Şarj fiyatları değiştiğinde bildir</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setField("notifyPriceChanges", !form.notifyPriceChanges)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.notifyPriceChanges ? "bg-emerald-500" : "bg-gray-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.notifyPriceChanges ? "bg-emerald-500" : "bg-gray-300 dark:bg-zinc-700"
                     }`}
                 >
                   <span
@@ -510,15 +510,15 @@ export default function ProfilPage() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800 rounded-xl transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-zinc-900">Yeni İstasyonlar</p>
-                  <p className="text-xs text-gray-500 mt-1">Yakınınızda yeni istasyon açıldığında bildir</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white">Yeni İstasyonlar</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Yakınınızda yeni istasyon açıldığında bildir</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setField("notifyNewStations", !form.notifyNewStations)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.notifyNewStations ? "bg-emerald-500" : "bg-gray-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.notifyNewStations ? "bg-emerald-500" : "bg-gray-300 dark:bg-zinc-700"
                     }`}
                 >
                   <span
@@ -528,15 +528,15 @@ export default function ProfilPage() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800 rounded-xl transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-zinc-900">Kampanyalar</p>
-                  <p className="text-xs text-gray-500 mt-1">İndirim ve fırsatlardan haberdar ol</p>
+                  <p className="text-sm font-medium text-zinc-900 dark:text-white">Kampanyalar</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">İndirim ve fırsatlardan haberdar ol</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setField("marketingConsent", !form.marketingConsent)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.marketingConsent ? "bg-emerald-500" : "bg-gray-300"
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.marketingConsent ? "bg-emerald-500" : "bg-gray-300 dark:bg-zinc-700"
                     }`}
                 >
                   <span
@@ -552,7 +552,7 @@ export default function ProfilPage() {
           <button
             onClick={handleSave}
             disabled={saving || !isDirty}
-            className="w-full py-4 bg-black text-white rounded-full font-medium hover:bg-black/90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full font-medium hover:bg-black dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
           >
             {saving ? (
               <>
