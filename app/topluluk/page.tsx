@@ -119,11 +119,12 @@ export default function ToplulukPage() {
     const fetchPosts = async () => {
         setLoading(true);
         try {
+            // First attempt with join - using 'users' which is common in this project
             let query = supabase
                 .from('posts')
                 .select(`
                     *,
-                    user:profiles(full_name)
+                    user:users(full_name)
                 `);
 
             // Apply filters
@@ -135,23 +136,48 @@ export default function ToplulukPage() {
             }
 
             // Apply sorting
-            if (sortBy === 'new') {
-                query = query.order('created_at', { ascending: false });
-            } else {
-                query = query.order('view_count', { ascending: false });
-            }
+            query = query.order(sortBy === 'new' ? 'created_at' : 'view_count', { ascending: false });
 
-            const { data, error } = await query;
-            if (error) {
-                console.error('Supabase error details:', {
-                    message: error.message,
-                    details: error.details,
-                    hint: error.hint,
-                    code: error.code
-                });
+            let { data, error } = await query;
+
+            // If join fails due to relationship, try fetching without join and then map users
+            if (error && (error.message.includes('relationship') || error.message.includes('users'))) {
+                console.warn('Join failed, falling back to manual fetch:', error.message);
+
+                let query = supabase.from('posts').select('*');
+                if (selectedCategory !== 'all') query = query.eq('category', selectedCategory);
+                if (selectedBrand) query = query.eq('operator_name', selectedBrand);
+                query = query.order(sortBy === 'new' ? 'created_at' : 'view_count', { ascending: false });
+
+                const { data: postsData, error: postsError } = await query;
+                if (postsError) throw postsError;
+
+                if (postsData && postsData.length > 0) {
+                    const userIds = [...new Set(postsData.map(p => p.user_id))];
+                    const { data: userData, error: userError } = await supabase
+                        .from('users')
+                        .select('id, full_name')
+                        .in('id', userIds);
+
+                    if (userError) {
+                        console.error('Error fetching users for posts:', userError);
+                        setPosts(postsData.map(p => ({ ...p, user: { full_name: 'Anonim' } })));
+                    } else {
+                        const userMap = new Map(userData?.map(u => [u.id, u]) || []);
+                        setPosts(postsData.map(p => ({
+                            ...p,
+                            user: userMap.get(p.user_id) || { full_name: 'Anonim' }
+                        })));
+                    }
+                } else {
+                    setPosts([]);
+                }
+            } else if (error) {
+                console.error('Supabase error details:', error);
                 throw error;
+            } else {
+                setPosts(data || []);
             }
-            setPosts(data || []);
         } catch (error: any) {
             console.error('Error fetching posts:', error?.message || error);
         } finally {
@@ -235,7 +261,7 @@ export default function ToplulukPage() {
 
             {/* Brand Communities Banner (Overlapping) */}
             <div className="max-w-6xl mx-auto px-4 -mt-16 mb-8 relative z-20">
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-6">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl py-4 px-6">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <Car className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
@@ -246,10 +272,10 @@ export default function ToplulukPage() {
                         </Link>
                     </div>
 
-                    <div className="relative overflow-hidden mt-8 px-4 pause-marquee group/marquee">
+                    <div className="relative overflow-hidden mt-4 px-4 pause-marquee group/marquee">
                         {/* Marquee Wrapper for Infinite Scroll */}
                         <div className="flex animate-marquee hover:pause-animation">
-                            <div className="flex gap-8 items-center py-6 pr-8">
+                            <div className="flex gap-8 items-center py-3 pr-8">
                                 {/* Combine multiple copies for infinite effect */}
                                 {[...brandCommunities, ...brandCommunities, ...brandCommunities].map((brand, idx) => (
                                     <motion.div

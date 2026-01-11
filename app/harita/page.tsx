@@ -7,11 +7,13 @@ const TestMap = dynamic(() => import('./test'), { ssr: false });
 
 export default function HaritaPage() {
     return (
-        <>
-            <HeaderWhite />
-            <div className="h-[calc(100vh-80px)]">
+        <main className="fixed inset-0 pt-0">
+            <div className="absolute top-0 left-0 right-0 z-50">
+                <HeaderWhite />
+            </div>
+            <div className="w-full h-full">
                 <TestMap />
             </div>
-        </>
+        </main>
     );
 }
