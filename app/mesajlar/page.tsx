@@ -209,7 +209,7 @@ function MesajlarContent() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gray-50 dark:bg-transparent flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 text-center max-w-md shadow-xl">
                     <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Mail className="w-10 h-10 text-emerald-500" />
@@ -228,7 +228,7 @@ function MesajlarContent() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 transition-colors">
+        <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors">
             <HeaderWhite />
 
             <div className="max-w-2xl mx-auto px-4 py-8">

@@ -185,7 +185,7 @@ export default function YeniEntryPage() {
     }
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white dark:bg-transparent">
             <HeaderWhite />
 
             <div className="max-w-3xl mx-auto px-4 pt-6">

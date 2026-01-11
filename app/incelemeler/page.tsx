@@ -51,12 +51,25 @@ export default function IncelemelerPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-transparent">
             <HeaderWhite />
 
             {/* Hero / Başlık Alanı */}
-            <div className="bg-zinc-900 text-white pb-24 pt-12">
-                <div className="container mx-auto px-4 text-center">
+            <div className="relative bg-zinc-900 text-white pb-24 pt-12 overflow-hidden">
+                {/* Background Image Layer */}
+                <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundImage: 'url("/images/hero-car.jpg")',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        opacity: 0.7
+                    }}
+                />
+                {/* Gradient Overlay for better contrast */}
+                <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 via-zinc-900/40 to-zinc-900 z-0" />
+
+                <div className="max-w-6xl mx-auto px-4 text-center relative z-10">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-6 border border-white/10">
                         <Youtube className="w-4 h-4 text-red-500" />
                         <span>Video İnceleme Kütüphanesi</span>
@@ -72,7 +85,7 @@ export default function IncelemelerPage() {
             </div>
 
             {/* Ana İçerik (Yukarıya doğru taşan tasarım) */}
-            <div className="container mx-auto px-4 -mt-16 pb-20 relative z-10">
+            <div className="max-w-6xl mx-auto px-4 -mt-16 pb-20 relative z-10">
 
                 {/* Filtreleme Komponenti */}
                 <VideoFilter

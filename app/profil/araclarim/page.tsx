@@ -310,7 +310,7 @@ export default function AraclarimPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
+            <div className="min-h-screen bg-zinc-50 dark:bg-transparent transition-colors">
                 <HeaderWhite />
                 <div className="max-w-2xl mx-auto px-4 py-12 text-center">
                     <Car className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
@@ -325,7 +325,7 @@ export default function AraclarimPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
+        <div className="min-h-screen bg-zinc-50 dark:bg-transparent transition-colors">
             <HeaderWhite />
 
             <div className="max-w-3xl mx-auto px-4 py-8">

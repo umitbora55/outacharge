@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import ParticleCanvas from "./ParticleCanvas";
+
 
 export default function HeroSection() {
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -15,23 +15,7 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-white dark:bg-zinc-950 transition-colors duration-300">
-
-      {/* Noise overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.02] dark:opacity-[0.05]"
-        style={{
-          backgroundImage: `
-            radial-gradient(circle at 18% 28%, rgba(0,0,0,0.14) 0.5px, transparent 0.8px),
-            radial-gradient(circle at 72% 58%, rgba(0,0,0,0.11) 0.5px, transparent 0.9px),
-            radial-gradient(circle at 38% 82%, rgba(0,0,0,0.09) 0.4px, transparent 0.9px)
-          `,
-          backgroundSize: '150px 150px, 190px 190px, 230px 230px',
-        }}
-      />
-
-      {/* Particle canvas */}
-      <ParticleCanvas titleRef={titleRef as React.RefObject<HTMLElement>} />
+    <div className="min-h-screen relative overflow-hidden bg-white dark:bg-transparent transition-colors duration-300">
 
       {/* Content */}
       <div className="relative z-10">
@@ -42,12 +26,9 @@ export default function HeroSection() {
             <div className="relative">
               {/* Headline */}
               <div className={`transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                <div className="heroTitleWrap">
-                  <h1 ref={titleRef} className="heroTitle text-5xl md:text-7xl lg:text-8xl mb-3">
-                    <span className="heroTitleFill">Geleceğe şarjlı çık.</span>
-                    <span className="heroTitleFx" aria-hidden="true">Geleceğe şarjlı çık.</span>
-                  </h1>
-                </div>
+                <h1 ref={titleRef} className="heroTitle text-5xl md:text-7xl lg:text-8xl mb-3">
+                  <span className="heroTitleFill">Geleceğe şarjlı çık.</span>
+                </h1>
                 <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-zinc-500 dark:text-zinc-400" style={{ letterSpacing: "-0.01em" }}>
                   İstasyon, süre, fiyat: tek ekranda.
                 </p>
@@ -98,14 +79,11 @@ export default function HeroSection() {
           letter-spacing: -0.025em;
           line-height: 1.12;
           padding: 0.04em 0.02em 0.20em;
-          isolation: isolate;
           -webkit-font-smoothing: antialiased;
         }
-        .heroTitleFill, .heroTitleFx {
+        .heroTitleFill {
           display: block;
           padding-bottom: 0.06em;
-        }
-        .heroTitleFill {
           color: transparent;
           -webkit-background-clip: text;
           background-clip: text;
@@ -118,19 +96,6 @@ export default function HeroSection() {
           background-position: 0% 50%;
           filter: saturate(1.07) contrast(1.05) brightness(1.02);
           animation: heroGradShift 12s ease-in-out infinite;
-        }
-        .heroTitleFx {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          color: transparent;
-          -webkit-background-clip: text;
-          background-clip: text;
-          background-image:
-            radial-gradient(120% 120% at 28% 10%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0) 62%),
-            repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, rgba(255,255,255,0.00) 2px, rgba(255,255,255,0.00) 6px);
-          mix-blend-mode: overlay;
-          opacity: 0.35;
         }
         @keyframes heroGradShift {
           0% { background-position: 0% 50%; }

@@ -1,281 +1,205 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/lib/auth";
-import Link from "next/link";
-import HeaderWhite from "../components/HeaderWhite";
+import { useState, useEffect } from "react";
 import {
     Search,
-    PenLine,
-    Loader2,
-    Clock,
-    TrendingUp,
     MessageCircle,
     Eye,
+    Clock,
+    TrendingUp,
+    PenLine,
+    Filter,
+    X,
+    ChevronRight,
     Car,
     Zap,
-    Route,
-    Wrench,
-    AlertTriangle,
-    Lightbulb,
-    Star,
-    HelpCircle,
-    Battery,
-    Settings,
-    ThumbsUp,
-    Flame,
     Users,
-    ChevronRight,
-    Filter,
-    X
+    MessageSquare,
+    Loader2
 } from "lucide-react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { supabase } from "../../lib/supabase";
+import HeaderWhite from "../components/HeaderWhite";
 
+// Types
 interface Post {
     id: string;
-    user_id: string;
     title: string;
     content: string;
     category: string;
-    brand_community_id: string | null;
-    operator_name: string | null;
-    comment_count: number;
+    user_id: string;
+    operator_name?: string;
+    vehicle_model?: string;
+    vehicle_year?: string;
+    brand_community_id?: string;
     view_count: number;
-    upvotes: number;
-    downvotes: number;
+    comment_count: number;
     created_at: string;
     user: {
-        id: string;
         full_name: string;
     };
-    brand?: {
-        slug: string;
-        brand: string;
-    };
-    vehicle_model?: string | null;
-    vehicle_year?: number | null;
 }
 
-interface BrandCommunity {
-    id: string;
-    brand: string;
-    slug: string;
-    member_count: number;
-    post_count: number;
-}
-
-// Kategori tanımları
 const categories = [
-    { id: 'all', label: 'Tümü', icon: Flame, color: 'zinc' },
-    { id: 'deneyim', label: 'Deneyim', icon: Car, color: 'emerald' },
-    { id: 'sarj_deneyimi', label: 'Şarj', icon: Zap, color: 'amber' },
-    { id: 'menzil_testi', label: 'Menzil', icon: Route, color: 'blue' },
-    { id: 'sorun', label: 'Sorun', icon: Wrench, color: 'orange' },
-    { id: 'sikayet', label: 'Şikayet', icon: AlertTriangle, color: 'red' },
-    { id: 'ipucu', label: 'İpucu', icon: Lightbulb, color: 'yellow' },
-    { id: 'gizli_ozellik', label: 'Gizli Özellik', icon: Star, color: 'purple' },
-    { id: 'soru', label: 'Soru', icon: HelpCircle, color: 'cyan' },
-    { id: 'batarya', label: 'Batarya', icon: Battery, color: 'green' },
-    { id: 'yazilim', label: 'Yazılım', icon: Settings, color: 'indigo' },
-    { id: 'tavsiye', label: 'Tavsiye', icon: ThumbsUp, color: 'pink' },
+    { id: 'all', label: 'Tümü', icon: MessageCircle },
+    { id: 'general', label: 'Genel', icon: Users },
+    { id: 'charging', label: 'Şarj Deneyimi', icon: Zap },
+    { id: 'technical', label: 'Teknik Sorular', icon: Zap },
+    { id: 'car', label: 'Araç İnceleme', icon: Car },
+    { id: 'news', label: 'Haberler', icon: MessageSquare },
 ];
 
-
-// Kategori renkleri
-const categoryColors: { [key: string]: { bg: string; text: string; border: string } } = {
-    deneyim: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-    sarj_deneyimi: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-    menzil_testi: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    sorun: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-    sikayet: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-    ipucu: { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
-    gizli_ozellik: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-    soru: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
-    batarya: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-    yazilim: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
-    tavsiye: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
+const categoryColors: Record<string, { bg: string, text: string, border: string }> = {
+    general: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    charging: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    technical: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    car: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    news: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
 };
 
-// Marka logo URL'leri
-const brandLogoUrls: { [key: string]: string } = {
-    'tesla': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/tesla.png',
-    'togg': 'https://raw.githubusercontent.com/nicholasadamou/car-logos/refs/heads/master/logos/togg/togg.png',
-    'bmw': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/bmw.png',
-    'mercedes': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/mercedes-benz.png',
-    'audi': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/audi.png',
-    'porsche': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/porsche.png',
-    'volvo': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/volvo.png',
-    'hyundai': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/hyundai.png',
-    'kia': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/kia.png',
-    'volkswagen': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/volkswagen.png',
-    'ford': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/ford.png',
-    'renault': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/renault.png',
-    'peugeot': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/peugeot.png',
-    'fiat': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/fiat.png',
-    'mg': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/mg.png',
-    'byd': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/byd.png',
-    'nio': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/nio.png',
-    'cupra': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/cupra.png',
-    'mini': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/mini.png',
-    'lexus': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/lexus.png',
+// Brand logos mapping
+const brandLogos: Record<string, string> = {
+    'Tesla': '/images/brand-logos/tesla.png',
+    'Togg': '/images/brand-logos/togg.png',
+    'BMW': '/images/brand-logos/bmw.png',
+    'Mercedes-Benz': '/images/brand-logos/mercedes.png',
+    'Hyundai': '/images/brand-logos/hyundai.png',
+    'Kia': '/images/brand-logos/kia.png',
+    'Volvo': '/images/brand-logos/volvo.png',
+    'Renault': '/images/brand-logos/renault.png',
+    'Skywell': '/images/brand-logos/skywell.png',
+    'BYD': '/images/brand-logos/byd.png',
+    'MG': '/images/brand-logos/mg.png',
+    'Fiat': '/images/brand-logos/fiat.png',
+    'Ford': '/images/brand-logos/ford.png',
+    'Porsche': '/images/brand-logos/porsche.png',
+    'Audi': '/images/brand-logos/audi.png',
 };
 
-// Supabase fetch helper
-async function supabaseFetch(endpoint: string) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    const response = await fetch(`${supabaseUrl}/rest/v1/${endpoint}`, {
-        headers: {
-            'apikey': supabaseKey!,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-        }
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json();
-}
+// Brand community backgrounds
+const brandCommunities = [
+    { id: 'tesla', name: 'Tesla', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/tesla.png', color: '#E31937', postCount: 1250 },
+    { id: 'togg', name: 'Togg', logo: 'https://raw.githubusercontent.com/nicholasadamou/car-logos/refs/heads/master/logos/togg/togg.png', color: '#004C5A', postCount: 840 },
+    { id: 'bmw', name: 'BMW', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/bmw.png', color: '#0066B3', postCount: 620 },
+    { id: 'mercedes', name: 'Mercedes-Benz', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/mercedes-benz.png', color: '#000000', postCount: 540 },
+    { id: 'hyundai', name: 'Hyundai', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/hyundai.png', color: '#002C5F', postCount: 480 },
+    { id: 'kia', name: 'Kia', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/kia.png', color: '#BB162B', postCount: 390 },
+    { id: 'volvo', name: 'Volvo', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/volvo.png', color: '#003057', postCount: 340 },
+    { id: 'renault', name: 'Renault', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/renault.png', color: '#FFCC33', postCount: 310 },
+    { id: 'audi', name: 'Audi', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/audi.png', color: '#000000', postCount: 290 },
+    { id: 'porsche', name: 'Porsche', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/porsche.png', color: '#000000', postCount: 180 },
+    { id: 'volkswagen', name: 'Volkswagen', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/volkswagen.png', color: '#000000', postCount: 410 },
+    { id: 'ford', name: 'Ford', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/ford.png', color: '#000000', postCount: 220 },
+    { id: 'byd', name: 'BYD', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/byd.png', color: '#000000', postCount: 670 },
+    { id: 'mg', name: 'MG', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/mg.png', color: '#000000', postCount: 340 },
+    { id: 'fiat', name: 'Fiat', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/fiat.png', color: '#000000', postCount: 150 },
+    { id: 'peugeot', name: 'Peugeot', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/peugeot.png', color: '#000000', postCount: 210 },
+    { id: 'opel', name: 'Opel', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/opel.png', color: '#000000', postCount: 195 },
+    { id: 'citroen', name: 'Citroen', logo: 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/citroen.png', color: '#000000', postCount: 180 },
+];
 
 export default function ToplulukPage() {
-    const { user } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
-    const [brandCommunities, setBrandCommunities] = useState<BrandCommunity[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<'new' | 'popular'>('new');
     const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [displayedBrands, setDisplayedBrands] = useState(brandCommunities.slice(0, 8));
 
+    useEffect(() => {
+        // Shuffle brands on mount
+        const shuffled = [...brandCommunities].sort(() => 0.5 - Math.random());
+        setDisplayedBrands(shuffled.slice(0, 8));
+        fetchPosts();
+    }, [selectedCategory, sortBy, selectedBrand]);
 
-    const fetchPosts = useCallback(async () => {
+    const fetchPosts = async () => {
         setLoading(true);
         try {
-            // Postları çek
-            let query = 'posts?is_deleted=eq.false';
+            let query = supabase
+                .from('posts')
+                .select(`
+                    *,
+                    user:profiles(full_name)
+                `);
 
+            // Apply filters
             if (selectedCategory !== 'all') {
-                query += `&category=eq.${selectedCategory}`;
+                query = query.eq('category', selectedCategory);
             }
-
             if (selectedBrand) {
-                query += `&operator_name=eq.${selectedBrand}`;
+                query = query.eq('operator_name', selectedBrand);
             }
 
-
-
-            const orderBy = sortBy === 'popular' ? 'comment_count.desc' : 'created_at.desc';
-            query += `&order=${orderBy}&limit=100`;
-
-            const data = await supabaseFetch(query);
-
-            if (data && data.length > 0) {
-                // User bilgilerini çek
-                const userIds = [...new Set(data.map((p: any) => p.user_id))];
-                let usersMap = new Map();
-
-                if (userIds.length > 0) {
-                    try {
-                        const users = await supabaseFetch(`users?id=in.(${userIds.join(',')})&select=id,full_name`);
-                        if (users) {
-                            usersMap = new Map(users.map((u: any) => [u.id, u]));
-                        }
-                    } catch (e) { }
-                }
-
-                // Brand bilgilerini çek
-                const brandIds = [...new Set(data.filter((p: any) => p.brand_community_id).map((p: any) => p.brand_community_id))];
-                let brandsMap = new Map();
-
-                if (brandIds.length > 0) {
-                    try {
-                        const brands = await supabaseFetch(`brand_communities?id=in.(${brandIds.join(',')})&select=id,brand,slug`);
-                        if (brands) {
-                            brandsMap = new Map(brands.map((b: any) => [b.id, b]));
-                        }
-                    } catch (e) { }
-                }
-
-                const postsWithData = data.map((post: any) => ({
-                    ...post,
-                    user: usersMap.get(post.user_id) || { id: post.user_id, full_name: 'Anonim' },
-                    brand: post.brand_community_id ? brandsMap.get(post.brand_community_id) : null
-                }));
-
-                // Arama filtresi
-                let filtered = postsWithData;
-                if (searchQuery.trim()) {
-                    const q = searchQuery.toLowerCase();
-                    filtered = postsWithData.filter((p: Post) =>
-                        p.title.toLowerCase().includes(q) ||
-                        p.content.toLowerCase().includes(q) ||
-                        p.operator_name?.toLowerCase().includes(q)
-                    );
-                }
-
-                setPosts(filtered);
+            // Apply sorting
+            if (sortBy === 'new') {
+                query = query.order('created_at', { ascending: false });
             } else {
-                setPosts([]);
+                query = query.order('view_count', { ascending: false });
             }
-        } catch (err) {
-            console.error("Posts fetch error:", err);
-            setPosts([]);
+
+            const { data, error } = await query;
+            if (error) {
+                console.error('Supabase error details:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                });
+                throw error;
+            }
+            setPosts(data || []);
+        } catch (error: any) {
+            console.error('Error fetching posts:', error?.message || error);
         } finally {
             setLoading(false);
         }
-    }, [selectedCategory, selectedBrand, sortBy, searchQuery]);
+    };
 
-    const fetchBrandCommunities = useCallback(async () => {
-        try {
-            const data = await supabaseFetch('brand_communities?is_active=eq.true&order=post_count.desc&limit=6');
-            setBrandCommunities(data || []);
-        } catch (err) {
-            console.error("Brand communities fetch error:", err);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchPosts();
-        fetchBrandCommunities();
-    }, [fetchPosts, fetchBrandCommunities]);
-
-    const formatDate = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const minutes = Math.floor(diff / 60000);
-        const hours = Math.floor(diff / 3600000);
-        const days = Math.floor(diff / 86400000);
-
-        if (minutes < 1) return "Az önce";
-        if (minutes < 60) return `${minutes} dk`;
-        if (hours < 24) return `${hours} saat`;
-        if (days < 7) return `${days} gün`;
-        return date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        }).format(date);
     };
 
     const getCategoryIcon = (categoryId: string) => {
-        const cat = categories.find(c => c.id === categoryId);
-        return cat?.icon || Car;
+        return categories.find(c => c.id === categoryId)?.icon || MessageCircle;
     };
 
     const getCategoryLabel = (categoryId: string) => {
-        const cat = categories.find(c => c.id === categoryId);
-        return cat?.label || categoryId;
+        return categories.find(c => c.id === categoryId)?.label || 'Genel';
     };
 
     const getBrandLogo = (brandName: string) => {
-        const slug = brandName.toLowerCase().replace(/\s+/g, '-').replace('mercedes-benz', 'mercedes');
-        return brandLogoUrls[slug] || null;
+        return brandLogos[brandName] || null;
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors">
+        <div className="min-h-screen bg-transparent transition-colors">
             <HeaderWhite />
 
-            {/* Hero */}
-            <div className="bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 text-white border-b dark:border-zinc-800">
-                <div className="max-w-6xl mx-auto px-4 py-12">
+            {/* Hero Section */}
+            <div className="relative bg-zinc-900 text-white pb-24 pt-12 overflow-hidden">
+                {/* Background Image Layer */}
+                <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundImage: 'url("/images/community-hero.jpg")',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        opacity: 0.6
+                    }}
+                />
+                {/* Gradient Overlay for better contrast */}
+                <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 via-zinc-900/60 to-zinc-900 z-0" />
+
+                <div className="max-w-6xl mx-auto px-4 py-16 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                         <div>
                             <h1 className="text-3xl md:text-4xl font-bold mb-2">
@@ -285,7 +209,6 @@ export default function ToplulukPage() {
                                 Deneyimlerinizi paylaşın, sorular sorun, çözümler bulun.
                             </p>
                         </div>
-
                         {/* Search */}
                         <div className="flex gap-3">
                             <div className="relative flex-1 md:w-80">
@@ -310,56 +233,75 @@ export default function ToplulukPage() {
                 </div>
             </div>
 
-            {/* Brand Communities Banner */}
-            <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-                <div className="max-w-6xl mx-auto px-4 py-4">
+            {/* Brand Communities Banner (Overlapping) */}
+            <div className="max-w-6xl mx-auto px-4 -mt-16 mb-8 relative z-20">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl p-6">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <Car className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
-                            <span className="font-semibold text-zinc-900 dark:text-zinc-100">Marka Toplulukları</span>
+                            <h2 className="font-semibold text-zinc-900 dark:text-white">Marka Toplulukları</h2>
                         </div>
-                        <Link
-                            href="/topluluk/markalar"
-                            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
-                        >
-                            Tümünü Gör
-                            <ChevronRight className="w-4 h-4" />
+                        <Link href="/topluluk/markalar" className="text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+                            Tümünü Gör <ChevronRight className="w-4 h-4" />
                         </Link>
                     </div>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                        {brandCommunities.map((brand) => {
-                            const logoUrl = getBrandLogo(brand.brand);
-                            return (
-                                <Link
-                                    key={brand.id}
-                                    href={`/topluluk/markalar/${brand.slug}`}
-                                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 transition-all hover:shadow-md flex-shrink-0 ${selectedBrand === brand.brand
-                                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10'
-                                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:border-zinc-300 dark:hover:border-zinc-700'
-                                        }`}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        setSelectedBrand(selectedBrand === brand.brand ? null : brand.brand);
-                                    }}
-                                >
-                                    <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1.5 flex items-center justify-center">
-                                        {logoUrl ? (
-                                            <img src={logoUrl} alt={brand.brand} className="w-full h-full object-contain" />
-                                        ) : (
-                                            <Car className="w-4 h-4 text-zinc-400" />
-                                        )}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{brand.brand}</p>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{brand.post_count} konu</p>
-                                    </div>
-                                </Link>
-                            );
-                        })}
+
+                    <div className="relative overflow-hidden mt-8 px-4 pause-marquee group/marquee">
+                        {/* Marquee Wrapper for Infinite Scroll */}
+                        <div className="flex animate-marquee hover:pause-animation">
+                            <div className="flex gap-8 items-center py-6 pr-8">
+                                {/* Combine multiple copies for infinite effect */}
+                                {[...brandCommunities, ...brandCommunities, ...brandCommunities].map((brand, idx) => (
+                                    <motion.div
+                                        key={`${brand.id}-${idx}`}
+                                        whileHover={{ scale: 1.04, y: -3 }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                                        className="flex-shrink-0"
+                                    >
+                                        <Link
+                                            href={`/topluluk/markalar/${brand.id}`}
+                                            className="group relative flex flex-col items-center p-4 min-w-[130px] rounded-xl border border-white/60 dark:border-white/20 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl shadow-[0_6px_20px_rgba(0,0,0,0.08)] hover:shadow-[0_12px_32px_rgba(16,185,129,0.15)] transition-all duration-500 overflow-hidden"
+                                        >
+                                            {/* Dynamic Border Glow */}
+                                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
+
+                                            {/* Premium Logo Vessel */}
+                                            <div className="relative z-10 w-16 h-16 bg-gradient-to-b from-white to-zinc-50 dark:from-white/95 dark:to-zinc-100 rounded-lg p-2.5 mb-2.5 flex items-center justify-center shadow-[inset_0_1px_4px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.08)] border border-white/80 ring-2 ring-white/40 dark:ring-white/20 group-hover:scale-105 group-hover:rotate-3 transition-all duration-500 ease-out">
+                                                <img
+                                                    src={brand.logo}
+                                                    alt={brand.name}
+                                                    className="w-full h-full object-contain filter drop-shadow-lg"
+                                                />
+                                            </div>
+
+                                            <span className="relative z-10 text-xs font-bold text-zinc-900 dark:text-zinc-100 tracking-tight uppercase group-hover:text-emerald-600 transition-colors duration-300">
+                                                {brand.name}
+                                            </span>
+
+                                            {/* Refraction Effect Decorator */}
+                                            <div className="absolute -bottom-1 -left-1 w-12 h-12 bg-emerald-500/10 blur-[24px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+                                            {/* Moving Reflection Light Beam */}
+                                            <div className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
+                                                <div className="absolute -top-[100%] left-[-100%] w-[300%] h-[300%] bg-gradient-to-br from-white/20 via-transparent to-transparent rotate-45 transition-transform duration-700 group-hover:translate-x-[60%] group-hover:translate-y-[60%]" />
+                                            </div>
+
+                                            {/* Subtle Indent Decoration */}
+                                            <div className="absolute bottom-2.5 w-1 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800 transition-all duration-500 group-hover:w-5 group-hover:bg-emerald-500/50" />
+                                        </Link>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Immersive Edge Fades */}
+                        <div className="absolute inset-y-0 left-0 w-64 bg-gradient-to-r from-white dark:from-zinc-900 via-white/80 dark:via-zinc-900/80 to-transparent z-20 pointer-events-none" />
+                        <div className="absolute inset-y-0 right-0 w-64 bg-gradient-to-l from-white dark:from-zinc-900 via-white/80 dark:via-zinc-900/80 to-transparent z-20 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
+            {/* Main Content Area */}
             <div className="max-w-6xl mx-auto px-4 py-6">
                 <div className="flex flex-col lg:flex-row gap-6">
                     {/* Sidebar - Categories */}
@@ -395,8 +337,6 @@ export default function ToplulukPage() {
                                     );
                                 })}
                             </div>
-
-
                         </div>
 
                         {/* Mobile Filters Modal */}
@@ -434,8 +374,6 @@ export default function ToplulukPage() {
                                             );
                                         })}
                                     </div>
-
-
                                 </div>
                             </div>
                         )}
@@ -532,8 +470,8 @@ export default function ToplulukPage() {
                                             <div className="flex gap-4">
                                                 {/* Brand Logo (if brand post) */}
                                                 {post.brand_community_id && brandLogo && (
-                                                    <div className="hidden sm:flex w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-xl p-2 items-center justify-center flex-shrink-0">
-                                                        <img src={brandLogo} alt={post.operator_name || ''} className="w-full h-full object-contain" />
+                                                    <div className="hidden sm:flex w-16 h-16 bg-white dark:bg-zinc-100 rounded-2xl p-2.5 items-center justify-center flex-shrink-0 shadow-sm border border-zinc-200/50 dark:border-zinc-300">
+                                                        <img src={brandLogo} alt={post.operator_name || ''} className="w-full h-full object-contain filter drop-shadow-sm" />
                                                     </div>
                                                 )}
 
@@ -594,7 +532,7 @@ export default function ToplulukPage() {
                         )}
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

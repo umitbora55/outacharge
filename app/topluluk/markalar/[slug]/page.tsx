@@ -274,7 +274,7 @@ export default function MarkaDetayPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
                 <HeaderWhite />
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
@@ -286,7 +286,7 @@ export default function MarkaDetayPage() {
     if (!community) return null;
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
             <HeaderWhite />
 
             {/* Hero */}

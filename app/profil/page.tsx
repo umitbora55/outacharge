@@ -237,7 +237,7 @@ export default function ProfilPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center transition-colors duration-300">
+      <div className="min-h-screen bg-gray-50 dark:bg-transparent flex items-center justify-center transition-colors duration-300">
         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
       </div>
     );
@@ -248,7 +248,7 @@ export default function ProfilPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors duration-300">
       <HeaderWhite />
 
       {/* Toast */}

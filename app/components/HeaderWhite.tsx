@@ -14,7 +14,7 @@ export default function HeaderWhite() {
   } : null);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm border-b border-gray-100 dark:border-zinc-800 transition-all duration-300">
+    <header className="sticky top-0 z-50 bg-white/80 dark:bg-black/40 backdrop-blur-md border-b border-gray-100 dark:border-white/10 transition-all duration-300">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">

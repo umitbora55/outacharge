@@ -11,7 +11,8 @@ import {
     Loader2,
     Star,
     Shield,
-    Zap
+    Zap,
+    ChevronRight
 } from "lucide-react";
 
 interface BrandCommunity {
@@ -123,21 +124,27 @@ export default function MarkaTopluluklariPage() {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
             <HeaderWhite />
 
             {/* Hero */}
-            <div className="relative bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 text-white overflow-hidden">
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-5">
-                    <div className="absolute inset-0" style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }} />
-                </div>
+            <div className="relative bg-zinc-900 text-white pb-24 pt-12 overflow-hidden">
+                {/* Background Image Layer */}
+                <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundImage: 'url("/images/brands-hero.jpg")',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        opacity: 0.7
+                    }}
+                />
+                {/* Gradient Overlay for better contrast */}
+                <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 via-zinc-900/40 to-zinc-900 z-0" />
 
-                <div className="relative max-w-6xl mx-auto px-4 py-16">
+                <div className="relative max-w-6xl mx-auto px-4 py-16 z-10">
                     <div className="text-center">
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-zinc-300 mb-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-6 border border-white/10">
                             <Car className="w-4 h-4" />
                             Premium Topluluklar
                         </div>
@@ -155,21 +162,21 @@ export default function MarkaTopluluklariPage() {
                         <div className="flex items-center justify-center gap-8 mt-10">
                             <div className="text-center">
                                 <p className="text-3xl font-bold text-white">{communities.length}</p>
-                                <p className="text-sm text-zinc-500">Marka</p>
+                                <p className="text-sm text-zinc-400">Marka</p>
                             </div>
                             <div className="w-px h-12 bg-zinc-700" />
                             <div className="text-center">
                                 <p className="text-3xl font-bold text-white">
                                     {communities.reduce((acc, c) => acc + c.member_count, 0).toLocaleString()}
                                 </p>
-                                <p className="text-sm text-zinc-500">Üye</p>
+                                <p className="text-sm text-zinc-400">Üye</p>
                             </div>
                             <div className="w-px h-12 bg-zinc-700" />
                             <div className="text-center">
                                 <p className="text-3xl font-bold text-white">
                                     {communities.reduce((acc, c) => acc + c.post_count, 0).toLocaleString()}
                                 </p>
-                                <p className="text-sm text-zinc-500">Konu</p>
+                                <p className="text-sm text-zinc-400">Konu</p>
                             </div>
                         </div>
                     </div>
@@ -197,8 +204,8 @@ export default function MarkaTopluluklariPage() {
             {/* Communities Grid */}
             <div className="max-w-6xl mx-auto px-4 py-12">
                 <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-xl font-bold text-zinc-900">Tüm Markalar</h2>
-                    <span className="text-sm text-zinc-500">{communities.length} topluluk</span>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Tüm Markalar</h2>
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">{communities.length} topluluk</span>
                 </div>
 
                 {loading ? (
@@ -209,54 +216,51 @@ export default function MarkaTopluluklariPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                         {communities.map((community) => {
                             const logoUrl = getBrandLogo(community.slug);
+                            const isMember = userMemberships.has(community.id);
 
                             return (
                                 <Link
                                     key={community.id}
                                     href={`/topluluk/markalar/${community.slug}`}
-                                    className="group relative pt-4"
+                                    className="group relative pt-6"
                                 >
-                                    {/* Badge - Kartın Üstünde */}
-                                    {community.is_user_brand && (
-                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
-                                            <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg shadow-emerald-500/30 flex items-center gap-1.5 whitespace-nowrap">
-                                                <Star className="w-3.5 h-3.5 fill-white" />
-                                                Senin Markan
+                                    {/* Premium Badges */}
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 transition-transform duration-500 group-hover:-translate-y-1">
+                                        {community.is_user_brand ? (
+                                            <div className="bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg shadow-emerald-500/40 border border-white/20 flex items-center gap-2 animate-pulse-slow">
+                                                <Star className="w-3 h-3 fill-white" />
+                                                SENİN MARKAN
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {/* Member Badge */}
-                                    {userMemberships.has(community.id) && !community.is_user_brand && (
-                                        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
-                                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg shadow-blue-500/30 flex items-center gap-1.5 whitespace-nowrap">
-                                                <Shield className="w-3.5 h-3.5" />
-                                                Üye
+                                        ) : isMember ? (
+                                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg shadow-blue-500/30 border border-white/10 flex items-center gap-2">
+                                                <Shield className="w-3 h-3" />
+                                                ÜYESİN
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : null}
+                                    </div>
 
-                                    {/* Card */}
-                                    <div className={`relative bg-white rounded-3xl p-6 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 ${community.is_user_brand
-                                        ? 'ring-2 ring-emerald-500 shadow-xl shadow-emerald-500/10 mt-2'
-                                        : 'shadow-md hover:shadow-xl'
+                                    {/* Card Container */}
+                                    <div className={`relative bg-white dark:bg-zinc-900/60 backdrop-blur-xl rounded-[2.5rem] p-8 transition-all duration-700 hover:-translate-y-3 border ${community.is_user_brand
+                                        ? 'border-emerald-500/30 shadow-[0_20px_50px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/20'
+                                        : 'border-zinc-100 dark:border-zinc-800/50 shadow-xl shadow-zinc-200/50 dark:shadow-black/40 hover:shadow-2xl hover:shadow-emerald-500/10 hover:border-emerald-500/30'
                                         }`}>
 
-                                        {/* Premium Logo Container */}
-                                        <div className="relative w-24 h-24 mx-auto mb-5">
-                                            {/* Glow Effect */}
-                                            <div className={`absolute inset-0 rounded-2xl blur-xl transition-opacity duration-500 ${community.is_user_brand
-                                                ? 'bg-emerald-400/30 opacity-100'
-                                                : 'bg-zinc-300/50 opacity-0 group-hover:opacity-100'
+                                        {/* Background Decorative Element */}
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full -mr-10 -mt-10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+                                        {/* Premium Logo Showcase */}
+                                        <div className="relative w-36 h-36 mx-auto mb-6">
+                                            {/* Advanced Glow & Shadow */}
+                                            <div className={`absolute inset-0 rounded-3xl blur-2xl transition-all duration-700 opacity-0 group-hover:opacity-100 ${community.is_user_brand ? 'bg-emerald-400/40' : 'bg-emerald-400/20'
                                                 }`} />
 
-                                            {/* Logo Background */}
-                                            <div className="relative w-full h-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 rounded-2xl shadow-inner border border-zinc-200/50 flex items-center justify-center p-4 group-hover:scale-105 transition-transform duration-500">
+                                            {/* Logo Pod */}
+                                            <div className="relative w-full h-full bg-gradient-to-br from-white via-zinc-50 to-zinc-100 dark:from-white dark:to-zinc-100 rounded-3xl shadow-[inset_0_-2px_10px_rgba(0,0,0,0.05),0_10px_20px_rgba(0,0,0,0.1)] border border-white dark:border-zinc-200/50 flex items-center justify-center p-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-700 ease-out">
                                                 {logoUrl ? (
                                                     <img
                                                         src={logoUrl}
                                                         alt={community.brand}
-                                                        className="w-full h-full object-contain drop-shadow-md"
+                                                        className="w-full h-full object-contain filter drop-shadow-md"
                                                     />
                                                 ) : (
                                                     <Car className="w-12 h-12 text-zinc-300" />
@@ -264,26 +268,40 @@ export default function MarkaTopluluklariPage() {
                                             </div>
                                         </div>
 
-                                        {/* Brand Name */}
-                                        <h3 className="text-center font-bold text-zinc-900 text-lg mb-3 group-hover:text-emerald-600 transition-colors duration-300">
-                                            {community.brand}
-                                        </h3>
+                                        {/* Brand Details */}
+                                        <div className="relative text-center">
+                                            <div className="h-16 flex flex-col justify-center mb-4">
+                                                <h3 className="font-black text-zinc-900 dark:text-white text-lg leading-tight group-hover:text-emerald-600 transition-colors duration-300 line-clamp-2">
+                                                    {community.brand}
+                                                </h3>
+                                            </div>
 
-                                        {/* Stats */}
-                                        <div className="flex items-center justify-center gap-4 text-sm text-zinc-400">
-                                            <span className="flex items-center gap-1.5">
-                                                <Users className="w-4 h-4" />
-                                                {community.member_count}
-                                            </span>
-                                            <span className="w-1 h-1 bg-zinc-300 rounded-full" />
-                                            <span className="flex items-center gap-1.5">
-                                                <MessageSquare className="w-4 h-4" />
-                                                {community.post_count}
-                                            </span>
+                                            {/* Modern Stats Display */}
+                                            <div className="flex items-center justify-center gap-6">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-zinc-900 dark:text-white font-bold text-sm tracking-tight">{community.member_count}</span>
+                                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">üye</span>
+                                                </div>
+                                                <div className="w-px h-6 bg-zinc-100 dark:bg-zinc-800" />
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-zinc-900 dark:text-white font-bold text-sm tracking-tight">{community.post_count}</span>
+                                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">konu</span>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        {/* Bottom Gradient Line */}
-                                        <div className="absolute bottom-0 left-4 right-4 h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
+                                        {/* Interactive Hover Link Indicator */}
+                                        <div className="mt-6 flex justify-center">
+                                            <div className="w-10 h-10 rounded-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-700 flex items-center justify-center group-hover:bg-emerald-500 group-hover:border-emerald-400 group-hover:text-white transition-all duration-500">
+                                                <ChevronRight className="w-5 h-5 translate-x-0 group-hover:translate-x-0.5 transition-transform" />
+                                            </div>
+                                        </div>
+
+                                        {/* Subtle Progress Bar Decoration */}
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-700 ease-out scale-x-0 group-hover:scale-x-100 origin-center ${community.is_user_brand ? 'bg-emerald-500' : 'bg-zinc-400'
+                                                }`} />
+                                        </div>
                                     </div>
                                 </Link>
                             );

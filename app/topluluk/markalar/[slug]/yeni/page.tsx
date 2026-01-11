@@ -381,7 +381,7 @@ export default function YeniMarkaKonusuPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
                 <HeaderWhite />
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
@@ -392,7 +392,7 @@ export default function YeniMarkaKonusuPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
                 <HeaderWhite />
                 <div className="max-w-2xl mx-auto px-4 py-12">
                     <div className="bg-white rounded-3xl shadow-sm p-8 text-center">
@@ -414,7 +414,7 @@ export default function YeniMarkaKonusuPage() {
     // Doğrulanmış aracı yok - belge yüklemesi gerekiyor
     if (!canWrite && !needsVerification) {
         return (
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
                 <HeaderWhite />
                 <div className="max-w-2xl mx-auto px-4 py-12">
                     <Link
@@ -478,7 +478,7 @@ export default function YeniMarkaKonusuPage() {
     // Onay bekliyor
     if (needsVerification) {
         return (
-            <div className="min-h-screen bg-zinc-50">
+            <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
                 <HeaderWhite />
                 <div className="max-w-2xl mx-auto px-4 py-12">
                     <Link
@@ -512,7 +512,7 @@ export default function YeniMarkaKonusuPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
             <HeaderWhite />
 
             <div className="max-w-3xl mx-auto px-4 py-8">

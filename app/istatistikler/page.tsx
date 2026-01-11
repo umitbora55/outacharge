@@ -203,7 +203,7 @@ export default function IstatistiklerPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-transparent flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
       </div>
     );
@@ -212,7 +212,7 @@ export default function IstatistiklerPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors">
       <HeaderWhite />
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">

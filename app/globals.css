@@ -26,24 +26,25 @@
 }
 
 .dark {
-  --background: #09090b;
+  --background: #0d1612;
+  --background-gradient: linear-gradient(180deg, #0d1612 0%, #0c1410 25%, #0b120f 50%, #0a110e 75%, #090f0d 100%);
   --foreground: #fafafa;
-  --card: #09090b;
+  --card: rgba(13, 22, 18, 0.95);
   --card-foreground: #fafafa;
-  --popover: #09090b;
+  --popover: #0d1612;
   --popover-foreground: #fafafa;
   --primary: #10b981;
   --primary-foreground: #171717;
-  --secondary: #27272a;
+  --secondary: rgba(13, 22, 18, 0.85);
   --secondary-foreground: #fafafa;
-  --muted: #27272a;
+  --muted: rgba(13, 22, 18, 0.7);
   --muted-foreground: #a1a1aa;
-  --accent: #27272a;
+  --accent: rgba(13, 22, 18, 0.85);
   --accent-foreground: #fafafa;
   --destructive: #7f1d1d;
   --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(13, 22, 18, 0.85);
   --ring: #10b981;
 }
 
@@ -72,6 +73,32 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Hide Scrollbar Completely (but keep scroll functionality) */
+/* For Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: none;
+}
+
+/* For IE and Edge Legacy */
+* {
+  -ms-overflow-style: none;
+}
+
+/* Dark mode premium gradient background */
+html.dark,
+html.dark body {
+  background: var(--background-gradient);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 /* Toast animation */
@@ -131,4 +158,23 @@ body {
 
 .delay-75 {
   animation-delay: 75ms;
+}
+
+/* Infinite Marquee Animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 15s linear infinite;
+}
+
+.pause-marquee:hover .animate-marquee {
+  animation-play-state: paused;
 }

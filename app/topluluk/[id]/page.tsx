@@ -356,7 +356,7 @@ export default function KonuDetayPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-white">
+            <div className="min-h-screen bg-white dark:bg-transparent">
                 <HeaderWhite />
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
@@ -370,7 +370,7 @@ export default function KonuDetayPage() {
     const score = post.upvotes - post.downvotes;
 
     return (
-        <div className="min-h-screen bg-zinc-50">
+        <div className="min-h-screen bg-zinc-50 dark:bg-transparent">
             <HeaderWhite />
 
             <div className="max-w-3xl mx-auto px-4 py-6">
