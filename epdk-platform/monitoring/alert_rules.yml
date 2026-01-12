@@ -1,0 +1,52 @@
+groups:
+  - name: epdk_alerts
+    rules:
+      # API Latency çok yüksek
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API latency çok yüksek"
+          description: "p95 latency {{ $value | printf \"%.2f\" }}s (threshold: 1s)"
+
+      # API Error Rate yüksek
+      - alert: HighAPIErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API error rate %5'in üzerinde"
+          description: "Error rate: {{ $value | printf \"%.2f\" }}%"
+
+      # Database bağlantı sayısı yüksek
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends{datname="epdk_charging_stations"} > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database bağlantı sayısı yüksek"
+          description: "Aktif bağlantı: {{ $value }} (threshold: 80)"
+
+      # Database boyutu büyüyor
+      - alert: DatabaseSizeWarning
+        expr: pg_database_size_bytes{datname="epdk_charging_stations"} > 1073741824
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database 1GB'ı aştı"
+          description: "Database boyutu: {{ $value | humanize1024 }}B"
+
+      # Target down (servis çöktü)
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servis çöktü: {{ $labels.job }}"
+          description: "{{ $labels.instance }} ulaşılamıyor"

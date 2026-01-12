@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: epdk_postgis
+    environment:
+      - POSTGRES_DB=epdk
+      - POSTGRES_USER=epdk
+      - POSTGRES_PASSWORD=epdk
+    ports:
+      - "5432:5432"
+    volumes:
+      - epdk_pgdata:/var/lib/postgresql/data
+
+volumes:
+  epdk_pgdata:

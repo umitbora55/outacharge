@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alert rules dosyası
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  # PostgreSQL metrics
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          environment: 'development'
+
+  # API metrics
+  - job_name: 'api'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+        labels:
+          service: 'api'
+          environment: 'development'

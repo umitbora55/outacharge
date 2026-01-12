@@ -1,0 +1,153 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: epdk_charging_stations
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Create test database schema
+        env:
+          DATABASE_DSN: postgresql://postgres:postgres123@localhost:5432/epdk_charging_stations
+        run: |
+          PGPASSWORD=postgres123 psql -h localhost -U postgres -d epdk_charging_stations -c "
+            CREATE EXTENSION IF NOT EXISTS postgis;
+            CREATE TABLE IF NOT EXISTS stations (
+              id SERIAL PRIMARY KEY,
+              station_no VARCHAR(50) UNIQUE,
+              station_name VARCHAR(500),
+              service_type VARCHAR(50),
+              brand VARCHAR(200),
+              charge_network_operator VARCHAR(500),
+              station_operator VARCHAR(500),
+              is_green BOOLEAN DEFAULT FALSE,
+              address TEXT,
+              city VARCHAR(100),
+              district VARCHAR(100),
+              location GEOMETRY(Point, 4326),
+              source_file VARCHAR(255),
+              ingestion_batch_id UUID,
+              data_hash VARCHAR(32),
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS connectors (
+              id SERIAL PRIMARY KEY,
+              station_id INTEGER REFERENCES stations(id),
+              connector_no VARCHAR(50),
+              connector_type VARCHAR(50),
+              connector_format VARCHAR(100),
+              power_kw DECIMAL(10,2),
+              source_file VARCHAR(255),
+              ingestion_batch_id UUID,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            );
+            INSERT INTO stations (station_no, station_name, brand, city, address) 
+            VALUES ('TEST/001', 'Test Station', 'TestBrand', 'ISTANBUL', 'Test Address')
+            ON CONFLICT DO NOTHING;
+          "
+
+      - name: Run tests with coverage
+        env:
+          DATABASE_DSN: postgresql://postgres:postgres123@localhost:5432/epdk_charging_stations
+          JWT_SECRET_KEY: test-secret-key
+        run: |
+          python -m pytest tests/ -v --cov=api --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t epdk-api:${{ github.sha }} .
+          docker build -t epdk-api:latest .
+
+      - name: Test Docker image
+        run: |
+          docker run -d --name test-api -p 8000:8000 \
+            -e DATABASE_DSN=postgresql://postgres:postgres123@host.docker.internal:5432/epdk_charging_stations \
+            -e JWT_SECRET_KEY=test-secret \
+            epdk-api:latest || true
+          sleep 5
+          docker logs test-api || true
+          docker stop test-api || true
+          docker rm test-api || true
+
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: always()
+
+    steps:
+      - name: Summary
+        run: |
+          echo "## CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
