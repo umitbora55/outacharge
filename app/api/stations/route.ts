@@ -1,64 +1,81 @@
-import { NextResponse } from 'next/server';
+// app/api/stations/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
-const cache: { data: unknown; timestamp: number } | null = null;
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-export async function GET(request: Request) {
-    const { searchParams } = new URL(request.url);
-    const boundingbox = searchParams.get('boundingbox');
+export async function GET(request: NextRequest) {
+    const searchParams = request.nextUrl.searchParams;
+    const boundingBox = searchParams.get('boundingbox');
 
-    // If no bounding box is provided, we could return a default or use Turkey's bounds
-    // For now, let's allow it to be optional but prioritize it if present.
-
-    const apiKey = process.env.NEXT_PUBLIC_OCM_API_KEY;
-    const baseUrl = 'https://api.openchargemap.io/v3/poi/';
-    const url = `${baseUrl}?output=json&countrycode=TR&maxresults=5000&compact=true&verbose=false&key=${apiKey}${boundingbox ? `&boundingbox=${boundingbox}` : ''}`;
-
-    // Simple in-memory cache for the full Turkey data if no bounding box is specific (or even if it is, for simplicity)
-    // To keep it simple and "incredibly fast", we can cache the results based on the URL.
+    if (!boundingBox) {
+        return NextResponse.json({ error: 'Bounding box required' }, { status: 400 });
+    }
 
     try {
-        const response = await fetch(url, {
-            next: { revalidate: 3600 } // Use Next.js built-in fetch cache if available
-        });
-
-        if (!response.ok) {
-            return NextResponse.json({ error: 'Failed to fetch from OpenChargeMap' }, { status: 500 });
+        // Parse bounding box: "(lat1,lng1),(lat2,lng2)"
+        const matches = boundingBox.match(/\(([-\d.]+),([-\d.]+)\),\(([-\d.]+),([-\d.]+)\)/);
+        if (!matches) {
+            return NextResponse.json({ error: 'Invalid bounding box format' }, { status: 400 });
         }
 
-        interface OCMStation {
-            ID: number;
-            AddressInfo: {
-                Title: string;
-                Latitude: number;
-                Longitude: number;
-                AddressLine1: string;
-            };
-            OperatorInfo?: { Title: string };
-            Connections?: { PowerKW: number; CurrentTypeID: number }[];
-        }
+        const [_, nwLat, nwLng, seLat, seLng] = matches.map(Number);
 
-        const data = await response.json() as OCMStation[];
+        // Supabase'den istasyonları çek
+        const { data: stations, error } = await supabase
+            .from('stations')
+            .select(`
+        id,
+        name,
+        latitude,
+        longitude,
+        address,
+        city,
+        operator_name,
+        connectors (
+          connector_type,
+          power_kw,
+          current_type,
+          quantity
+        )
+      `)
+            .gte('latitude', Math.min(nwLat, seLat))
+            .lte('latitude', Math.max(nwLat, seLat))
+            .gte('longitude', Math.min(nwLng, seLng))
+            .lte('longitude', Math.max(nwLng, seLng))
+            .eq('is_operational', true)
+            .limit(1000);
 
-        // Minimize the data payload
-        const optimizedData = data.map((station: OCMStation) => ({
-            ID: station.ID,
+        if (error) throw error;
+
+        // Open Charge Map formatına dönüştür (mevcut frontend koduna uyum için)
+        const formattedStations = stations?.map(station => ({
+            ID: station.id,
             AddressInfo: {
-                Title: station.AddressInfo.Title,
-                Latitude: station.AddressInfo.Latitude,
-                Longitude: station.AddressInfo.Longitude,
-                AddressLine1: station.AddressInfo.AddressLine1,
+                Title: station.name,
+                Latitude: station.latitude,
+                Longitude: station.longitude,
+                AddressLine1: station.address || `${station.city || 'Bilinmeyen Konum'}`,
             },
-            OperatorInfo: station.OperatorInfo ? { Title: station.OperatorInfo.Title } : undefined,
-            Connections: (station.Connections || []).map((c: { PowerKW: number; CurrentTypeID: number }) => ({
-                PowerKW: c.PowerKW,
-                CurrentTypeID: c.CurrentTypeID,
-            })),
-        }));
+            OperatorInfo: {
+                Title: station.operator_name || 'Bilinmeyen Operatör',
+            },
+            Connections: station.connectors?.map((c: any) => ({
+                PowerKW: c.power_kw || 0,
+                CurrentTypeID: c.current_type === 'DC' ? 20 : 10,
+            })) || [],
+        })) || [];
 
-        return NextResponse.json(optimizedData);
+        return NextResponse.json(formattedStations);
+
     } catch (error) {
         console.error('API Error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Failed to fetch stations' },
+            { status: 500 }
+        );
     }
 }
