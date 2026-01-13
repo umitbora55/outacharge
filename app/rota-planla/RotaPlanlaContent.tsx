@@ -26,6 +26,23 @@ import RouteJourney from "../components/RouteJourney";
 import RouteComparison from "../components/RouteComparison";
 import "mapbox-gl/dist/mapbox-gl.css";
 
+// Add after other imports
+import { useEffect as useEffectForDB } from 'react';
+
+// Add this interface near other interfaces
+interface SupabaseVehicle {
+  id: string;
+  make: string;
+  model: string;
+  variant: string | null;
+  battery_kwh: number;
+  range_wltp_km: number;
+  power_hp: number;
+  charge_dc_kw: number;
+  connector_type: string;
+  consumption_kwh_100km: number;
+}
+
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 // ===== ROUTE GEOMETRY HELPERS =====
@@ -260,6 +277,33 @@ export default function RotaPlanlaPage() {
     fewest: any;
     cheapest: any;
   } | null>(null);
+
+  const [supabaseVehicles, setSupabaseVehicles] = useState<SupabaseVehicle[]>([]);
+  const [supabaseBrands, setSupabaseBrands] = useState<string[]>([]);
+  const [loadingSupabase, setLoadingSupabase] = useState(false);
+
+  // Add after other useEffect hooks
+  useEffectForDB(() => {
+    const fetchSupabaseVehicles = async () => {
+      setLoadingSupabase(true);
+      try {
+        const response = await fetch('/api/vehicles');
+        const data = await response.json();
+        if (data.success) {
+          setSupabaseVehicles(data.vehicles);
+          const uniqueBrands = [...new Set(data.vehicles.map((v: SupabaseVehicle) => v.make))];
+          setSupabaseBrands(uniqueBrands as string[]);
+        }
+      } catch (error) {
+        console.error('Supabase vehicles fetch error:', error);
+      }
+      setLoadingSupabase(false);
+    };
+
+    if (vehicleSearchMode === 'local') {
+      fetchSupabaseVehicles();
+    }
+  }, [vehicleSearchMode]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -976,14 +1020,60 @@ export default function RotaPlanlaPage() {
                     <>
                       <select value={selectedBrand} onChange={(e) => setSelectedBrand(e.target.value)} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
                         <option value="">Marka seçin</option>
-                        {localBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+                        {loadingSupabase ? (
+                          <option disabled>Yükleniyor...</option>
+                        ) : (
+                          supabaseBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)
+                        )}
                       </select>
                       {selectedBrand && (
-                        <select value={selectedVehicle?.id || ""} onChange={(e) => { const vehicle = localVehicles.find(v => v.id === e.target.value); setSelectedVehicle(vehicle || null); setShowVehicleSelect(false); }} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
+                        <select
+                          value={selectedVehicle?.id || ""}
+                          onChange={(e) => {
+                            // Önce Supabase'den ara
+                            const supabaseVehicle = supabaseVehicles.find(v => v.id === e.target.value);
+                            if (supabaseVehicle) {
+                              // Supabase verisini local Vehicle formatına çevir
+                              const convertedVehicle: Vehicle = {
+                                id: supabaseVehicle.id,
+                                brand: supabaseVehicle.make,
+                                model: `${supabaseVehicle.model} ${supabaseVehicle.variant || ''}`.trim(),
+                                year: "2024", // Default
+                                batteryCapacity: supabaseVehicle.battery_kwh,
+                                maxDCPower: supabaseVehicle.charge_dc_kw,
+                                maxACPower: 11, // Default
+                                connectors: [supabaseVehicle.connector_type],
+                                range: supabaseVehicle.range_wltp_km,
+                                massKg: 2100, // Average EV weight
+                                dragCoefficient: 0.28,
+                                frontalArea: 2.5,
+                                rollingResistance: 0.010,
+                                drivetrainEfficiency: 0.90,
+                                regenEfficiency: 0.70,
+                                hvacPowerKw: 2.5,
+                                batteryHeatingKw: 5,
+                                optimalBatteryTempC: 25,
+                                tempEfficiencyLoss: 8, // 8% per 10°C
+                                chargingCurve: [], // Will use default curve
+                              };
+                              setSelectedVehicle(convertedVehicle);
+                            } else {
+                              // Fallback: local vehicles
+                              const vehicle = localVehicles.find(v => v.id === e.target.value);
+                              setSelectedVehicle(vehicle || null);
+                            }
+                            setShowVehicleSelect(false);
+                          }}
+                          className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
+                        >
                           <option value="">Model seçin</option>
-                          {vehiclesByBrand[selectedBrand]?.map(vehicle => (
-                            <option key={vehicle.id} value={vehicle.id}>{vehicle.model} ({vehicle.range} km)</option>
-                          ))}
+                          {supabaseVehicles
+                            .filter(v => v.make === selectedBrand)
+                            .map(vehicle => (
+                              <option key={vehicle.id} value={vehicle.id}>
+                                {vehicle.model} {vehicle.variant} ({vehicle.range_wltp_km} km)
+                              </option>
+                            ))}
                         </select>
                       )}
                     </>

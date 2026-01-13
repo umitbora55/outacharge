@@ -1,107 +1,109 @@
+// app/components/HeaderWhite.tsx
 "use client";
+
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { Zap, Bell, MessageSquare, User, LogOut, LogIn } from "lucide-react";
-import { ThemeToggle } from "./ThemeToggle"; // <--- Import et
+import { ThemeToggle } from "./ThemeToggle";
 
 export default function HeaderWhite() {
   const { user, session, signOut } = useAuth();
 
-  // Use profile data if available, otherwise fallback to session metadata
   const displayUser = user || (session?.user ? {
-    fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "Kullanıcı",
+    fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || "User",
     email: session.user.email || ""
   } : null);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 dark:bg-black/40 backdrop-blur-md border-b border-gray-100 dark:border-white/10 transition-all duration-300">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-zinc-900 dark:text-white">
-            Outa<span className="text-emerald-500">Charge</span>
+    <header className="sticky top-0 z-50 bg-white/70 dark:bg-[#000000]/70 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-900 transition-all duration-500">
+      <div className="container max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+
+        {/* Logo - Apple Style Balanced Typography */}
+        <Link href="/" className="flex items-center gap-2 group">
+          <Zap className="w-5 h-5 text-emerald-500 transition-transform duration-500 group-hover:scale-110" />
+          <span className="text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">
+            Outa<span className="font-light text-zinc-400">Charge</span>
           </span>
         </Link>
 
-        {/* Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/harita" className="text-zinc-900 dark:text-white hover:text-emerald-500 transition font-medium">
-            Harita
-          </Link>
-          <Link href="/topluluk" className="text-zinc-900 dark:text-white hover:text-emerald-500 transition font-medium">
-            Topluluk
-          </Link>
-          <Link href="/incelemeler" className="text-zinc-900 dark:text-white hover:text-emerald-500 transition font-medium">
-            İncelemeler
-          </Link>
-          <Link href="/hesaplayici" className="text-zinc-900 dark:text-white hover:text-emerald-500 transition font-medium">
-            Hesaplayıcı
-          </Link>
-          {displayUser && (
-            <Link href="/istatistikler" className="text-zinc-900 dark:text-white hover:text-emerald-500 transition font-medium">
-              İstatistikler
+        {/* Global Navigation - Fine Typography */}
+        <nav className="hidden md:flex items-center gap-8">
+          {[
+            { label: "Harita", href: "/harita" },
+            { label: "Topluluk", href: "/topluluk" },
+            { label: "İncelemeler", href: "/incelemeler" },
+            { label: "Hesaplayıcı", href: "/hesaplayici" },
+            ...(displayUser ? [{ label: "İstatistikler", href: "/istatistikler" }] : [])
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="text-[13px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors duration-300"
+            >
+              {item.label}
             </Link>
-          )}
+          ))}
         </nav>
 
-        {/* User Actions */}
-        <div className="flex items-center gap-3">
-          {/* TEMA DEGISTIRICI */}
-          <ThemeToggle />
+        {/* Action Controls */}
+        <div className="flex items-center gap-1">
+          <div className="flex items-center pr-2 mr-2 border-r border-zinc-100 dark:border-zinc-800">
+            <ThemeToggle />
+          </div>
 
           {displayUser ? (
-            <>
+            <div className="flex items-center gap-1">
               <Link
                 href="/bildirimler"
-                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 flex items-center justify-center transition"
+                className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
               >
-                <Bell className="w-5 h-5 text-zinc-900 dark:text-zinc-300" />
+                <Bell className="w-[18px] h-[18px]" />
               </Link>
               <Link
                 href="/mesajlar"
-                className="w-9 h-9 rounded-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 flex items-center justify-center transition"
+                className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
               >
-                <MessageSquare className="w-5 h-5 text-zinc-900 dark:text-zinc-300" />
+                <MessageSquare className="w-[18px] h-[18px]" />
               </Link>
-              <Link
-                href="/profil"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition group"
-                title="Profilim"
-              >
-                <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center group-hover:scale-105 transition">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-emerald-900 dark:text-emerald-400 hidden sm:block">
-                  {displayUser.fullName}
-                </span>
-              </Link>
-              <button
-                onClick={signOut}
-                className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-500/10 hover:bg-red-200 dark:hover:bg-red-500/20 flex items-center justify-center transition"
-                title="Çıkış Yap"
-              >
-                <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
-              </button>
-            </>
+
+              {/* Profile - Understated & High-End */}
+              <div className="flex items-center gap-2 ml-2">
+                <Link
+                  href="/profil"
+                  className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700 transition-all duration-300 group"
+                >
+                  <div className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                    <User className="w-3.5 h-3.5 text-zinc-500" />
+                  </div>
+                  <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 hidden sm:block">
+                    {displayUser.fullName}
+                  </span>
+                </Link>
+
+                <button
+                  onClick={signOut}
+                  className="w-9 h-9 flex items-center justify-center text-zinc-300 hover:text-red-500 transition-colors duration-300"
+                  title="Çıkış Yap"
+                >
+                  <LogOut className="w-[17px] h-[17px]" />
+                </button>
+              </div>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-2 ml-2">
               <Link
                 href="/giris"
-                className="px-4 py-2 text-zinc-900 dark:text-white hover:text-emerald-500 transition font-medium flex items-center gap-2"
+                className="text-[13px] font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white px-4 py-2 transition-colors"
               >
-                <LogIn className="w-4 h-4" />
                 Giriş Yap
               </Link>
               <Link
                 href="/kayit"
-                className="px-4 py-2 bg-black dark:bg-white dark:text-black text-white rounded-full hover:bg-black/90 dark:hover:bg-white/90 transition font-medium"
+                className="text-[13px] font-medium bg-zinc-950 dark:bg-white text-white dark:text-black px-5 py-2 rounded-full hover:bg-black dark:hover:bg-zinc-100 transition-all shadow-sm"
               >
                 Üye Ol
               </Link>
-            </>
+            </div>
           )}
         </div>
       </div>

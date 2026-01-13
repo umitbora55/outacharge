@@ -7,27 +7,23 @@ import HeaderWhite from "../components/HeaderWhite";
 import VideoFilter from "../components/VideoFilter";
 import VideoGallery, { VideoItem } from "../components/VideoGallery";
 import { useVehicleSelector } from "../hooks/useVehicleSelector";
-import { Youtube } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 export default function IncelemelerPage() {
-    // 1. Hook'u Çağır (Veri Yönetimi)
     const { brands, years, models, selections, setters } = useVehicleSelector();
 
-    // 2. State Yönetimi (Video ve Yükleme Durumu)
     const [videos, setVideos] = useState<VideoItem[]>([]);
     const [loading, setLoading] = useState(false);
-    const [searched, setSearched] = useState(false); // İlk açılışta boş ekran göstermek için
+    const [searched, setSearched] = useState(false);
 
-    // 3. Arama Fonksiyonu (Backend ile İletişim)
     const handleSearch = async () => {
         if (!selections.brand || !selections.model) return;
 
         setLoading(true);
         setSearched(true);
-        setVideos([]); // Önceki sonuçları temizle
+        setVideos([]);
 
         try {
-            // API'ye istek at (Backend'de oluşturduğumuz route)
             const query = `${selections.brand} ${selections.model} ${selections.year}`;
             const params = new URLSearchParams({
                 q: query,
@@ -44,68 +40,102 @@ export default function IncelemelerPage() {
 
         } catch (error) {
             console.error("Arama hatası:", error);
-            alert("Videolar getirilirken bir sorun oluştu.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-transparent">
+        <div className="min-h-screen bg-white dark:bg-[#000000] transition-colors duration-1000 selection:bg-red-500/30 font-sans text-zinc-900 dark:text-white">
             <HeaderWhite />
 
-            {/* Hero / Başlık Alanı */}
-            <div className="relative bg-zinc-900 text-white pb-24 pt-12 overflow-hidden">
-                {/* Background Image Layer */}
+            {/* Understated Library Hero - Minimalist Luxury */}
+            <div className="relative h-[60vh] min-h-[500px] flex items-center overflow-hidden bg-zinc-950">
                 <div
                     className="absolute inset-0 z-0"
                     style={{
                         backgroundImage: 'url("/images/hero-car.jpg")',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        opacity: 0.7
                     }}
-                />
-                {/* Gradient Overlay for better contrast */}
-                <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 via-zinc-900/40 to-zinc-900 z-0" />
+                >
+                    <div className="absolute inset-0 bg-black/85 backdrop-blur-[2px]" />
+                </div>
 
-                <div className="max-w-6xl mx-auto px-4 text-center relative z-10">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm font-medium mb-6 border border-white/10">
-                        <Youtube className="w-4 h-4 text-red-500" />
-                        <span>Video İnceleme Kütüphanesi</span>
+                <div className="container max-w-6xl mx-auto px-6 relative z-10">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
+                            <span className="text-zinc-500 text-[10px] font-bold tracking-[0.5em] uppercase">Archive & Review</span>
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-tight opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
+                            Technical <br />
+                            <span className="font-medium">Insights.</span>
+                        </h1>
+                        <p className="text-zinc-500 max-w-md text-lg font-light leading-relaxed mb-12 opacity-0 animate-[fadeIn_1s_ease-out_0.4s_forwards]">
+                            Explore detailed expert reviews processed through our high-precision archive.
+                        </p>
+
+                        {/* Integrated Stats - Technical Specification Style */}
+                        <div className="flex items-center gap-16 opacity-0 animate-[fadeIn_1s_ease-out_0.6s_forwards]">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                                    {videos.length > 0 ? videos.length : "0"}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    Active Records
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                                    {searched ? "Verified" : "Standby"}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    Service Status
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-bold mb-4">
-                        Aracınızı Uzmanlardan Dinleyin
-                    </h1>
-                    <p className="text-zinc-400 max-w-2xl mx-auto text-lg">
-                        Binlerce inceleme videosu arasından marka ve modele göre filtrelenmiş,
-                        en alakalı içeriklere anında ulaşın.
-                    </p>
                 </div>
             </div>
 
-            {/* Ana İçerik (Yukarıya doğru taşan tasarım) */}
-            <div className="max-w-6xl mx-auto px-4 -mt-16 pb-20 relative z-10">
+            <main className="container max-w-6xl mx-auto px-6 pb-32 relative z-20">
+                {/* Search & Filter Section */}
+                <div className="pt-20 pb-16">
+                    <VideoFilter
+                        brands={brands}
+                        years={years}
+                        models={models}
+                        selections={selections}
+                        setters={setters}
+                        onSearch={handleSearch}
+                        loading={loading}
+                    />
+                </div>
 
-                {/* Filtreleme Komponenti */}
-                <VideoFilter
-                    brands={brands}
-                    years={years}
-                    models={models}
-                    selections={selections}
-                    setters={setters}
-                    onSearch={handleSearch}
-                    loading={loading}
-                />
+                {/* Video Gallery Container */}
+                <div className="mt-8">
+                    <VideoGallery
+                        videos={videos}
+                        loading={loading}
+                        searched={searched}
+                    />
+                </div>
 
-                {/* Video Galeri */}
-                <VideoGallery
-                    videos={videos}
-                    loading={loading}
-                    searched={searched}
-                />
+                <div className="mt-48 flex flex-col items-center">
+                    <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-950" />
+                    <p className="text-zinc-100 dark:text-zinc-900/30 text-[10vw] font-black leading-none select-none tracking-tighter mt-12">
+                        ARCHIVE
+                    </p>
+                </div>
+            </main>
 
-            </div>
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 }

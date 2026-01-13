@@ -17,28 +17,33 @@ export function useVehicleSelector() {
         setSelectedModel('');
     };
 
+    const handleModelChange = (model: string) => {
+        setSelectedModel(model);
+        setSelectedYear('');
+    };
+
     const handleYearChange = (year: string) => {
         setSelectedYear(year);
-        setSelectedModel('');
     };
 
     const availableYears = useMemo(() => {
         if (!selectedBrand) return [];
-        const brandVehicles = vehicles.filter(v => v.brand === selectedBrand);
-        const years = new Set(brandVehicles.map(v => v.year).filter((y): y is string => !!y));
+        let filtered = vehicles.filter(v => v.brand === selectedBrand);
+        if (selectedModel) {
+            filtered = filtered.filter(v => v.model === selectedModel);
+        }
+        const years = new Set(filtered.map(v => v.year).filter((y): y is string => !!y));
         if (years.size === 0) return ['2025', '2024', '2023', '2022', '2021'];
         return Array.from(years).sort().reverse();
-    }, [selectedBrand]);
+    }, [selectedBrand, selectedModel]);
 
     const availableModels = useMemo(() => {
         if (!selectedBrand) return [];
-        let filtered = vehicles.filter(v => v.brand === selectedBrand);
-        if (selectedYear) {
-            const yearMatch = filtered.filter(v => v.year === selectedYear);
-            if (yearMatch.length > 0) filtered = yearMatch;
-        }
-        return filtered.map(v => v.model).filter((m): m is string => !!m);
-    }, [selectedBrand, selectedYear]);
+        const filtered = vehicles.filter(v => v.brand === selectedBrand);
+        // Model listesi marka seçilince açılmalı, yıla göre kısıtlanmamalı (akış gereği)
+        const uniqueModels = new Set(filtered.map(v => v.model).filter((m): m is string => !!m));
+        return Array.from(uniqueModels).sort();
+    }, [selectedBrand]);
 
     return {
         brands,
@@ -48,15 +53,15 @@ export function useVehicleSelector() {
             brand: selectedBrand,
             year: selectedYear,
             model: selectedModel,
-            lang: selectedLang,  // YENİ
-            sort: selectedSort   // YENİ
+            lang: selectedLang,
+            sort: selectedSort
         },
         setters: {
             setBrand: handleBrandChange,
             setYear: handleYearChange,
-            setModel: setSelectedModel,
-            setLang: setSelectedLang,  // YENİ
-            setSort: setSelectedSort   // YENİ
+            setModel: handleModelChange,
+            setLang: setSelectedLang,
+            setSort: setSelectedSort
         }
     };
 }

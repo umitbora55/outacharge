@@ -101,6 +101,22 @@ html.dark body {
   min-height: 100vh;
 }
 
+/* Fade In animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 1s ease-out forwards;
+}
+
 /* Toast animation */
 @keyframes slide-in-right {
   from {

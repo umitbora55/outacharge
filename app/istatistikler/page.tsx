@@ -212,434 +212,301 @@ export default function IstatistiklerPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors">
+    <div className="min-h-screen bg-white dark:bg-[#000000] transition-colors duration-1000 selection:bg-red-500/30 font-sans text-zinc-900 dark:text-white">
       <HeaderWhite />
 
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 flex items-center justify-center text-gray-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                <BarChart3 className="w-7 h-7 text-emerald-400" />
-                İstatistiklerim
-              </h1>
-              <p className="text-gray-500 dark:text-zinc-400 text-sm">Şarj geçmişiniz ve çevre katkınız</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            Şarj Kaydı Ekle
-          </button>
+      {/* Cinematic Hero Section - Personal Metrics Style */}
+      <div className="relative h-[60vh] min-h-[500px] flex items-center overflow-hidden bg-zinc-950">
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: 'url("/images/hero-car.jpg")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-[2px]" />
         </div>
 
+        <div className="container max-w-6xl mx-auto px-6 relative z-10">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
+              <span className="text-zinc-500 text-[10px] font-bold tracking-[0.5em] uppercase">Metrics & Sustanability</span>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-tight opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
+              Personal <br />
+              <span className="font-medium">Directives.</span>
+            </h1>
+            <p className="text-zinc-500 max-w-md text-lg font-light leading-relaxed mb-12 opacity-0 animate-[fadeIn_1s_ease-out_0.4s_forwards]">
+              Analyze your environmental impact and infrastructure usage through our high-precision technical archive.
+            </p>
+
+            {/* Integrated Stats - Technical Specification Style */}
+            <div className="flex items-center gap-16 opacity-0 animate-[fadeIn_1s_ease-out_0.6s_forwards]">
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                  {stats?.co2Saved || 0}
+                </span>
+                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                  CO₂ SAVED (KG)
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                  {stats?.treesEquivalent || 0}
+                </span>
+                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                  TREE EQUIVALENCE
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                  {stats?.moneySavedVsFuel || 0}
+                </span>
+                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                  NET EARNINGS
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="container max-w-6xl mx-auto px-6 pb-32 relative z-20">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+          <div className="flex items-center justify-center py-40">
+            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* CO2 Savings Hero - Premium Dark Card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-emerald-950 to-black rounded-3xl p-8 shadow-2xl border border-emerald-500/20">
-              {/* Background Glow Effects */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/10 blur-3xl rounded-full translate-y-1/2 -translate-x-1/2" />
+          <div className="animate-in fade-in duration-1000">
+            {/* Minimalist Controls Section */}
+            <div className="pt-20 pb-24 border-b border-zinc-100 dark:border-zinc-900">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                <div className="flex items-baseline gap-6 group">
+                  <h2 className="text-2xl font-light tracking-tight text-zinc-900 dark:text-white">Directive History</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 group-hover:text-emerald-500 transition-colors">
+                    {history.length} ACTIVE RECORDS
+                  </span>
+                </div>
 
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-emerald-500/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-900/40">
-                      <Leaf className="w-7 h-7 text-emerald-400" />
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="px-8 py-3 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-full text-[11px] font-bold uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-zinc-900/10 dark:shadow-white/10"
+                >
+                  Add Record
+                </button>
+              </div>
+            </div>
+
+            {/* Technical Ledger Grid */}
+            <div className="pt-20 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-24">
+              {[
+                { label: "Total Energy", value: stats?.totalEnergy || 0, unit: "kwh", icon: Zap },
+                { label: "Total Expenditure", value: `₺${stats?.totalCost || 0}`, unit: null, icon: DollarSign },
+                { label: "Frequency", value: stats?.totalSessions || 0, unit: "cycles", icon: TrendingUp },
+                { label: "Runtime", value: formatDuration(stats?.totalDuration || 0), unit: null, icon: Clock }
+              ].map((item, i) => (
+                <div key={i} className="bg-[#FAFAFA] dark:bg-[#080808] border border-zinc-100 dark:border-white/[0.03] rounded-3xl p-8 group hover:border-zinc-200 dark:hover:border-white/[0.06] transition-all">
+                  <div className="flex items-center justify-between mb-8 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <item.icon className="w-4 h-4 text-zinc-400" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">.{String(i + 1).padStart(2, '0')}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-light tracking-tighter tabular-nums text-zinc-900 dark:text-white">{item.value}</span>
+                      {item.unit && <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{item.unit}</span>}
+                    </div>
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-[0.3em]">{item.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Dynamic Pricing - Directive Style */}
+            <div className="bg-[#FAFAFA] dark:bg-[#080808] border border-zinc-100 dark:border-white/[0.03] rounded-[2.5rem] p-12 mb-32 group">
+              <div className="flex items-center justify-between mb-16">
+                <div>
+                  <span className="text-emerald-500 text-[10px] font-bold tracking-[0.5em] uppercase mb-4 block">Intelligence</span>
+                  <h3 className="text-4xl font-light tracking-tight text-zinc-900 dark:text-white">Dynamic Pricing.</h3>
+                </div>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">TEDAŞ RESIDENTIAL TARIFE</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[
+                  { label: "Night", time: "22:00 - 06:00", price: "2.10", color: "text-emerald-500", tag: "OPTIMAL" },
+                  { label: "Day", time: "06:00 - 17:00", price: "4.20", color: "text-blue-500", tag: "NOMINAL" },
+                  { label: "Peak", time: "17:00 - 22:00", price: "6.50", color: "text-red-500", tag: "MAXIMUM" }
+                ].map((p, i) => (
+                  <div key={i} className="flex flex-col gap-8 p-8 rounded-3xl bg-white dark:bg-zinc-900/40 border border-zinc-50 dark:border-white/[0.01] hover:border-zinc-100 dark:hover:border-white/[0.05] transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-bold tracking-widest uppercase ${p.color}`}>{p.tag}</span>
+                      <Zap className={`w-3 h-3 ${p.color} opacity-30`} />
                     </div>
                     <div>
-                      <h2 className="text-white text-2xl font-bold tracking-tight">Çevre Katkınız</h2>
-                      <p className="text-emerald-200/80 font-medium">Elektrikli araç kullanarak gezegenimizi koruyorsunuz</p>
+                      <div className="text-xl font-medium mb-1">{p.label}</div>
+                      <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">{p.time}</div>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className={`text-4xl font-light tracking-tighter ${p.color}`}>{p.price}</span>
+                      <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">₺/KWH</span>
                     </div>
                   </div>
-
-                  {/* Total Savings Badge */}
-                  {stats && stats.totalSessions > 0 && (
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md text-emerald-300 text-xs font-semibold uppercase tracking-wider">
-                      <TrendingUp className="w-4 h-4" />
-                      <span>{stats.totalSessions} Şarj Oturumu</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* CO2 Card */}
-                  <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group">
-                    <div className="flex items-center gap-3 mb-3 text-emerald-200/70 group-hover:text-emerald-200 transition-colors">
-                      <Factory className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/80">CO₂ Tasarrufu</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-white tracking-tighter">{stats?.co2Saved || 0}</span>
-                      <span className="text-sm font-medium text-emerald-200/60 uppercase">kg</span>
-                    </div>
-                  </div>
-
-                  {/* Trees Card */}
-                  <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group">
-                    <div className="flex items-center gap-3 mb-3 text-emerald-200/70 group-hover:text-emerald-200 transition-colors">
-                      <TreePine className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/80">Ağaç Eşdeğeri</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-white tracking-tighter">{stats?.treesEquivalent || 0}</span>
-                      <span className="text-sm font-medium text-emerald-200/60 uppercase">adet</span>
-                    </div>
-                  </div>
-
-                  {/* Fuel Card */}
-                  <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 hover:bg-white/10 transition-colors group">
-                    <div className="flex items-center gap-3 mb-3 text-emerald-200/70 group-hover:text-emerald-200 transition-colors">
-                      <Droplets className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/80">Yatık Tasarrufu</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-white tracking-tighter">{stats?.fuelSaved || 0}</span>
-                      <span className="text-sm font-medium text-emerald-200/60 uppercase">litre</span>
-                    </div>
-                  </div>
-
-                  {/* Money Card */}
-                  <div className="bg-emerald-500/10 backdrop-blur-md border border-emerald-500/30 rounded-2xl p-5 hover:bg-emerald-500/20 transition-colors group shadow-lg shadow-emerald-500/5">
-                    <div className="flex items-center gap-3 mb-3 text-emerald-400 group-hover:text-emerald-300 transition-colors">
-                      <DollarSign className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Net Kazanç</span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-white tracking-tighter">₺{stats?.moneySavedVsFuel || 0}</span>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Main Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center gap-3 mb-2 text-gray-500 dark:text-zinc-400">
-                  <div className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-                    <Zap className="w-4 h-4 text-zinc-900 dark:text-white" />
+            {/* History Feed - Minimalist Archive Style */}
+            <div className="space-y-32">
+              {Object.entries(groupedHistory).map(([monthKey, { label, records }]) => (
+                <div key={monthKey}>
+                  <div className="flex items-baseline gap-8 mb-12 border-b border-zinc-100 dark:border-zinc-900 pb-8">
+                    <h3 className="text-4xl font-extralight tracking-tight text-zinc-900 dark:text-white">{label}</h3>
+                    <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">{records.length} DIRECTIVES</span>
                   </div>
-                  <span className="text-sm font-medium">Toplam Enerji</span>
-                </div>
-                <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">{stats?.totalEnergy || 0} <span className="text-base text-gray-400 dark:text-zinc-500 font-normal">kWh</span></div>
-              </div>
 
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center gap-3 mb-2 text-gray-500 dark:text-zinc-400">
-                  <div className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-                    <DollarSign className="w-4 h-4 text-zinc-900 dark:text-white" />
-                  </div>
-                  <span className="text-sm font-medium">Toplam Masraf</span>
-                </div>
-                <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">₺{stats?.totalCost || 0}</div>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center gap-3 mb-2 text-gray-500 dark:text-zinc-400">
-                  <div className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-                    <Calendar className="w-4 h-4 text-zinc-900 dark:text-white" />
-                  </div>
-                  <span className="text-sm font-medium">Şarj Sayısı</span>
-                </div>
-                <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">{stats?.totalSessions || 0} <span className="text-base text-gray-400 dark:text-zinc-500 font-normal">kez</span></div>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center gap-3 mb-2 text-gray-500 dark:text-zinc-400">
-                  <div className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-                    <Clock className="w-4 h-4 text-zinc-900 dark:text-white" />
-                  </div>
-                  <span className="text-sm font-medium">Toplam Süre</span>
-                </div>
-                <div className="text-2xl font-bold text-zinc-900 dark:text-white mt-2">{formatDuration(stats?.totalDuration || 0)}</div>
-              </div>
-            </div>
-
-            {/* Dynamic Pricing Info - Modern Card */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 border border-gray-100 dark:border-zinc-800 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <div>
-                  <h3 className="text-zinc-900 dark:text-white font-bold text-xl flex items-center gap-2">
-                    <TrendingUp className="w-6 h-6 text-emerald-500" />
-                    Dinamik Fiyatlandırma
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1.5">Zaman dilimlerine göre konut elektrik maliyetleri</p>
-                </div>
-                <div className="inline-flex items-center px-4 py-1.5 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 rounded-full text-xs font-bold uppercase tracking-wider">
-                  TEDAŞ Konut Tarifesi
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Night - Cheap */}
-                <div className="relative group overflow-hidden rounded-2xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5 p-6 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all duration-300">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Zap className="w-16 h-16 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-emerald-700 dark:text-emerald-400 font-bold text-lg">Gece</span>
-                    <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-full uppercase tracking-wider">En Ucuz</span>
-                  </div>
-                  <div className="text-emerald-900/60 dark:text-zinc-400 text-sm font-medium mb-4">22:00 - 06:00</div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">2.10</span>
-                    <span className="text-sm text-emerald-600 dark:text-emerald-500 font-bold">₺/kWh</span>
-                  </div>
-                </div>
-
-                {/* Day - Normal */}
-                <div className="relative group overflow-hidden rounded-2xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/50 dark:bg-blue-500/5 p-6 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all duration-300">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Zap className="w-16 h-16 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-blue-700 dark:text-blue-400 font-bold text-lg">Gündüz</span>
-                    <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full uppercase tracking-wider">Normal</span>
-                  </div>
-                  <div className="text-blue-900/60 dark:text-zinc-400 text-sm font-medium mb-4">06:00 - 17:00</div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold text-blue-700 dark:text-blue-400">4.20</span>
-                    <span className="text-sm text-blue-600 dark:text-blue-500 font-bold">₺/kWh</span>
-                  </div>
-                </div>
-
-                {/* Peak - Expensive */}
-                <div className="relative group overflow-hidden rounded-2xl border border-red-100 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/5 p-6 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-300">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Zap className="w-16 h-16 text-red-600 dark:text-red-400" />
-                  </div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-red-700 dark:text-red-400 font-bold text-lg">Puant</span>
-                    <span className="text-[10px] font-bold bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 px-2.5 py-1 rounded-full uppercase tracking-wider">Pahalı</span>
-                  </div>
-                  <div className="text-red-900/60 dark:text-zinc-400 text-sm font-medium mb-4">17:00 - 22:00</div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold text-red-700 dark:text-red-400">6.50</span>
-                    <span className="text-sm text-red-600 dark:text-red-500 font-bold">₺/kWh</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Charging History */}
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 border border-gray-100 dark:border-zinc-800 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-zinc-900 dark:text-white font-bold text-xl flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-emerald-500" />
-                  </div>
-                  Şarj Geçmişi
-                </h3>
-              </div>
-
-              {history.length === 0 ? (
-                <div className="text-center py-20 bg-gray-50 dark:bg-zinc-950/50 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800">
-                  <div className="w-20 h-20 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100 dark:border-zinc-800">
-                    <Zap className="w-10 h-10 text-gray-300 dark:text-zinc-700" />
-                  </div>
-                  <h4 className="text-zinc-900 dark:text-white font-bold text-lg mb-2">Henüz kayıt bulunmuyor</h4>
-                  <p className="text-gray-500 dark:text-zinc-400 text-sm mb-8 max-w-xs mx-auto">Elektrikli aracınızın şarj verilerini buraya ekleyerek tasarrufunuzu izleyin.</p>
-                  <button
-                    onClick={() => setShowAddForm(true)}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 text-zinc-950 font-bold rounded-xl hover:bg-emerald-600 transition-all active:scale-95"
-                  >
-                    <Plus className="w-5 h-5" />
-                    İlk Kaydını Ekle
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {Object.entries(groupedHistory).map(([monthKey, { label, records }]) => (
-                    <div key={monthKey} className="border border-gray-100 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900">
-                      <button
-                        onClick={() => setExpandedMonth(expandedMonth === monthKey ? null : monthKey)}
-                        className="w-full px-6 py-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <span className="text-zinc-900 dark:text-white font-bold text-lg">{label}</span>
-                          <span className="px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                            {records.length} Oturum
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="hidden sm:flex flex-col items-end">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-base">
-                              {records.reduce((sum, r) => sum + Number(r.energy_kwh), 0).toFixed(1)} kWh
-                            </span>
-                            <span className="text-gray-400 dark:text-zinc-500 text-[10px] uppercase font-bold tracking-widest">Aylık Toplam</span>
+                  <div className="space-y-px">
+                    {records.map((record) => (
+                      <div key={record.id} className="py-12 group flex items-center justify-between border-b border-zinc-50 dark:border-zinc-900/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-all px-8 -mx-8">
+                        <div className="flex items-center gap-12 text-left">
+                          <div className="flex flex-col">
+                            <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1">STATION</span>
+                            <span className="text-2xl font-light tracking-tight text-zinc-900 dark:text-white uppercase">{record.station_name}</span>
                           </div>
-                          <div className="p-1.5 bg-gray-100 dark:bg-zinc-800 rounded-full transition-transform duration-300">
-                            {expandedMonth === monthKey ? (
-                              <ChevronUp className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
-                            )}
+                          <div className="flex flex-col">
+                            <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1">OPERATOR</span>
+                            <span className="text-[13px] font-medium text-zinc-500 uppercase">{record.station_operator || "PRIVATE"}</span>
                           </div>
                         </div>
-                      </button>
 
-                      {expandedMonth === monthKey && (
-                        <div className="divide-y divide-gray-100 dark:divide-zinc-800 bg-gray-50/30 dark:bg-zinc-950/20">
-                          {records.map((record) => (
-                            <div key={record.id} className="p-6 flex items-center justify-between hover:bg-white dark:hover:bg-zinc-800/40 transition-all group">
-                              <div className="flex items-center gap-5">
-                                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center border border-gray-100 dark:border-zinc-700 text-emerald-500 shadow-sm group-hover:scale-110 transition-transform">
-                                  <Zap className="w-6 h-6" />
-                                </div>
-                                <div>
-                                  <div className="text-zinc-900 dark:text-white font-bold text-lg">{record.station_name}</div>
-                                  <div className="flex items-center gap-2.5 text-xs text-gray-500 dark:text-zinc-400 mt-1">
-                                    <span className="font-bold text-zinc-600 dark:text-zinc-300">{record.station_operator || "Özel / Ev"}</span>
-                                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-700" />
-                                    <span>{new Date(record.started_at).toLocaleDateString("tr-TR", { day: "numeric", month: "long" })}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-10">
-                                <div className="text-right">
-                                  <div className="text-emerald-600 dark:text-emerald-400 font-bold text-lg">{record.energy_kwh} kWh</div>
-                                  <div className="text-gray-500 dark:text-zinc-400 text-xs font-medium mt-1">
-                                    {record.cost ? `₺${record.cost}` : "-- ₺"} • {formatDuration(record.duration_minutes)}
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => deleteRecord(record.id)}
-                                  disabled={deleting === record.id}
-                                  className="p-2.5 text-gray-300 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                  title="Kaydı Sil"
-                                >
-                                  {deleting === record.id ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="w-5 h-5" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                        <div className="flex items-center gap-20 text-right">
+                          <div className="flex flex-col">
+                            <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1">ENERGY</span>
+                            <span className="text-2xl font-light tracking-tighter tabular-nums text-emerald-500">{record.energy_kwh}KWH</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1">COST</span>
+                            <span className="text-[13px] font-bold text-zinc-700 dark:text-zinc-300 tabular-nums">{record.cost ? `₺${record.cost}` : "--"}</span>
+                          </div>
+                          <button
+                            onClick={() => deleteRecord(record.id)}
+                            className="w-10 h-10 flex items-center justify-center rounded-full border border-zinc-100 dark:border-zinc-800 text-zinc-300 hover:text-red-500 hover:border-red-500/20 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+
+            <div className="mt-48 flex flex-col items-center">
+              <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-900" />
+              <p className="text-zinc-100 dark:text-zinc-900/10 text-[10vw] font-black leading-none select-none tracking-tighter mt-12">
+                METRICS
+              </p>
             </div>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Add Record Modal */}
+      {/* Add Record Modal - Unified High-End Design */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-2xl rounded-3xl w-full max-w-lg p-8 transform animate-in slide-in-from-bottom-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-bold text-zinc-900 dark:text-white">Şarj Kaydı Ekle</h3>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 p-6 animate-in fade-in duration-500">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-white/10 rounded-[2.5rem] w-full max-w-xl p-12 shadow-2xl overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[100px] pointer-events-none" />
+
+            <div className="flex items-center justify-between mb-12">
+              <div className="flex flex-col gap-2">
+                <span className="text-emerald-500 text-[10px] font-bold tracking-[0.5em] uppercase">Architecture</span>
+                <h3 className="text-4xl font-light tracking-tight text-zinc-900 dark:text-white">Record Directive.</h3>
+              </div>
               <button
                 onClick={() => setShowAddForm(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-zinc-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-white/10 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
               >
-                <ChevronUp className="w-6 h-6 rotate-180" />
+                <ChevronDown className="w-5 h-5 rotate-180" />
               </button>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <label className="block text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">İstasyon Adı</label>
-                <input
-                  type="text"
-                  value={formData.stationName}
-                  onChange={(e) => setFormData({ ...formData, stationName: e.target.value })}
-                  placeholder="Örn: ZES Ankara Kızılay"
-                  className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
-                />
+            <div className="space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">STATION IDENTITY</label>
+                  <input
+                    type="text"
+                    value={formData.stationName}
+                    onChange={(e) => setFormData({ ...formData, stationName: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-none text-zinc-900 dark:text-white rounded-2xl px-6 py-4 focus:ring-1 focus:ring-emerald-500 transition-all font-light"
+                  />
+                </div>
+                <div className="space-y-4">
+                  <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">OPERATOR ARCHIVE</label>
+                  <input
+                    type="text"
+                    value={formData.stationOperator}
+                    onChange={(e) => setFormData({ ...formData, stationOperator: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-none text-zinc-900 dark:text-white rounded-2xl px-6 py-4 focus:ring-1 focus:ring-emerald-500 transition-all font-light"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">Operatör</label>
-                <input
-                  type="text"
-                  value={formData.stationOperator}
-                  onChange={(e) => setFormData({ ...formData, stationOperator: e.target.value })}
-                  placeholder="Örn: ZES, Eşarj, Evim"
-                  className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">Enerji (kWh)</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-3">
+                  <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">KWH</label>
                   <input
                     type="number"
-                    step="0.1"
                     value={formData.energyKwh}
                     onChange={(e) => setFormData({ ...formData, energyKwh: e.target.value })}
-                    placeholder="25.5"
-                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-none text-zinc-900 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
-                <div>
-                  <label className="block text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">Ücret (₺)</label>
+                <div className="space-y-3">
+                  <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">COST</label>
                   <input
                     type="number"
-                    step="0.01"
                     value={formData.cost}
                     onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                    placeholder="450"
-                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-none text-zinc-900 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">Süre (dakika)</label>
+                <div className="space-y-3">
+                  <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">MINS</label>
                   <input
                     type="number"
                     value={formData.durationMinutes}
                     onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                    placeholder="40"
-                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-none text-zinc-900 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
-                <div>
-                  <label className="block text-gray-500 dark:text-zinc-400 text-xs font-bold uppercase tracking-wider mb-2">Tarih</label>
+                <div className="space-y-3">
+                  <label className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">DATE</label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-zinc-900 dark:text-white rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-none text-zinc-900 dark:text-white rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-emerald-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-6">
+              <div className="pt-8 flex gap-4">
                 <button
                   onClick={() => setShowAddForm(false)}
-                  className="flex-1 py-4 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"
+                  className="flex-1 py-4 text-[11px] font-bold uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
                 >
-                  İptal
+                  Terminate
                 </button>
                 <button
                   onClick={handleAddRecord}
                   disabled={submitting || !formData.stationName || !formData.energyKwh}
-                  className="flex-2 py-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                  className="flex-[2] py-5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl text-[11px] font-bold uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-zinc-900/20 dark:shadow-white/20 disabled:opacity-30 disabled:pointer-events-none"
                 >
-                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Kaydı Tamamla"}
+                  {submitting ? "Processing..." : "Commit Directive"}
                 </button>
               </div>
             </div>
