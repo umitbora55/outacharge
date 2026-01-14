@@ -2,13 +2,13 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Zap, Map, Route, ArrowRight } from "lucide-react";
+import ElectricFluxBackground from "./ElectricFluxBackground";
 
 export default function HeroSection() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-white dark:bg-black selection:bg-emerald-500/30 font-sans text-black dark:text-white transition-colors duration-500">
-      {/* Decorative background element - Subtle gradient glow */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-teal-500/10 dark:bg-teal-500/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* Dynamic Background */}
+      <ElectricFluxBackground />
 
       {/* Grid Pattern Overlay - CSS Only */}
       <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.15] pointer-events-none"
@@ -53,23 +53,27 @@ export default function HeroSection() {
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20"
           >
-            <Link
-              href="/harita"
-              className="w-full sm:w-auto group relative flex items-center justify-center gap-3 px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-semibold text-base transition-all active:scale-95 overflow-hidden shadow-lg hover:shadow-emerald-500/10 dark:hover:shadow-[0_0_30px_rgba(52,211,153,0.2)]"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 opacity-0 group-hover:opacity-10 transition-opacity" />
-              <Map className="w-5 h-5" />
-              <span>Haritayı Aç</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link
+                href="/harita"
+                className="w-full sm:w-auto group relative flex items-center justify-center gap-3 px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-semibold text-base transition-all overflow-hidden shadow-lg hover:shadow-emerald-500/20 dark:hover:shadow-[0_0_40px_rgba(52,211,153,0.3)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+                <Map className="w-5 h-5 relative z-10" />
+                <span className="relative z-10">Haritayı Aç</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform relative z-10" />
+              </Link>
+            </motion.div>
 
-            <Link
-              href="/rota-planla"
-              className="w-full sm:w-auto relative flex items-center justify-center gap-3 px-8 py-4 bg-zinc-100 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 text-zinc-900 dark:text-white rounded-2xl font-semibold text-base transition-all active:scale-95 group"
-            >
-              <Route className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              <span>Şarjı Planla</span>
-            </Link>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link
+                href="/rota-planla"
+                className="w-full sm:w-auto relative flex items-center justify-center gap-3 px-8 py-4 bg-zinc-100 dark:bg-zinc-900/50 backdrop-blur-xl border border-zinc-200 dark:border-white/10 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 text-zinc-900 dark:text-white rounded-2xl font-semibold text-base transition-all group shadow-sm hover:shadow-emerald-500/10"
+              >
+                <Route className="w-5 h-5 text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-500 transition-colors" />
+                <span>Şarjı Planla</span>
+              </Link>
+            </motion.div>
           </motion.div>
 
           {/* Minimal Stats */}

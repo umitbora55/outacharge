@@ -61,6 +61,8 @@ export default function TestMap() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [selectedFeature, setSelectedFeature] = useState<any | null>(null);
+  const [isInteracting, setIsInteracting] = useState(false);
 
   // Use a Ref for the setupLayers function to avoid stale closures in Mapbox events
   const setupLayersRef = useRef<() => void>(() => { });
@@ -93,7 +95,7 @@ export default function TestMap() {
   }, [theme]);
 
   const updateSource = useCallback((stationsData: Station[]) => {
-    if (!map.current) return;
+    if (!map.current || !map.current.isStyleLoaded()) return;
 
     // Apply Active Filters
     let filtered = stationsData;
@@ -116,6 +118,7 @@ export default function TestMap() {
       type: "FeatureCollection",
       features: filtered.map((station) => ({
         type: "Feature",
+        id: station.ID, // Top-level ID for feature-state (critical!)
         properties: {
           id: station.ID,
           title: station.AddressInfo.Title,
@@ -177,27 +180,77 @@ export default function TestMap() {
     if (!map.current) return;
     const m = map.current;
 
-    // Add Sky
+    // --- 1️⃣ BASE MAP APPEARANCE (Apple Maps Style) - Refined ---
+    if (theme === 'light') {
+      if (m.getLayer('land')) m.setPaintProperty('land', 'background-color', '#F7F7F8');
+      if (m.getLayer('background')) m.setPaintProperty('background', 'background-color', '#F7F7F8');
+      if (m.getLayer('water')) m.setPaintProperty('water', 'fill-color', '#E3E4E6');
+      if (m.getLayer('admin-1-boundary')) {
+        m.setPaintProperty('admin-1-boundary', 'line-color', '#E2E2E5');
+        m.setPaintProperty('admin-1-boundary', 'line-width', 0.5);
+      }
+    }
+
+    // Add Sky for depth
     m.setFog({
       'range': [0.5, 10],
-      'color': theme === 'dark' ? '#242b4b' : '#ffffff',
-      'horizon-blend': 0.03,
-      'high-color': theme === 'dark' ? '#161b33' : '#c0d9e8',
-      'space-color': theme === 'dark' ? '#0b0e1a' : '#c0d9e8',
-      'star-intensity': theme === 'dark' ? 0.6 : 0
+      'color': theme === 'dark' ? '#0F172A' : '#FFFFFF',
+      'horizon-blend': 0.05,
+      'high-color': theme === 'dark' ? '#020617' : '#E8EAED',
+      'space-color': theme === 'dark' ? '#020617' : '#E8EAED',
+      'star-intensity': theme === 'dark' ? 0.3 : 0
     });
+
+    // --- 2️⃣ PREMIUM 3D MATTE MARKER (SVG ICON) ---
+    // Generates a sharp, 3-layer marker:
+    // 1. Tight Drop Shadow (Physical lift, not glow)
+    // 2. Main Body (Matte Gradient #1AD59B -> #00C98A)
+    // 3. Crisp Edge Highlight (Top-lit white 0.9 -> Bottom-shaded black 0.2)
+    const markerSvg = `
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000" flood-opacity="0.3"/>
+        </filter>
+        <circle cx="22" cy="22" r="18" fill="url(#grad)" filter="url(#shadow)"/>
+        <circle cx="22" cy="22" r="18" stroke="url(#innerLight)" stroke-width="1.5"/>
+        <circle cx="22" cy="22" r="5" fill="white" fill-opacity="0.95"/>
+        <defs>
+          <linearGradient id="grad" x1="22" y1="4" x2="22" y2="40" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#1AD59B"/>
+            <stop offset="1" stop-color="#00C98A"/>
+          </linearGradient>
+          <linearGradient id="innerLight" x1="22" y1="2" x2="22" y2="42" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="white" stop-opacity="0.9"/>
+            <stop offset="0.3" stop-color="white" stop-opacity="0"/>
+            <stop offset="0.7" stop-color="black" stop-opacity="0"/>
+            <stop offset="1" stop-color="black" stop-opacity="0.2"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    `;
+
+    const markeImg = new Image(44, 44);
+    markeImg.onload = () => {
+      if (!m.hasImage('premium-marker')) {
+        m.addImage('premium-marker', markeImg);
+      }
+    };
+    markeImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markerSvg);
+
 
     if (!m.getSource("stations")) {
       m.addSource("stations", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
         cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50,
+        clusterMaxZoom: 16, // Clusters expand at zoom 16+ (balanced UX)
+        clusterRadius: 40,
+        promoteId: "id" // Critical for feature-state hover effects
       });
     }
 
-    // Clustering layers (Premium Emerald Style)
+    // --- 3️⃣ INTELLIGENT CLUSTERS (Density-Aware) ---
+    // Layer 1: Cluster Glow (Soft Halo)
     if (!m.getLayer('clusters-glow')) {
       m.addLayer({
         id: "clusters-glow",
@@ -205,14 +258,25 @@ export default function TestMap() {
         source: "stations",
         filter: ["has", "point_count"],
         paint: {
-          "circle-color": "#10b981",
-          "circle-radius": ["step", ["get", "point_count"], 25, 100, 35, 750, 45],
-          "circle-opacity": 0.2,
-          "circle-blur": 0.8,
+          "circle-color": [
+            "step", ["get", "point_count"],
+            "#6EE7B7", 20,  // < 20: Light Green (High Vis, Low Weight)
+            "#10B981", 100, // 20-100: Standard Emerald
+            "#047857"       // 100+: Deep Emerald (High Weight)
+          ],
+          "circle-radius": [
+            "step", ["get", "point_count"],
+            25, 20,
+            35, 100,
+            50
+          ],
+          "circle-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.5, 0.35], // Intensify pulse on hover
+          "circle-blur": 0.5,
         },
       });
     }
 
+    // Layer 2: Cluster Body (Matte)
     if (!m.getLayer('clusters')) {
       m.addLayer({
         id: "clusters",
@@ -221,21 +285,24 @@ export default function TestMap() {
         filter: ["has", "point_count"],
         paint: {
           "circle-color": [
-            "step",
-            ["get", "point_count"],
-            "#10b981",
-            100,
-            "#059669",
-            750,
-            "#047857",
+            "step", ["get", "point_count"],
+            "#34D399", 20,  // < 20: Fresh, Light
+            "#00C98A", 100, // 20-100: Primary Matte
+            "#064E3B"       // 100+: Heavy, Premium Dark
           ],
-          "circle-radius": ["step", ["get", "point_count"], 20, 100, 28, 750, 38],
-          "circle-stroke-width": 4,
-          "circle-stroke-color": theme === 'dark' ? "#0d1612" : "#ffffff",
+          "circle-radius": [
+            "*",
+            ["step", ["get", "point_count"], 18, 20, 26, 100, 36],
+            ["case", ["boolean", ["feature-state", "hover"], false], 1.06, 1] // 6% Scale on Hover
+          ],
+          "circle-stroke-width": 3,
+          "circle-stroke-color": theme === 'dark' ? "#0f172a" : "#ffffff",
+          "circle-radius-transition": { duration: 300, delay: 0 }
         },
       });
     }
 
+    // Layer 3: Cluster Text
     if (!m.getLayer('cluster-count')) {
       m.addLayer({
         id: "cluster-count",
@@ -246,43 +313,33 @@ export default function TestMap() {
           "text-field": "{point_count_abbreviated}",
           "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
           "text-size": 14,
+          "text-allow-overlap": true
         },
-        paint: { "text-color": "#ffffff" }
-      });
-    }
-
-    // Unclustered point decoration
-    if (!m.getLayer('unclustered-point-glow')) {
-      m.addLayer({
-        id: "unclustered-point-glow",
-        type: "circle",
-        source: "stations",
-        filter: ["!", ["has", "point_count"]],
         paint: {
-          "circle-color": "#10b981",
-          "circle-radius": 14,
-          "circle-opacity": 0.3,
-          "circle-blur": 0.6,
-        },
+          "text-color": ["case", ["boolean", ["feature-state", "hover"], false], "#E2E2E2", "#ffffff"] // Darken 10% on hover
+        }
       });
     }
 
+    // --- 4️⃣ UNCLUSTERED POINTS (Using Premium Icon) ---
+    // NOTE: We switched from 'circle' layer to 'symbol' layer to use the SVG icon
     if (!m.getLayer('unclustered-point')) {
       m.addLayer({
         id: "unclustered-point",
-        type: "circle",
+        type: "symbol",
         source: "stations",
         filter: ["!", ["has", "point_count"]],
-        paint: {
-          "circle-color": [
-            "case",
-            [">", ["get", "power"], 50], "#10b981", // High power
-            "#3b82f6" // Low power
-          ],
-          "circle-radius": 7,
-          "circle-stroke-width": 2.5,
-          "circle-stroke-color": theme === 'dark' ? "#0d1612" : "#ffffff",
+        layout: {
+          "icon-image": "premium-marker",
+          "icon-size": 0.8, // Static size (updated dynamically on hover)
+          "icon-allow-overlap": true,
+          "icon-anchor": "center"
         },
+        paint: {
+          "icon-opacity": 1,
+          // Note: symbol layers animate differently than circles.
+          // We use icon-halo or just efficient icon-size transitions if needed.
+        }
       });
     }
 
@@ -307,7 +364,8 @@ export default function TestMap() {
       zoom: 5.2,
       pitch: 0,
       bearing: 0,
-      antialias: true
+      antialias: true,
+      projection: { name: 'mercator' }
     });
 
     const m = map.current;
@@ -321,7 +379,73 @@ export default function TestMap() {
     m.on("style.load", onStyleLoad);
 
     m.on("load", () => {
-      // Events
+      // --- 5️⃣ HOVER INTERACTIONS (Hybrid Approach) ---
+      // Clusters (Paint) -> Feature State (Performant)
+      // Icons (Layout) -> setLayoutProperty (Compatible)
+
+      let hoveredStateId: string | number | null = null;
+      let hoveredLayerId: string | null = null;
+
+      const hoverLayers = ["unclustered-point", "clusters"];
+
+      hoverLayers.forEach(layer => {
+        m.on("mousemove", layer, (e) => {
+          if (e.features && e.features.length > 0) {
+            m.getCanvas().style.cursor = "pointer";
+            const newId = e.features[0].id;
+
+            // Only proceed if we have a valid ID
+            if (newId !== undefined && newId !== null && hoveredStateId !== newId) {
+              // Reset previous
+              if (hoveredStateId !== null) {
+                m.setFeatureState(
+                  { source: "stations", id: hoveredStateId },
+                  { hover: false }
+                );
+              }
+
+              // Set new
+              hoveredStateId = newId;
+              hoveredLayerId = layer;
+              m.setFeatureState(
+                { source: "stations", id: hoveredStateId },
+                { hover: true }
+              );
+
+              // SCALE EFFECT FOR ICONS (Layout Property limitation fix)
+              if (layer === 'unclustered-point') {
+                m.setLayoutProperty('unclustered-point', 'icon-size',
+                  ['case', ['==', ['id'], hoveredStateId], 0.85, 0.8]
+                );
+              }
+            }
+          }
+        });
+
+        m.on("mouseleave", layer, () => {
+          m.getCanvas().style.cursor = "";
+          if (hoveredStateId !== null) {
+            m.setFeatureState(
+              { source: "stations", id: hoveredStateId },
+              { hover: false }
+            );
+
+            // Reset Icon Scale
+            if (hoveredLayerId === 'unclustered-point') {
+              m.setLayoutProperty('unclustered-point', 'icon-size', 0.8);
+            }
+          }
+          hoveredStateId = null;
+          hoveredLayerId = null;
+        });
+      });
+
+      // Track interaction for Compact Mode
+      m.on('movestart', () => setIsInteracting(true));
+      m.on('moveend', () => setTimeout(() => setIsInteracting(false), 1500)); // Delay return
+
+
+      // --- EVENTS ---
       m.on("click", "clusters", (e) => {
         const features = m.queryRenderedFeatures(e.point, { layers: ["clusters"] });
         const clusterId = features[0].properties!.cluster_id;
@@ -332,7 +456,8 @@ export default function TestMap() {
             m.easeTo({
               center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
               zoom: zoom!,
-              duration: 1000
+              duration: 1200,
+              easing: (t) => t * (2 - t)
             });
           }
         );
@@ -346,69 +471,15 @@ export default function TestMap() {
 
         m.flyTo({
           center: coordinates as [number, number],
-          zoom: 15,
-          speed: 0.8
+          zoom: 16,
+          speed: 1.2,
+          curve: 1.1,
+          essential: true
         });
 
-        const popupHTML = `
-          <div class="p-1 min-w-[260px] animate-in fade-in zoom-in duration-300">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              </div>
-              <div class="overflow-hidden">
-                <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.1em] mb-0.5">İstasyon Noktası</p>
-                <h3 class="font-bold text-zinc-900 dark:text-white text-base leading-tight truncate" title="${title}">${title}</h3>
-              </div>
-            </div>
-            
-            <div class="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-3 mb-3 border border-gray-100 dark:border-white/5 shadow-sm">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-xs text-gray-400 dark:text-zinc-500 font-medium">Operatör</span>
-                <span class="text-xs text-zinc-800 dark:text-zinc-200 font-bold">${operator}</span>
-              </div>
-              <div class="flex justify-between items-center">
-                <span class="text-xs text-gray-400 dark:text-zinc-500 font-medium">Maksimum Güç</span>
-                <div class="flex items-center gap-1.5">
-                  <span class="text-[10px] ${power > 50 ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'} px-1.5 py-0.5 rounded-md font-bold uppercase transition-colors">
-                    ${power > 50 ? 'DC Hızlı' : 'AC Standart'}
-                  </span>
-                  <span class="text-sm font-black text-zinc-900 dark:text-white">
-                    ${power > 0 ? `${power} kW` : "N/A"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-start gap-2 text-xs text-gray-500 dark:text-zinc-400 leading-normal mb-3">
-              <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              <span class="line-clamp-2">${address}</span>
-            </div>
-
-            <button class="w-full py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-xs font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-              Detayları Görüntüle
-            </button>
-          </div>
-        `;
-
-        new mapboxgl.Popup({
-          className: 'premium-popup',
-          closeButton: false,
-          maxWidth: '320px',
-          anchor: 'bottom',
-          offset: [0, -10]
-        })
-          .setLngLat(coordinates as [number, number])
-          .setHTML(popupHTML)
-          .addTo(m);
-      });
-
-      // Hover cursors
-      const cursors = ["clusters", "unclustered-point"];
-      cursors.forEach(layer => {
-        m.on("mouseenter", layer, () => { m.getCanvas().style.cursor = "pointer"; });
-        m.on("mouseleave", layer, () => { m.getCanvas().style.cursor = ""; });
+        setSelectedFeature({
+          title, operator, address, power, coordinates
+        });
       });
 
       fetchStations();
@@ -424,9 +495,9 @@ export default function TestMap() {
       m.off("style.load", onStyleLoad);
       m.remove();
     };
-  }, [fetchStations]);
+  }, [fetchStations, setIsInteracting]); // Added setIsInteracting to dependencies
 
-  // Handle layer updates when setupLayers changes (due to theme or fetched data)
+  // Handle layer updates when setupLayers changes
   useEffect(() => {
     if (map.current && map.current.isStyleLoaded()) {
       setupLayers();
@@ -471,160 +542,251 @@ export default function TestMap() {
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-zinc-100 dark:bg-zinc-950">
+    <div className="map-page relative w-full h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-900" style={{ paddingTop: '88px' }}>
       <style jsx global>{`
         .mapboxgl-popup.premium-popup .mapboxgl-popup-content {
-          padding: 16px;
+          padding: 18px;
           border-radius: 20px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-          background: ${theme === 'dark' ? 'rgba(13, 22, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-          backdrop-filter: blur(12px);
-          border: 1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'};
+          box-shadow:
+            0 0 0 1px rgba(255,255,255,0.08),
+            0 24px 48px -12px rgba(0, 0, 0, 0.45);
+          background: ${theme === 'dark' ? 'rgba(10, 10, 10, 0.85)' : 'rgba(255, 255, 255, 0.85)'};
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
         }
         .mapboxgl-popup.premium-popup .mapboxgl-popup-tip {
-          border-top-color: ${theme === 'dark' ? 'rgba(13, 22, 18, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+          border-top-color: ${theme === 'dark' ? 'rgba(10, 10, 10, 0.85)' : 'rgba(255, 255, 255, 0.85)'};
         }
-        .mapboxgl-ctrl-group {
-          background: rgba(255,255,255,0.8);
-          backdrop-filter: blur(8px);
-          border: none !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
-          border-radius: 12px !important;
+        .mapboxgl-ctrl-bottom-right {
+           display: none !important;
         }
       `}</style>
 
-      {/* FLOATING UI - TOP CENTER SEARCH */}
-      <div className="absolute top-28 left-1/2 -translate-x-1/2 z-10 w-[90%] max-w-lg transition-all animate-in slide-in-from-top-4 duration-700">
-        <form onSubmit={handleSearch} className="relative group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Search className="w-5 h-5 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" />
+      {/* --- SEARCH BAR WRAPPER (Sticky Overlay) --- */}
+      <div className="map-search-wrapper sticky z-50 flex justify-center pointer-events-none" style={{ top: '88px' }}>
+        <div className={`map-search pointer-events-auto transition-all duration-500 ${isInteracting ? 'compact' : ''
+          }`} style={{
+            width: 'min(720px, calc(100% - 32px))',
+            marginTop: '16px',
+            transform: isInteracting ? 'scale(0.94)' : 'scale(1)',
+            opacity: isInteracting ? 0.9 : 1
+          }}>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-white/85 dark:bg-zinc-900/85 rounded-full border border-white/40 dark:border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-300 group-hover:bg-white/95 dark:group-hover:bg-zinc-900/95 group-hover:scale-[1.01] overflow-hidden" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            </div>
+            <form onSubmit={handleSearch} className="relative">
+              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none z-10 w-fit">
+                <Search className="w-5 h-5 text-zinc-500 dark:text-zinc-400 group-focus-within:text-emerald-500 transition-colors duration-300" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="İstasyon, lokasyon veya bölge ara..."
+                className="w-full h-16 pl-14 pr-32 bg-transparent text-base font-medium text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-[3px] focus:ring-emerald-500/20 focus:scale-[1.01] transition-all duration-300"
+              />
+              <div className="absolute right-2 top-2 bottom-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`h-full px-5 rounded-full flex items-center gap-2 font-bold text-xs transition-all duration-300 ${showFilters
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
+                    : 'bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80'
+                    }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="hidden sm:inline">Filtrele</span>
+                </button>
+              </div>
+            </form>
           </div>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Şehir, ilçe veya istasyon ara..."
-            className="w-full h-14 pl-12 pr-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/20 dark:border-zinc-800/50 rounded-2xl shadow-2xl shadow-emerald-950/5 text-zinc-900 dark:text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-medium"
-          />
-          <div className="absolute right-3 top-2 bottom-2">
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className={`h-full px-4 rounded-xl flex items-center gap-2 font-bold text-xs transition-all ${showFilters
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                }`}
-            >
-              <Filter className="w-4 h-4" />
-              <span className="hidden sm:inline">Filtrele</span>
-            </button>
-          </div>
-        </form>
 
-        {/* FILTER DROPDOWN */}
-        {showFilters && (
-          <div className="mt-3 p-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-zinc-800/50 shadow-2xl animate-in slide-in-from-top-2 duration-300">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Güç Kapasitesi</label>
-                <div className="flex flex-wrap gap-2">
-                  {[0, 22, 50, 100].map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setActiveFilters(prev => ({ ...prev, minPower: p }))}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeFilters.minPower === p
-                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/10'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
+          {/* FILTER PANEL */}
+          {showFilters && (
+            <div className="mt-4 p-5 bg-white/85 dark:bg-zinc-900/85 rounded-[1.5rem] border border-white/40 dark:border-white/5 shadow-[0_20px_48px_rgba(0,0,0,0.2)] animate-in slide-in-from-top-2 duration-300 origin-top" style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Zap className="w-3 h-3" />
+                    Güç Kapasitesi
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[0, 22, 50, 100].map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setActiveFilters(prev => ({ ...prev, minPower: p }))}
+                        className={`h-9 px-4 rounded-xl text-xs font-bold transition-all duration-300 border ${activeFilters.minPower === p
+                          ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-105'
+                          : 'bg-white/50 dark:bg-zinc-800/50 border-transparent text-zinc-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-700'
+                          }`}
+                      >
+                        {p === 0 ? 'Tümü' : `${p}+ kW`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Layers className="w-3 h-3" />
+                    Operatör Seçimi
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full h-10 bg-white/50 dark:bg-zinc-800/50 backdrop-blur-md border-none rounded-xl px-4 text-xs font-bold text-zinc-800 dark:text-zinc-200 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 transition-colors appearance-none"
+                      value={activeFilters.operator}
+                      onChange={(e) => setActiveFilters(prev => ({ ...prev, operator: e.target.value }))}
                     >
-                      {p === 0 ? 'Hepsi' : `${p}+ kW`}
-                    </button>
-                  ))}
+                      <option>Tümü</option>
+                      <option>ZES</option>
+                      <option>Eşarj</option>
+                      <option>Trugo</option>
+                      <option>Tesla</option>
+                      <option>Voltrun</option>
+                      <option>Astor Enerji</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
+                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m1 1 4 4 4-4" /></svg>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Operatör</label>
-                <select
-                  className="w-full bg-zinc-100 dark:bg-zinc-800 border-none rounded-lg p-2 text-xs font-bold text-zinc-800 dark:text-zinc-200"
-                  value={activeFilters.operator}
-                  onChange={(e) => setActiveFilters(prev => ({ ...prev, operator: e.target.value }))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* --- MAP & CONTROLS CONTAINER --- */}
+      <div className="relative w-full" style={{ height: 'calc(100vh - 88px)' }}>
+        {/* SCULPTED FLOATING CONTROLS (RIGHT) */}
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
+          {/* Zoom Controls */}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => map.current?.zoomIn()}
+              className="w-12 h-12 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl rounded-2xl shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all duration-300"
+              title="Yakınlaştır"
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" />
+            </button>
+            <button
+              onClick={() => map.current?.zoomOut()}
+              className="w-12 h-12 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl rounded-2xl shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/5 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all duration-300"
+              title="Uzaklaştır"
+            >
+              <Minus className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          </div>
+
+          {/* Map Actions */}
+          <div className="flex flex-col gap-2 mt-2">
+            <button
+              onClick={handleMyLocation}
+              className="w-12 h-12 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl rounded-2xl shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/5 flex items-center justify-center text-emerald-500 hover:text-emerald-600 hover:bg-white dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all duration-300 group"
+              title="Konumum"
+            >
+              <Navigation className="w-5 h-5 stroke-[2.5] group-hover:rotate-12 transition-transform" />
+            </button>
+
+            <button
+              onClick={handleResetView}
+              className="w-12 h-12 bg-white/75 dark:bg-zinc-900/75 backdrop-blur-xl rounded-2xl shadow-[0_8px_16px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] border border-white/40 dark:border-white/5 flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all duration-300 group"
+              title="Görünümü Sıfırla"
+            >
+              <RotateCcw className="w-5 h-5 stroke-[2.5] group-hover:-rotate-90 transition-transform duration-500" />
+            </button>
+          </div>
+        </div>
+
+        {/* BOTTOM LEFT STATUS */}
+        <div className="absolute bottom-8 left-8 z-10 flex flex-col gap-2 pointer-events-none">
+          {loading && (
+            <div className="flex items-center gap-3 bg-zinc-900/80 dark:bg-white/90 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-500 pointer-events-auto">
+              <div className="relative">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping absolute opacity-75"></div>
+                <div className="w-3 h-3 bg-emerald-500 rounded-full relative shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+              </div>
+              <span className="text-sm font-bold text-white dark:text-zinc-900 tracking-tight">İstasyonlar Yükleniyor...</span>
+            </div>
+          )}
+
+          <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 dark:border-zinc-800/50 flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400 shadow-lg">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              Hızlı DC
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              Standart AC
+            </div>
+          </div>
+        </div>
+
+        <div ref={mapContainer} className="w-full h-full" />
+
+        {/* --- 10️⃣ ATMOSPHERE (Film Grain Noise) --- */}
+        <div className="absolute inset-0 pointer-events-none z-20 opacity-[0.03] dark:opacity-[0.05] mix-blend-overlay"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
+        </div>
+
+
+        {/* --- 8️⃣ INFO CARD (Glassy Bottom Sheet) --- */}
+        {selectedFeature && (
+          <div className="absolute inset-x-0 bottom-0 z-30 p-4 sm:p-6 flex justify-center pointer-events-none">
+            <div className="pointer-events-auto w-full max-w-md bg-white/90 dark:bg-zinc-900/90 backdrop-blur-3xl rounded-[2rem] border border-white/40 dark:border-white/10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] overflow-hidden animate-in slide-in-from-bottom-10 duration-500 ease-out">
+              {/* Header Image / Gradient Area */}
+              <div className="h-24 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 relative overflow-hidden">
+                <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+                <button
+                  onClick={() => {
+                    setSelectedFeature(null);
+                    handleResetView();
+                  }}
+                  className="absolute top-4 right-4 p-2 bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 rounded-full transition-colors backdrop-blur-md"
                 >
-                  <option>Tümü</option>
-                  <option>ZES</option>
-                  <option>Eşarj</option>
-                  <option>Trugo</option>
-                  <option>Tesla</option>
-                </select>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                </button>
+              </div>
+
+              <div className="p-6 -mt-10 relative">
+                {/* Operator Logo/Icon */}
+                <div className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-800 shadow-xl flex items-center justify-center mb-4 border-2 border-white dark:border-zinc-700">
+                  <Zap className="w-8 h-8 text-emerald-500" />
+                </div>
+
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-1 leading-tight">{selectedFeature.title}</h3>
+                <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{selectedFeature.operator}</span>
+                  <span>•</span>
+                  <span>{selectedFeature.power > 0 ? `${selectedFeature.power} kW` : 'N/A'}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-zinc-100 dark:border-white/5">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-1">Durum</span>
+                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Müsait
+                    </div>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-4 border border-zinc-100 dark:border-white/5">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block mb-1">Mesafe</span>
+                    <div className="flex items-center gap-1.5 text-zinc-900 dark:text-white font-bold text-sm">
+                      <Navigation className="w-3.5 h-3.5" />
+                      ~2.4 km
+                    </div>
+                  </div>
+                </div>
+
+                <button className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+                  <Navigation className="w-5 h-5" />
+                  Rotayı Başlat
+                </button>
               </div>
             </div>
           </div>
         )}
       </div>
-
-      {/* RIGHT SIDEBAR CONTROLS */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-3">
-        <div className="flex flex-col bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-zinc-800/50 overflow-hidden">
-          <button
-            onClick={() => map.current?.zoomIn()}
-            className="p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border-b border-zinc-100 dark:border-zinc-800"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => map.current?.zoomOut()}
-            className="p-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors"
-          >
-            <Minus className="w-5 h-5" />
-          </button>
-        </div>
-
-        <button
-          onClick={handleMyLocation}
-          className="p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-zinc-800/50 text-emerald-500 hover:text-emerald-600 hover:scale-105 active:scale-95 transition-all group"
-          title="Konumum"
-        >
-          <Navigation className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-        </button>
-
-        <button
-          onClick={handleResetView}
-          className="p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-zinc-800/50 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:scale-105 active:scale-95 transition-all group"
-          title="Görünümü Sıfırla"
-        >
-          <RotateCcw className="w-6 h-6 group-hover:-rotate-45 transition-transform" />
-        </button>
-
-      </div>
-
-      {/* BOTTOM LEFT STATUS */}
-      <div className="absolute bottom-8 left-8 z-10 flex flex-col gap-2 pointer-events-none">
-        {loading && (
-          <div className="flex items-center gap-3 bg-zinc-900/80 dark:bg-white/90 backdrop-blur-xl px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-500 pointer-events-auto">
-            <div className="relative">
-              <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping absolute opacity-75"></div>
-              <div className="w-3 h-3 bg-emerald-500 rounded-full relative shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-            </div>
-            <span className="text-sm font-bold text-white dark:text-zinc-900 tracking-tight">İstasyonlar Yükleniyor...</span>
-          </div>
-        )}
-
-        <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 dark:border-zinc-800/50 flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400 shadow-lg">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            Hızlı DC
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            Standart AC
-          </div>
-          <div className="flex items-center gap-1.5 grayscale opacity-50">
-            <div className="w-2 h-2 rounded-full bg-zinc-400" />
-            Bilinmiyor
-          </div>
-        </div>
-      </div>
-
-      <div ref={mapContainer} className="w-full h-full" />
     </div>
   );
 }

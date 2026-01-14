@@ -20,10 +20,10 @@ export default function Home() {
 
         {/* Section 1: Network */}
         <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 100, scale: 0.95 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="grid md:grid-cols-2 gap-12 items-center"
         >
           <div className="space-y-8 order-2 md:order-1">
@@ -41,7 +41,11 @@ export default function Home() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-600 dark:text-emerald-500" />
             </Link>
           </div>
-          <div className="relative order-1 md:order-2">
+          <motion.div
+            className="relative order-1 md:order-2"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="aspect-square rounded-[3rem] bg-emerald-500/[0.03] dark:bg-emerald-500/20 border border-zinc-200 dark:border-white/10 flex items-center justify-center relative overflow-hidden group">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.1),transparent)] group-hover:scale-150 transition-transform duration-1000" />
               <Globe className="w-32 h-32 text-emerald-600/30 dark:text-emerald-500/50 relative z-10" />
@@ -72,18 +76,22 @@ export default function Home() {
                 />
               ))}
             </div>
-          </div>
+          </motion.div>
         </motion.section>
 
         {/* Section 2: Community */}
         <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 100, scale: 0.95 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="grid md:grid-cols-2 gap-12 items-center"
         >
-          <div className="relative">
+          <motion.div
+            className="relative"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="aspect-video rounded-[3rem] bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 backdrop-blur-3xl p-8 flex flex-col justify-between group">
               <div className="flex gap-3">
                 {[...Array(3)].map((_, i) => (
@@ -113,7 +121,7 @@ export default function Home() {
               </div>
               <Users className="absolute bottom-8 right-8 w-12 h-12 text-zinc-300 dark:text-white/10 group-hover:text-emerald-600/20 dark:group-hover:text-emerald-500/20 transition-colors duration-500" />
             </div>
-          </div>
+          </motion.div>
           <div className="space-y-8">
             <div className="space-y-2">
               <span className="text-teal-600 dark:text-teal-500 text-[10px] font-bold uppercase tracking-[0.4em]">Join the Hive</span>
@@ -133,10 +141,10 @@ export default function Home() {
 
         {/* Section 3: Route Planning */}
         <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 100, scale: 0.95 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           className="grid md:grid-cols-2 gap-12 items-center"
         >
           <div className="space-y-8 order-2 md:order-1">
@@ -154,7 +162,11 @@ export default function Home() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-600 dark:text-emerald-500" />
             </Link>
           </div>
-          <div className="relative order-1 md:order-2">
+          <motion.div
+            className="relative order-1 md:order-2"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="aspect-square rounded-[3rem] bg-gradient-to-tr from-teal-500/[0.03] dark:from-teal-500/20 to-emerald-500/5 border border-zinc-200 dark:border-white/10 p-12 flex flex-col justify-center items-center group">
               <div className="relative w-full h-full flex items-center justify-center">
                 <Navigation className="w-24 h-24 text-black dark:text-white group-hover:scale-110 transition-transform duration-700" />
@@ -170,7 +182,7 @@ export default function Home() {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
         </motion.section>
 
       </div>

@@ -91,6 +91,13 @@ export default function Header() {
               Topluluk
             </Link>
             <Link
+              href="/topluluk/markalar"
+              className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
+            >
+              <Building2 className="w-4 h-4" />
+              Markalar
+            </Link>
+            <Link
               href="/incelemeler"
               className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
             >
@@ -181,6 +188,14 @@ export default function Header() {
               >
                 <MessageSquare className="w-5 h-5" />
                 Topluluk
+              </Link>
+              <Link
+                href="/topluluk/markalar"
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Building2 className="w-5 h-5" />
+                Markalar
               </Link>
               <Link
                 href="/incelemeler"
