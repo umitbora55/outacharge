@@ -207,11 +207,11 @@ export default function ToplulukPage() {
     };
 
     return (
-        <div className="min-h-screen bg-transparent transition-colors">
+        <div className="min-h-screen bg-white dark:bg-[#000000] transition-colors duration-1000 selection:bg-red-500/30 font-sans text-zinc-900 dark:text-white">
             <HeaderWhite />
 
-            {/* Hero Section */}
-            <div className="relative bg-zinc-900 text-white pb-24 pt-12 overflow-hidden">
+            {/* Premium Library Hero - Minimalist Luxury */}
+            <div className="relative h-[70vh] min-h-[650px] flex items-center overflow-hidden bg-zinc-950">
                 {/* Background Image Layer */}
                 <div
                     className="absolute inset-0 z-0"
@@ -219,40 +219,63 @@ export default function ToplulukPage() {
                         backgroundImage: 'url("/images/community-hero.jpg")',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
-                        opacity: 0.6
                     }}
-                />
-                {/* Gradient Overlay for better contrast */}
-                <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/20 via-zinc-900/60 to-zinc-900 z-0" />
+                >
+                    <div className="absolute inset-0 bg-black/85 backdrop-blur-[2px]" />
+                </div>
 
-                <div className="max-w-6xl mx-auto px-4 py-16 relative z-10">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                        <div>
-                            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                                EV <span className="text-emerald-400">Topluluğu</span>
-                            </h1>
-                            <p className="text-zinc-400">
-                                Deneyimlerinizi paylaşın, sorular sorun, çözümler bulun.
-                            </p>
+                <div className="container max-w-6xl mx-auto px-6 relative z-10 pb-20">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
+                            <span className="text-zinc-500 text-[10px] font-bold tracking-[0.5em] uppercase">Network & Community</span>
                         </div>
-                        {/* Search */}
-                        <div className="flex gap-3">
-                            <div className="relative flex-1 md:w-80">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                        <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-tight opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
+                            EV <br />
+                            <span className="font-medium">Community.</span>
+                        </h1>
+                        <p className="text-zinc-500 max-w-md text-lg font-light leading-relaxed mb-12 opacity-0 animate-[fadeIn_1s_ease-out_0.4s_forwards]">
+                            Share experiences, ask questions, and find solutions in our high-precision network.
+                        </p>
+
+                        {/* Integrated Stats - Technical Specification Style */}
+                        <div className="flex items-center gap-16 opacity-0 animate-[fadeIn_1s_ease-out_0.6s_forwards]">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                                    {posts.length > 0 ? posts.length : "0"}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    Active Threads
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                                    {loading ? "Syncing" : "Verified"}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    Network Status
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Interactive Actions - Integrated with Hero */}
+                        <div className="mt-12 flex flex-col sm:flex-row gap-4 opacity-0 animate-[fadeIn_1s_ease-out_0.8s_forwards]">
+                            <div className="relative group/search">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within/search:text-emerald-500 transition-colors" />
                                 <input
                                     type="text"
-                                    placeholder="Konu ara..."
+                                    placeholder="Search threads..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3 bg-white/10 dark:bg-zinc-950/30 backdrop-blur border border-white/20 dark:border-zinc-800 rounded-xl text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                    className="pl-11 pr-6 py-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-full text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 w-full sm:w-64 transition-all"
                                 />
                             </div>
                             <Link
                                 href="/topluluk/yeni"
-                                className="flex items-center gap-2 px-5 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-xl transition-colors shadow-lg shadow-emerald-500/30"
+                                className="flex items-center justify-center gap-2 px-8 py-3 bg-white text-black hover:bg-zinc-200 font-medium rounded-full transition-all"
                             >
-                                <PenLine className="w-5 h-5" />
-                                <span className="hidden sm:inline">Konu Aç</span>
+                                <PenLine className="w-4 h-4" />
+                                <span>New Thread</span>
                             </Link>
                         </div>
                     </div>
@@ -328,7 +351,7 @@ export default function ToplulukPage() {
             </div>
 
             {/* Main Content Area */}
-            <div className="max-w-6xl mx-auto px-4 py-6">
+            <main className="container max-w-6xl mx-auto px-6 pb-32 relative z-20">
                 <div className="flex flex-col lg:flex-row gap-6">
                     {/* Sidebar - Categories */}
                     <div className="lg:w-64 flex-shrink-0">
@@ -558,7 +581,20 @@ export default function ToplulukPage() {
                         )}
                     </div>
                 </div>
-            </div >
-        </div >
+                <div className="mt-48 flex flex-col items-center">
+                    <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-950" />
+                    <p className="text-zinc-100 dark:text-zinc-900/30 text-[10vw] font-black leading-none select-none tracking-tighter mt-12">
+                        COMMUNITY
+                    </p>
+                </div>
+            </main>
+
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+        </div>
     );
 }

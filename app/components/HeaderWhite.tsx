@@ -31,6 +31,7 @@ export default function HeaderWhite() {
           {[
             { label: "Harita", href: "/harita" },
             { label: "Topluluk", href: "/topluluk" },
+            { label: "Operatörler", href: "/operatorler" },
             { label: "İncelemeler", href: "/incelemeler" },
             { label: "Hesaplayıcı", href: "/hesaplayici" },
             ...(displayUser ? [{ label: "İstatistikler", href: "/istatistikler" }] : [])

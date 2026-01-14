@@ -220,7 +220,7 @@ export default function IstatistiklerPage() {
         <div
           className="absolute inset-0 z-0"
           style={{
-            backgroundImage: 'url("/images/hero-car.jpg")',
+            backgroundImage: 'url("/images/stats-hero.jpg")',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           }}

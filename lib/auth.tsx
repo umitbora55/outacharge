@@ -74,6 +74,7 @@ export interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (data: Partial<UserProfile>) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -178,6 +179,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/profil`,
+        },
+      });
+      return { error: error?.message || null };
+    } catch (err: any) {
+      return { error: err.message || "Google ile giriş yapılırken bir hata oluştu" };
+    }
+  };
+
   const signUp = async (email: string, password: string, fullName: string, additionalData?: UserRegistrationData) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -270,7 +285,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, updateUser }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, updateUser, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

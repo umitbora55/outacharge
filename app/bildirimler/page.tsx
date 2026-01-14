@@ -247,16 +247,16 @@ export default function BildirimlerPage() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-transparent flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 text-center max-w-md shadow-xl">
-                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="min-h-screen bg-white dark:bg-[#000000] flex items-center justify-center p-4 selection:bg-red-500/30 font-sans">
+                <div className="bg-[#FAFAFA] dark:bg-[#080808] border border-zinc-100 dark:border-white/[0.03] rounded-[3rem] p-12 text-center max-w-md shadow-2xl">
+                    <div className="w-24 h-24 bg-emerald-500/5 rounded-full flex items-center justify-center mx-auto mb-8">
                         <Bell className="w-10 h-10 text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Giriş Gerekli</h2>
-                    <p className="text-gray-500 dark:text-zinc-400 mb-8">Bildirimlerinizi görmek ve toplulukla etkileşimde kalmak için giriş yapmalısınız.</p>
+                    <h2 className="text-3xl font-light text-zinc-900 dark:text-white mb-4 tracking-tight uppercase">Giriş Gerekli</h2>
+                    <p className="text-zinc-500 text-sm font-medium uppercase tracking-[0.2em] mb-12">Authorization Required for Network Access</p>
                     <Link
                         href="/?login=true"
-                        className="inline-flex items-center justify-center w-full gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                        className="inline-flex items-center justify-center w-full px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 uppercase tracking-widest text-[11px]"
                     >
                         Giriş Yap
                     </Link>
@@ -266,183 +266,225 @@ export default function BildirimlerPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors">
+        <div className="min-h-screen bg-white dark:bg-[#000000] transition-colors duration-1000 selection:bg-red-500/30 font-sans text-zinc-900 dark:text-white">
             <HeaderWhite />
 
-            <div className="max-w-2xl mx-auto px-4 py-8">
-                {/* Header Section */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 mb-8 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-4">
-                            <Link
-                                href="/topluluk"
-                                className="w-10 h-10 rounded-full bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 flex items-center justify-center text-gray-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
+            {/* Cinematic Hero Section - Activity & Network */}
+            <div className="relative h-[60vh] min-h-[500px] flex items-center overflow-hidden bg-zinc-950">
+                <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundImage: 'url("/images/community-hero.jpg")',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                    }}
+                >
+                    <div className="absolute inset-0 bg-black/85 backdrop-blur-[2px]" />
+                </div>
+
+                <div className="container max-w-6xl mx-auto px-6 relative z-10">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
+                            <span className="text-zinc-500 text-[10px] font-bold tracking-[0.5em] uppercase">Activity & Network</span>
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-tight opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
+                            Hub / <br />
+                            <span className="font-medium">Bildirimler.</span>
+                        </h1>
+                        <p className="text-zinc-500 max-w-md text-lg font-light leading-relaxed mb-12 opacity-0 animate-[fadeIn_1s_ease-out_0.4s_forwards]">
+                            Monitor architectural interactions and network responses synchronized across your profile.
+                        </p>
+
+                        {/* Integrated Stats - Technical Specification Style */}
+                        <div className="flex items-center gap-16 opacity-0 animate-[fadeIn_1s_ease-out_0.6s_forwards]">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                                    {unreadCount}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    PENDING SYNC
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums uppercase">
+                                    {loading ? "..." : notifications.length}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    ARCHIVED UNITS
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <main className="container max-w-4xl mx-auto px-6 pb-32 relative z-20">
+                {/* Minimalist Controls Section */}
+                <div className="pt-20 pb-16 border-b border-zinc-100 dark:border-zinc-950/50">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                        <div className="flex items-baseline gap-6 group">
+                            <Link href="/topluluk" className="w-10 h-10 flex items-center justify-center rounded-full border border-zinc-100 dark:border-white/[0.05] text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all">
+                                <ArrowLeft className="w-4 h-4" />
                             </Link>
-                            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                                <Bell className="w-7 h-7 text-emerald-500" />
-                                Bildirimler
-                                {unreadCount > 0 && (
-                                    <span className="ml-1 px-2.5 py-0.5 bg-emerald-500 text-zinc-950 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                                        {unreadCount} Yeni
-                                    </span>
-                                )}
-                            </h1>
+                            <div className="flex items-baseline gap-4">
+                                <h2 className="text-2xl font-light tracking-tight text-zinc-900 dark:text-white">Active Logs</h2>
+                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 group-hover:text-emerald-500 transition-colors">
+                                    {filter === "unread" ? "FILTERED: UNREAD" : "TOTAL ARCHIVE"}
+                                </span>
+                            </div>
                         </div>
 
-                        {unreadCount > 0 && (
-                            <button
-                                onClick={markAllAsRead}
-                                className="flex items-center gap-1.5 text-sm font-bold text-emerald-500 hover:text-emerald-400 transition-colors"
-                            >
-                                <CheckCheck className="w-4 h-4" />
-                                <span className="hidden sm:inline">Hepsini Oku</span>
-                            </button>
-                        )}
-                    </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex bg-[#FAFAFA] dark:bg-zinc-950/40 p-1.5 rounded-2xl border border-zinc-50 dark:border-white/[0.03]">
+                                <button
+                                    onClick={() => setFilter("all")}
+                                    className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${filter === "all"
+                                        ? "bg-white dark:bg-zinc-900 text-emerald-500 shadow-xl shadow-black/5"
+                                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                                        }`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    onClick={() => setFilter("unread")}
+                                    className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${filter === "unread"
+                                        ? "bg-white dark:bg-zinc-900 text-emerald-500 shadow-xl shadow-black/5"
+                                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                                        }`}
+                                >
+                                    Unread
+                                </button>
+                            </div>
 
-                    {/* Filter Tabs */}
-                    <div className="flex bg-gray-50 dark:bg-zinc-950 p-1.5 rounded-2xl border border-gray-200 dark:border-zinc-800">
-                        <button
-                            onClick={() => setFilter("all")}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${filter === "all"
-                                ? "bg-white dark:bg-zinc-800 text-emerald-500 shadow-sm border border-gray-100 dark:border-zinc-700"
-                                : "text-gray-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                                }`}
-                        >
-                            Tümü
-                        </button>
-                        <button
-                            onClick={() => setFilter("unread")}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${filter === "unread"
-                                ? "bg-white dark:bg-zinc-800 text-emerald-500 shadow-sm border border-gray-100 dark:border-zinc-700"
-                                : "text-gray-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                                }`}
-                        >
-                            Okunmamış
                             {unreadCount > 0 && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <button
+                                    onClick={markAllAsRead}
+                                    className="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-black transition-all"
+                                    title="Mark all as read"
+                                >
+                                    <CheckCheck className="w-4 h-4" />
+                                </button>
                             )}
-                        </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Notifications List */}
-                <div className="space-y-4">
+                {/* Notifications Feed - Technical Archive Style */}
+                <div className="pt-20">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
+                        <div className="flex items-center justify-center py-40">
                             <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
                         </div>
                     ) : notifications.length === 0 ? (
-                        <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800">
-                            <div className="w-20 h-20 bg-gray-50 dark:bg-zinc-950 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <Bell className="w-10 h-10 text-gray-300 dark:text-zinc-700" />
-                            </div>
-                            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
-                                {filter === "unread" ? "Okunmamış bildirim yok" : "Henüz bildirim yok"}
-                            </h3>
-                            <p className="text-gray-500 dark:text-zinc-400 max-w-xs mx-auto">
-                                Yeni aktiviteler olduğunda burada anlık olarak görebilirsiniz.
-                            </p>
+                        <div className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
+                            <Bell className="w-12 h-12 text-zinc-200 dark:text-zinc-800 mb-8" />
+                            <h3 className="text-xl font-light text-zinc-400 uppercase tracking-widest">No active logs found</h3>
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em] mt-2">NETWORK SYNC OPTIMAL</p>
                         </div>
                     ) : (
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-                            <div className="divide-y divide-gray-100 dark:divide-zinc-800">
-                                {notifications.map((notif) => {
-                                    const Icon = notificationIcons[notif.type] || Bell;
-                                    const colorClass = notificationColors[notif.type] || "text-gray-400 bg-gray-500/20";
+                        <div className="space-y-4">
+                            {notifications.map((notif) => {
+                                const Icon = notificationIcons[notif.type] || Bell;
+                                const colorClass = notificationColors[notif.type] || "text-zinc-400 bg-zinc-500/10";
 
-                                    return (
-                                        <div
-                                            key={notif.id}
-                                            className={`relative group transition-all ${!notif.is_read ? "bg-emerald-50/30 dark:bg-emerald-500/5" : ""}`}
+                                return (
+                                    <div
+                                        key={notif.id}
+                                        className={`group relative flex items-center justify-between p-8 rounded-[2.5rem] border transition-all ${!notif.is_read
+                                            ? "bg-white dark:bg-[#0A0A0A] border-emerald-500/20 shadow-2xl shadow-emerald-500/5"
+                                            : "bg-[#FAFAFA] dark:bg-[#080808] border-zinc-50 dark:border-white/[0.03] hover:border-emerald-500/10"
+                                            }`}
+                                    >
+                                        <Link
+                                            href={getNotificationLink(notif)}
+                                            onClick={() => !notif.is_read && markAsRead(notif.id)}
+                                            className="flex-1 flex items-center gap-10"
                                         >
-                                            <Link
-                                                href={getNotificationLink(notif)}
-                                                onClick={() => !notif.is_read && markAsRead(notif.id)}
-                                                className="flex items-start gap-5 p-5 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
-                                            >
-                                                {/* Left Column: Avatar/Icon */}
-                                                <div className="relative flex-shrink-0">
-                                                    {notif.from_user ? (
-                                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 p-[2px] shadow-md group-hover:scale-110 transition-transform">
-                                                            <div className="w-full h-full rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-xl overflow-hidden">
-                                                                {notif.from_user.avatar_url ? (
-                                                                    <img src={notif.from_user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <span>{notif.from_user.full_name?.charAt(0) || "?"}</span>
-                                                                )}
-                                                            </div>
+                                            <div className="relative flex-shrink-0">
+                                                {notif.from_user ? (
+                                                    <div className="w-16 h-16 rounded-[1.5rem] bg-zinc-900 dark:bg-white/5 p-1 group-hover:scale-105 transition-transform">
+                                                        <div className="w-full h-full rounded-[1.2rem] bg-zinc-800 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 dark:text-white font-light text-xl overflow-hidden grayscale group-hover:grayscale-0 transition-all">
+                                                            {notif.from_user.avatar_url ? (
+                                                                <img src={notif.from_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span>{notif.from_user.full_name?.charAt(0) || "?"}</span>
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${colorClass} shadow-md group-hover:scale-110 transition-transform`}>
-                                                            <Icon className="w-7 h-7" />
-                                                        </div>
-                                                    )}
-
-                                                    {/* Type Indicator Mini Icon */}
-                                                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center flex-shrink-0 ${colorClass} z-10 shadow-sm`}>
-                                                        <Icon className="w-3 h-3" />
                                                     </div>
-                                                </div>
-
-                                                {/* Center Column: Content */}
-                                                <div className="flex-1 min-w-0 pr-12">
-                                                    <p className={`text-[15px] leading-relaxed ${!notif.is_read ? "text-zinc-900 dark:text-white font-bold" : "text-gray-600 dark:text-zinc-300 font-medium"}`}>
-                                                        {getNotificationText(notif)}
-                                                    </p>
-                                                    {notif.title && (
-                                                        <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1.5 italic font-medium line-clamp-1 border-l-2 border-gray-100 dark:border-zinc-800 pl-3">
-                                                            &quot;{notif.title}&quot;
-                                                        </p>
-                                                    )}
-                                                    <div className="flex items-center gap-3 mt-2.5">
-                                                        <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest">
-                                                            {formatDate(notif.created_at)}
-                                                        </span>
-                                                        {!notif.is_read && (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                        )}
+                                                ) : (
+                                                    <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center flex-shrink-0 ${colorClass} grayscale group-hover:grayscale-0 transition-all`}>
+                                                        <Icon className="w-6 h-6" />
                                                     </div>
-                                                </div>
-                                            </Link>
-
-                                            {/* Action Buttons (Visible on Hover/Focus) */}
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {!notif.is_read && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            markAsRead(notif.id);
-                                                        }}
-                                                        className="w-9 h-9 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 hover:bg-emerald-500 hover:text-white text-zinc-500 dark:text-zinc-400 rounded-xl transition-all shadow-sm"
-                                                        title="Okundu işaretle"
-                                                    >
-                                                        <Check className="w-4 h-4" />
-                                                    </button>
                                                 )}
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        deleteNotification(notif.id);
-                                                    }}
-                                                    className="w-9 h-9 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 hover:bg-red-500 hover:text-white text-zinc-500 dark:text-zinc-400 rounded-xl transition-all shadow-sm"
-                                                    title="Sil"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+
+                                                {!notif.is_read && (
+                                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-4 border-white dark:border-[#0A0A0A] animate-pulse" />
+                                                )}
                                             </div>
+
+                                            <div className="flex-1 min-w-0 pr-12">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <span className={`text-[9px] font-bold uppercase tracking-[0.3em] ${!notif.is_read ? "text-emerald-500" : "text-zinc-500 opacity-50"}`}>
+                                                        {notif.type.replace("_", " ")} LOG
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-zinc-300 dark:text-zinc-700">/</span>
+                                                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{formatDate(notif.created_at)}</span>
+                                                </div>
+                                                <p className={`text-xl font-light tracking-tight leading-snug ${!notif.is_read ? "text-zinc-900 dark:text-white" : "text-zinc-500 dark:text-zinc-400"}`}>
+                                                    {getNotificationText(notif)}
+                                                </p>
+                                                {notif.title && (
+                                                    <div className="mt-4 flex items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                        <div className="h-px w-4 bg-zinc-400" />
+                                                        <p className="text-[11px] font-medium text-zinc-400 italic truncate max-w-sm">
+                                                            "{notif.title}"
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Link>
+
+                                        {/* Action Sub-Menu */}
+                                        <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                                            {!notif.is_read && (
+                                                <button
+                                                    onClick={() => markAsRead(notif.id)}
+                                                    className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/[0.05] text-zinc-400 hover:text-emerald-500 transition-all"
+                                                    title="Mark as sync"
+                                                >
+                                                    <Check className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => deleteNotification(notif.id)}
+                                                className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/[0.05] text-zinc-400 hover:text-red-500 transition-all"
+                                                title="Purge unit"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
-            </div>
+
+                <div className="mt-48 flex flex-col items-center">
+                    <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-900" />
+                    <p className="text-zinc-100 dark:text-zinc-900/10 text-[8vw] font-black leading-none select-none tracking-tighter mt-12">
+                        NOTIFICATIONS
+                    </p>
+                </div>
+            </main>
+
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 }

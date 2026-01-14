@@ -209,16 +209,16 @@ function MesajlarContent() {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-transparent flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 text-center max-w-md shadow-xl">
-                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="min-h-screen bg-white dark:bg-[#000000] flex items-center justify-center p-4 selection:bg-red-500/30 font-sans">
+                <div className="bg-[#FAFAFA] dark:bg-[#080808] border border-zinc-100 dark:border-white/[0.03] rounded-[3rem] p-12 text-center max-w-md shadow-2xl">
+                    <div className="w-24 h-24 bg-emerald-500/5 rounded-full flex items-center justify-center mx-auto mb-8">
                         <Mail className="w-10 h-10 text-emerald-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Giriş Gerekli</h2>
-                    <p className="text-gray-500 dark:text-zinc-400 mb-8">Mesajlarınıza ulaşmak ve sürücülerle iletişimde kalmak için giriş yapmalısınız.</p>
+                    <h2 className="text-3xl font-light text-zinc-900 dark:text-white mb-4 tracking-tight uppercase">Giriş Gerekli</h2>
+                    <p className="text-zinc-500 text-sm font-medium uppercase tracking-[0.2em] mb-12">Authorization Required for Comms Access</p>
                     <Link
                         href="/?login=true"
-                        className="inline-flex items-center justify-center w-full gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                        className="inline-flex items-center justify-center w-full px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 uppercase tracking-widest text-[11px]"
                     >
                         Giriş Yap
                     </Link>
@@ -228,72 +228,119 @@ function MesajlarContent() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-transparent transition-colors">
+        <div className="min-h-screen bg-white dark:bg-[#000000] transition-colors duration-1000 selection:bg-red-500/30 font-sans text-zinc-900 dark:text-white">
             <HeaderWhite />
 
-            <div className="max-w-2xl mx-auto px-4 py-8">
-                {/* Header Section */}
-                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-3xl p-6 mb-8 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <Link
-                                href="/topluluk"
-                                className="w-10 h-10 rounded-full bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 flex items-center justify-center text-gray-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm"
-                            >
-                                <ArrowLeft className="w-5 h-5" />
-                            </Link>
-                            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                                <Mail className="w-7 h-7 text-emerald-500" />
-                                Mesajlar
-                            </h1>
+            {/* Cinematic Hero Section - Direct Comms */}
+            <div className="relative h-[60vh] min-h-[500px] flex items-center overflow-hidden bg-zinc-950">
+                <div
+                    className="absolute inset-0 z-0"
+                    style={{
+                        backgroundImage: 'url("/images/community-hero.jpg")',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                    }}
+                >
+                    <div className="absolute inset-0 bg-black/85 backdrop-blur-[2px]" />
+                </div>
+
+                <div className="container max-w-6xl mx-auto px-6 relative z-10">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
+                            <span className="text-zinc-500 text-[10px] font-bold tracking-[0.5em] uppercase">Direct Comms</span>
                         </div>
+                        <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-tight opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
+                            Sync / <br />
+                            <span className="font-medium">Mesajlar.</span>
+                        </h1>
+                        <p className="text-zinc-500 max-w-md text-lg font-light leading-relaxed mb-12 opacity-0 animate-[fadeIn_1s_ease-out_0.4s_forwards]">
+                            Maintain peer-to-peer connectivity and encrypted tactical exchanges within the fleet network.
+                        </p>
+
+                        {/* Integrated Stats - Technical Specification Style */}
+                        <div className="flex items-center gap-16 opacity-0 animate-[fadeIn_1s_ease-out_0.6s_forwards]">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
+                                    {conversations.length}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    ACTIVE CYCLES
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums uppercase text-emerald-500">
+                                    {conversations.reduce((sum, c) => sum + c.unread_count, 0)}
+                                </span>
+                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
+                                    UNREAD LOAD
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <main className="container max-w-4xl mx-auto px-6 pb-32 relative z-20">
+                {/* Minimalist Controls Section */}
+                <div className="pt-20 pb-16 border-b border-zinc-100 dark:border-zinc-950/50">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                        <div className="flex items-baseline gap-6 group">
+                            <Link href="/topluluk" className="w-10 h-10 flex items-center justify-center rounded-full border border-zinc-100 dark:border-white/[0.05] text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all">
+                                <ArrowLeft className="w-4 h-4" />
+                            </Link>
+                            <div className="flex items-baseline gap-4">
+                                <h2 className="text-2xl font-light tracking-tight text-zinc-900 dark:text-white">Active Channels</h2>
+                                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 group-hover:text-emerald-500 transition-colors">ESTABLISHED COMMS</span>
+                            </div>
+                        </div>
+
                         <button
                             onClick={() => setShowNewChat(!showNewChat)}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-95 ${showNewChat
-                                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-none"
+                            className={`px-8 py-3.5 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${showNewChat
+                                ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-500"
                                 : "bg-emerald-500 hover:bg-emerald-600 text-zinc-950 shadow-emerald-500/20"
                                 }`}
                         >
-                            {showNewChat ? "İptal" : "Yeni Mesaj"}
+                            {showNewChat ? "Terminate Session" : "Initiate Comms"}
                         </button>
                     </div>
 
-                    {/* New Chat Search */}
+                    {/* New Chat Search - Integrated */}
                     {showNewChat && (
-                        <div className="mt-6 animate-in slide-in-from-top-2 duration-300">
-                            <div className="relative group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
-                                <input
-                                    type="text"
-                                    placeholder="Kullanıcı adı ile ara..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl text-zinc-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium"
-                                    autoFocus
-                                />
-                            </div>
+                        <div className="mt-12 animate-in slide-in-from-top-4 duration-500">
+                            <div className="bg-[#FAFAFA] dark:bg-[#080808] border border-zinc-100 dark:border-white/[0.03] rounded-[2.5rem] p-8">
+                                <div className="relative group mb-8">
+                                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" />
+                                    <input
+                                        type="text"
+                                        placeholder="SEARCH CORE IDENTITY..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-14 pr-6 py-4 bg-white dark:bg-zinc-900/40 border border-zinc-50 dark:border-white/[0.01] rounded-[1.5rem] text-zinc-900 dark:text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all font-bold tracking-widest text-[10px]"
+                                        autoFocus
+                                    />
+                                </div>
 
-                            {/* Search Results */}
-                            {searchQuery.length >= 2 && (
-                                <div className="mt-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
-                                    {searching ? (
-                                        <div className="p-8 text-center">
-                                            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mx-auto" />
-                                        </div>
-                                    ) : searchResults.length === 0 ? (
-                                        <div className="p-8 text-center">
-                                            <p className="text-gray-500 dark:text-zinc-400 font-medium">Kullanıcı bulunamadı</p>
-                                        </div>
-                                    ) : (
-                                        <div className="divide-y divide-gray-100 dark:divide-zinc-800">
-                                            {searchResults.map((result) => (
+                                {searchQuery.length >= 2 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {searching ? (
+                                            <div className="col-span-full py-12 text-center">
+                                                <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
+                                            </div>
+                                        ) : searchResults.length === 0 ? (
+                                            <div className="col-span-full py-12 text-center">
+                                                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">No matching identity</p>
+                                            </div>
+                                        ) : (
+                                            searchResults.map((result) => (
                                                 <button
                                                     key={result.id}
                                                     onClick={() => startConversation(result.id)}
-                                                    className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all group"
+                                                    className="flex items-center gap-5 p-4 bg-white dark:bg-zinc-900/40 border border-zinc-50 dark:border-white/[0.01] rounded-[1.5rem] hover:border-emerald-500/30 transition-all group"
                                                 >
-                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 p-[2px] group-hover:scale-110 transition-transform">
-                                                        <div className="w-full h-full rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-lg overflow-hidden">
+                                                    <div className="w-12 h-12 rounded-[1.2rem] bg-zinc-950 dark:bg-white/5 p-1 group-hover:scale-105 transition-transform">
+                                                        <div className="w-full h-full rounded-[1rem] bg-zinc-900 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-white font-light text-lg overflow-hidden grayscale group-hover:grayscale-0 transition-all">
                                                             {result.avatar_url ? (
                                                                 <img src={result.avatar_url} alt="" className="w-full h-full object-cover" />
                                                             ) : (
@@ -301,94 +348,110 @@ function MesajlarContent() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <span className="text-zinc-900 dark:text-white font-bold">{result.full_name}</span>
+                                                    <span className="text-[10px] font-bold text-zinc-900 dark:text-white uppercase tracking-widest">{result.full_name}</span>
                                                 </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Conversations List */}
-                <div className="space-y-4">
+                {/* Conversations List - Technical Ledger Style */}
+                <div className="pt-20">
                     {loading ? (
-                        <div className="flex items-center justify-center py-20">
+                        <div className="flex items-center justify-center py-40">
                             <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
                         </div>
                     ) : conversations.length === 0 ? (
-                        <div className="text-center py-24 bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800">
-                            <div className="w-24 h-24 bg-gray-50 dark:bg-zinc-950 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-                                <MessageSquare className="w-10 h-10 text-gray-300 dark:text-zinc-700" />
-                            </div>
-                            <h3 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Sohbetler Boş</h3>
-                            <p className="text-gray-500 dark:text-zinc-400 mb-8 max-w-xs mx-auto">Henüz kimseyle mesajlaşmadınız. Yeni bir sohbet başlatmak için yukarıdaki butonu kullanın.</p>
-                            <button
-                                onClick={() => setShowNewChat(true)}
-                                className="inline-flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-                            >
-                                <Users className="w-5 h-5" />
-                                Kullanıcı Ara
-                            </button>
+                        <div className="flex flex-col items-center justify-center py-40 border-2 border-dashed border-zinc-100 dark:border-zinc-900 rounded-[3rem]">
+                            <MessageSquare className="w-12 h-12 text-zinc-200 dark:text-zinc-800 mb-8" />
+                            <h3 className="text-xl font-light text-zinc-400 uppercase tracking-widest">No active channels</h3>
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.3em] mt-2">NETWORK STANDBY</p>
                         </div>
                     ) : (
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-                            <div className="divide-y divide-gray-50 dark:divide-zinc-800/50">
-                                {conversations.map((conv) => (
-                                    <Link
-                                        key={conv.id}
-                                        href={`/mesajlar/${conv.id}`}
-                                        className="flex items-center gap-5 p-5 hover:bg-gray-50 dark:hover:bg-zinc-800/40 transition-all group"
-                                    >
-                                        <div className="relative flex-shrink-0">
-                                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-blue-500 p-[2px] group-hover:scale-105 transition-transform">
-                                                <div className="w-full h-full rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-xl overflow-hidden shadow-inner">
-                                                    {conv.other_user.avatar_url ? (
-                                                        <img src={conv.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <span>{conv.other_user.full_name?.charAt(0) || "?"}</span>
-                                                    )}
-                                                </div>
+                        <div className="space-y-4">
+                            {conversations.map((conv) => (
+                                <Link
+                                    key={conv.id}
+                                    href={`/mesajlar/${conv.id}`}
+                                    className={`group flex items-center gap-10 p-8 rounded-[2.5rem] border transition-all ${conv.unread_count > 0
+                                        ? "bg-white dark:bg-[#0A0A0A] border-emerald-500/20 shadow-2xl shadow-emerald-500/5"
+                                        : "bg-[#FAFAFA] dark:bg-[#080808] border-zinc-50 dark:border-white/[0.03] hover:border-emerald-500/10"
+                                        }`}
+                                >
+                                    <div className="relative flex-shrink-0">
+                                        <div className="w-16 h-16 rounded-[1.5rem] bg-zinc-900 dark:bg-white/5 p-1 group-hover:scale-105 transition-transform">
+                                            <div className="w-full h-full rounded-[1.2rem] bg-zinc-800 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 dark:text-white font-light text-xl overflow-hidden grayscale group-hover:grayscale-0 transition-all">
+                                                {conv.other_user.avatar_url ? (
+                                                    <img src={conv.other_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span>{conv.other_user.full_name?.charAt(0) || "?"}</span>
+                                                )}
                                             </div>
-                                            {conv.unread_count > 0 && (
-                                                <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full flex items-center justify-center px-1 text-[10px] text-zinc-950 font-black shadow-lg">
-                                                    {conv.unread_count > 9 ? "9+" : conv.unread_count}
-                                                </div>
-                                            )}
                                         </div>
+                                        {conv.unread_count > 0 && (
+                                            <div className="absolute -top-1 -right-1 min-w-[20px] h-[20px] bg-emerald-500 border-4 border-white dark:border-[#0A0A0A] rounded-full flex items-center justify-center px-1 text-[8px] text-zinc-950 font-black">
+                                                {conv.unread_count}
+                                            </div>
+                                        )}
+                                    </div>
 
-                                        <div className="flex-1 min-w-0 pr-4">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span className={`text-[17px] truncate ${conv.unread_count > 0 ? "text-zinc-900 dark:text-white font-bold" : "text-gray-800 dark:text-zinc-200 font-bold"}`}>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-4">
+                                                <span className={`text-xl font-light tracking-tight ${conv.unread_count > 0 ? "text-zinc-900 dark:text-white" : "text-zinc-500"}`}>
                                                     {conv.other_user.full_name}
                                                 </span>
-                                                <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest flex-shrink-0 ml-4">
-                                                    {formatTime(conv.last_message_at)}
-                                                </span>
+                                                {conv.unread_count > 0 && (
+                                                    <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full animate-pulse">
+                                                        Active Data
+                                                    </span>
+                                                )}
                                             </div>
-                                            {conv.last_message && (
-                                                <p className={`text-sm truncate leading-relaxed ${conv.unread_count > 0 ? "text-gray-950 dark:text-zinc-100 font-bold" : "text-gray-500 dark:text-zinc-400 font-medium"}`}>
-                                                    {conv.last_message.sender_id === user.id && (
-                                                        <span className="text-emerald-500/80 mr-1 font-bold italic">Siz:</span>
-                                                    )}
-                                                    {conv.last_message.content}
-                                                </p>
-                                            )}
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest opacity-50">
+                                                {formatTime(conv.last_message_at)}
+                                            </span>
                                         </div>
-
-                                        {conv.unread_count > 0 && (
-                                            <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/40 animate-pulse flex-shrink-0" />
+                                        {conv.last_message && (
+                                            <p className={`text-[15px] truncate leading-relaxed ${conv.unread_count > 0 ? "text-zinc-800 dark:text-zinc-100 font-medium" : "text-zinc-500 dark:text-zinc-500 font-light"}`}>
+                                                {conv.last_message.sender_id === user.id && (
+                                                    <span className="text-emerald-500/80 mr-2 font-bold uppercase tracking-widest text-[10px]">YOU /</span>
+                                                )}
+                                                {conv.last_message.content}
+                                            </p>
                                         )}
-                                    </Link>
-                                ))}
-                            </div>
+                                    </div>
+
+                                    <div className="opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                                        <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/[0.05] text-zinc-400 group-hover:text-emerald-500 transition-all">
+                                            <MessageSquare className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
                         </div>
                     )}
                 </div>
-            </div>
+
+                <div className="mt-48 flex flex-col items-center">
+                    <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-900" />
+                    <p className="text-zinc-100 dark:text-zinc-900/10 text-[8vw] font-black leading-none select-none tracking-tighter mt-12">
+                        MESSAGES
+                    </p>
+                </div>
+            </main>
+
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
+
     );
 }
 

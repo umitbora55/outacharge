@@ -1,0 +1,19 @@
+{
+    "$schema": "https://raw.githubusercontent.com/microsoft/vscode-css-languageservice/master/docs/customData.schema.json",
+    "version": 1.1,
+    "atDirectives": [
+        {
+            "name": "@theme",
+            "description": "Tailwind v4 theme definition block."
+        },
+        {
+            "name": "@custom-variant",
+            "description": "Tailwind v4 custom variant definition.",
+            "hasReference": true
+        },
+        {
+            "name": "@utility",
+            "description": "Tailwind v4 custom utility definition."
+        }
+    ]
+}
