@@ -147,16 +147,7 @@ export default function TestMap() {
 
     setLoading(true);
     try {
-      const bounds = map.current.getBounds();
-      if (!bounds) return;
-      const nw = bounds.getNorthWest();
-      const se = bounds.getSouthEast();
-
-      const boundingBox = `(${nw.lat},${nw.lng}),(${se.lat},${se.lng})`;
-
-      const response = await fetch(
-        `/api/stations?boundingbox=${boundingBox}`
-      );
+      const response = await fetch('/api/stations');
 
       if (!response.ok) throw new Error("Station fetch failed");
       const data: Station[] = await response.json();
@@ -243,7 +234,7 @@ export default function TestMap() {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
         cluster: true,
-        clusterMaxZoom: 16, // Clusters expand at zoom 16+ (balanced UX)
+        clusterMaxZoom: 24, // Clusters expand only at very high zoom or physical distance
         clusterRadius: 40,
         promoteId: "id" // Critical for feature-state hover effects
       });
@@ -455,9 +446,9 @@ export default function TestMap() {
             if (err) return;
             m.easeTo({
               center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
-              zoom: zoom!,
-              duration: 1200,
-              easing: (t) => t * (2 - t)
+              zoom: Math.min(zoom!, 18), // Don't zoom too far on cluster click
+              duration: 1000,
+              easing: (t) => t * (1.1 - t) // Slightly snappier easing
             });
           }
         );
@@ -483,12 +474,6 @@ export default function TestMap() {
       });
 
       fetchStations();
-    });
-
-    let timeoutId: NodeJS.Timeout;
-    m.on("moveend", () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => { fetchStations(); }, 500);
     });
 
     return () => {
@@ -542,7 +527,7 @@ export default function TestMap() {
   };
 
   return (
-    <div className="map-page relative w-full h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-900" style={{ paddingTop: '88px' }}>
+    <div className="map-page relative w-full h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-900">
       <style jsx global>{`
         .mapboxgl-popup.premium-popup .mapboxgl-popup-content {
           padding: 18px;
@@ -557,17 +542,24 @@ export default function TestMap() {
         .mapboxgl-popup.premium-popup .mapboxgl-popup-tip {
           border-top-color: ${theme === 'dark' ? 'rgba(10, 10, 10, 0.85)' : 'rgba(255, 255, 255, 0.85)'};
         }
-        .mapboxgl-ctrl-bottom-right {
+        /* Hide all Mapbox default controls */
+        .mapboxgl-ctrl-bottom-right,
+        .mapboxgl-ctrl-bottom-left,
+        .mapboxgl-ctrl-top-right,
+        .mapboxgl-ctrl-top-left,
+        .mapboxgl-ctrl-compass,
+        .mapboxgl-ctrl-geolocate,
+        .mapboxgl-ctrl-attrib,
+        .mapboxgl-ctrl-logo {
            display: none !important;
         }
       `}</style>
 
       {/* --- SEARCH BAR WRAPPER (Sticky Overlay) --- */}
-      <div className="map-search-wrapper sticky z-50 flex justify-center pointer-events-none" style={{ top: '88px' }}>
+      <div className="map-search-wrapper sticky z-50 flex justify-center pointer-events-none" style={{ top: '100px' }}>
         <div className={`map-search pointer-events-auto transition-all duration-500 ${isInteracting ? 'compact' : ''
           }`} style={{
             width: 'min(720px, calc(100% - 32px))',
-            marginTop: '16px',
             transform: isInteracting ? 'scale(0.94)' : 'scale(1)',
             opacity: isInteracting ? 0.9 : 1
           }}>
@@ -584,7 +576,7 @@ export default function TestMap() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="İstasyon, lokasyon veya bölge ara..."
-                className="w-full h-16 pl-14 pr-32 bg-transparent text-base font-medium text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-[3px] focus:ring-emerald-500/20 focus:scale-[1.01] transition-all duration-300"
+                className="w-full h-16 pl-14 pr-32 bg-transparent rounded-full text-base font-medium text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-[3px] focus:ring-emerald-500/20 focus:scale-[1.01] transition-all duration-300"
               />
               <div className="absolute right-2 top-2 bottom-2">
                 <button
@@ -657,7 +649,7 @@ export default function TestMap() {
       </div>
 
       {/* --- MAP & CONTROLS CONTAINER --- */}
-      <div className="relative w-full" style={{ height: 'calc(100vh - 88px)' }}>
+      <div className="relative w-full h-full">
         {/* SCULPTED FLOATING CONTROLS (RIGHT) */}
         <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-4">
           {/* Zoom Controls */}

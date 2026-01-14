@@ -11,43 +11,42 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const boundingBox = searchParams.get('boundingbox');
 
-    if (!boundingBox) {
-        return NextResponse.json({ error: 'Bounding box required' }, { status: 400 });
-    }
-
     try {
-        // Parse bounding box: "(lat1,lng1),(lat2,lng2)"
-        const matches = boundingBox.match(/\(([-\d.]+),([-\d.]+)\),\(([-\d.]+),([-\d.]+)\)/);
-        if (!matches) {
-            return NextResponse.json({ error: 'Invalid bounding box format' }, { status: 400 });
-        }
-
-        const [_, nwLat, nwLng, seLat, seLng] = matches.map(Number);
-
-        // Supabase'den istasyonları çek
-        const { data: stations, error } = await supabase
+        let query = supabase
             .from('stations')
             .select(`
-        id,
-        name,
-        latitude,
-        longitude,
-        address,
-        city,
-        operator_name,
-        connectors (
-          connector_type,
-          power_kw,
-          current_type,
-          quantity
-        )
-      `)
-            .gte('latitude', Math.min(nwLat, seLat))
-            .lte('latitude', Math.max(nwLat, seLat))
-            .gte('longitude', Math.min(nwLng, seLng))
-            .lte('longitude', Math.max(nwLng, seLng))
-            .eq('is_operational', true)
-            .limit(1000);
+                id,
+                name,
+                latitude,
+                longitude,
+                address,
+                city,
+                operator_name,
+                connectors (
+                  connector_type,
+                  power_kw,
+                  current_type,
+                  quantity
+                )
+            `)
+            .eq('is_operational', true);
+
+        if (boundingBox) {
+            // Parse bounding box: "(lat1,lng1),(lat2,lng2)"
+            const matches = boundingBox.match(/\(([-\d.]+),([-\d.]+)\),\(([-\d.]+),([-\d.]+)\)/);
+            if (!matches) {
+                return NextResponse.json({ error: 'Invalid bounding box format' }, { status: 400 });
+            }
+
+            const [_, nwLat, nwLng, seLat, seLng] = matches.map(Number);
+            query = query
+                .gte('latitude', Math.min(nwLat, seLat))
+                .lte('latitude', Math.max(nwLat, seLat))
+                .gte('longitude', Math.min(nwLng, seLng))
+                .lte('longitude', Math.max(nwLng, seLng));
+        }
+
+        const { data: stations, error } = await query.limit(5000);
 
         if (error) throw error;
 
