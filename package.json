@@ -18,11 +18,11 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.6.0",
-    "supercluster": "^8.0.1"
+    "supercluster": "^8.0.1",
+    "@supabase/supabase-js": "^2.90.1"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.1.1",
-    "@supabase/supabase-js": "^2.90.1",
     "@tailwindcss/postcss": "^4",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20.19.28",

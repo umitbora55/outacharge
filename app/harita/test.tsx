@@ -234,8 +234,8 @@ export default function TestMap() {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
         cluster: true,
-        clusterMaxZoom: 24, // Clusters expand only at very high zoom or physical distance
-        clusterRadius: 40,
+        clusterMaxZoom: 16, // Reduced from 24 for better expansion
+        clusterRadius: 30,  // Reduced from 40 for finer clustering
         promoteId: "id" // Critical for feature-state hover effects
       });
     }
@@ -446,9 +446,9 @@ export default function TestMap() {
             if (err) return;
             m.easeTo({
               center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
-              zoom: Math.min(zoom!, 18), // Don't zoom too far on cluster click
-              duration: 1000,
-              easing: (t) => t * (1.1 - t) // Slightly snappier easing
+              zoom: (zoom || 14) + 1, // Go 1 level deeper than expansion threshold
+              duration: 800,
+              easing: (t) => t * (2 - t)
             });
           }
         );

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import HeaderWhite from '../components/HeaderWhite';
 
-const TestMap = dynamic(() => import('./test'), { ssr: false });
+const NewMap = dynamic(() => import('./new-map').then(m => m.default), { ssr: false });
 
 export default function HaritaPage() {
     return (
@@ -12,7 +12,7 @@ export default function HaritaPage() {
                 <HeaderWhite />
             </div>
             <div className="w-full h-full">
-                <TestMap />
+                <NewMap />
             </div>
         </main>
     );

@@ -22,12 +22,7 @@ export async function GET(request: NextRequest) {
                 address,
                 city,
                 operator_name,
-                connectors (
-                  connector_type,
-                  power_kw,
-                  current_type,
-                  quantity
-                )
+                data_source
             `)
             .eq('is_operational', true);
 
@@ -46,7 +41,7 @@ export async function GET(request: NextRequest) {
                 .lte('longitude', Math.max(nwLng, seLng));
         }
 
-        const { data: stations, error } = await query.limit(5000);
+        const { data: stations, error } = await query.limit(10000);
 
         if (error) throw error;
 
@@ -62,10 +57,15 @@ export async function GET(request: NextRequest) {
             OperatorInfo: {
                 Title: station.operator_name || 'Bilinmeyen Operatör',
             },
-            Connections: station.connectors?.map((c: any) => ({
-                PowerKW: c.power_kw || 0,
-                CurrentTypeID: c.current_type === 'DC' ? 20 : 10,
-            })) || [],
+            Connections: [
+                {
+                    PowerKW: 50,
+                    CurrentTypeID: 20,
+                }
+            ],
+            Metadata: {
+                DataSource: station.data_source
+            }
         })) || [];
 
         return NextResponse.json(formattedStations);
