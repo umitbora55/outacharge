@@ -100,6 +100,36 @@ export class StationManager {
     clearCache(): void {
         this.loadedStationIds.clear();
     }
+
+    // Gelişmiş Arama (Hibrit Yaklaşım İçin Gerekli)
+    async searchStations(query: string): Promise<Station[]> {
+        if (!query || query.length < 2) return [];
+
+        try {
+            // Paralel sorgular ile timeout riskini minimize ediyoruz ve hızı artırıyoruz
+            // GIN Trigram indexleri sayesinde bu sorgular yarım milyon kayıtta milisaniyeler sürecek.
+            const [nameRes, operatorRes, cityRes] = await Promise.all([
+                supabase.from("stations").select("id, name, latitude, longitude, operator_name, is_operational, city").ilike("name", `%${query}%`).limit(10),
+                supabase.from("stations").select("id, name, latitude, longitude, operator_name, is_operational, city").ilike("operator_name", `%${query}%`).limit(10),
+                supabase.from("stations").select("id, name, latitude, longitude, operator_name, is_operational, city").ilike("city", `%${query}%`).limit(10)
+            ]);
+
+            const allResults = [
+                ...(nameRes.data || []),
+                ...(operatorRes.data || []),
+                ...(cityRes.data || [])
+            ];
+
+            // Duplicate temizliği (ID bazlı)
+            const uniqueMap = new Map();
+            allResults.forEach(s => uniqueMap.set(s.id, s));
+
+            return Array.from(uniqueMap.values());
+        } catch (error: any) {
+            console.error("SEARCH_ERROR:", error?.message || error);
+            return [];
+        }
+    }
 }
 
 export const stationManager = StationManager.getInstance();

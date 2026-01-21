@@ -15,12 +15,17 @@ import {
     Zap,
     Users,
     MessageSquare,
-    Loader2
+    Loader2,
+    AlertTriangle,
+    HelpCircle,
+    Lightbulb,
+    Newspaper
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { supabase } from "../../lib/supabase";
 import HeaderWhite from "../components/HeaderWhite";
+import CommunityChat from "../components/CommunityChat";
 
 // Types
 interface Post {
@@ -43,19 +48,21 @@ interface Post {
 
 const categories = [
     { id: 'all', label: 'Tümü', icon: MessageCircle },
-    { id: 'general', label: 'Genel', icon: Users },
-    { id: 'charging', label: 'Şarj Deneyimi', icon: Zap },
-    { id: 'technical', label: 'Teknik Sorular', icon: Zap },
-    { id: 'car', label: 'Araç İnceleme', icon: Car },
-    { id: 'news', label: 'Haberler', icon: MessageSquare },
+    { id: 'istasyon_sikayeti', label: 'İstasyon Şikayeti', icon: AlertTriangle },
+    { id: 'operator_sikayeti', label: 'Operatör Şikayeti', icon: Zap },
+    { id: 'deneyim', label: 'Deneyim', icon: Car },
+    { id: 'soru', label: 'Soru', icon: HelpCircle },
+    { id: 'oneri', label: 'Öneri', icon: Lightbulb },
+    { id: 'haber', label: 'Haber', icon: Newspaper },
 ];
 
 const categoryColors: Record<string, { bg: string, text: string, border: string }> = {
-    general: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    charging: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-    technical: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-    car: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-    news: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+    istasyon_sikayeti: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+    operator_sikayeti: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    deneyim: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    soru: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    oneri: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    haber: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
 };
 
 // Brand logos mapping
@@ -351,8 +358,8 @@ export default function ToplulukPage() {
             </div>
 
             {/* Main Content Area */}
-            <main className="container max-w-6xl mx-auto px-6 pb-32 relative z-20">
-                <div className="flex flex-col lg:flex-row gap-6">
+            <main className="container max-w-[1400px] mx-auto px-6 pb-32 relative z-20">
+                <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar - Categories */}
                     <div className="lg:w-64 flex-shrink-0">
                         {/* Mobile Filter Button */}
@@ -580,7 +587,26 @@ export default function ToplulukPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Desktop Sidebar - Live Chat */}
+                    <aside className="hidden xl:block w-[350px] flex-shrink-0">
+                        <div className="sticky top-4 h-[750px]">
+                            <CommunityChat />
+                        </div>
+                    </aside>
                 </div>
+
+                {/* Mobile Chat Section */}
+                <div className="xl:hidden mt-20">
+                    <div className="inline-flex items-center gap-2 mb-6">
+                        <Zap className="w-5 h-5 text-emerald-500" />
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Topluluk Canlı Sohbet</h2>
+                    </div>
+                    <div className="h-[600px]">
+                        <CommunityChat />
+                    </div>
+                </div>
+
                 <div className="mt-48 flex flex-col items-center">
                     <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-950" />
                     <p className="text-zinc-100 dark:text-zinc-900/30 text-[10vw] font-black leading-none select-none tracking-tighter mt-12">

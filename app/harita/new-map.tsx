@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { stationManager } from "@/lib/station-manager";
-import { Loader2, Search, Navigation, Zap, X, MapPin, Layers, Locate } from "lucide-react";
+import { Loader2, Search, Navigation, Zap, X, MapPin, Layers, Locate, ChevronRight } from "lucide-react";
 import { useTheme } from "next-themes";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Token kontrolü
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -23,6 +24,13 @@ export default function NewMap() {
     const stationsMap = useRef<Map<string, any>>(new Map());
     const coordinateRegistry = useRef<Set<string>>(new Set());
     const moveTimeout = useRef<NodeJS.Timeout | null>(null);
+    const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // Search States
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSearchResults, setShowSearchResults] = useState(false);
 
     // --- SMART JITTER ALGORİTMASI ---
     const getJitteredCoordinates = useCallback((lat: number, lng: number) => {
@@ -273,6 +281,101 @@ export default function NewMap() {
         }, err => console.error("LOCATE_ERROR:", err));
     };
 
+    const handleSearch = useCallback(async (query: string) => {
+        setSearchQuery(query);
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+        if (!query.trim() || query.length < 2) {
+            setSearchResults([]);
+            setShowSearchResults(false);
+            return;
+        }
+
+        setShowSearchResults(true);
+        setIsSearching(true);
+
+        searchTimeout.current = setTimeout(async () => {
+            try {
+                // 1. LOKAL ARAMA (Haritada yüklü olanlarda anında arama)
+                const localResults = Array.from(stationsMap.current.values())
+                    .filter(feat => {
+                        const name = feat.properties.name?.toLowerCase() || "";
+                        const operator = feat.properties.operator_name?.toLowerCase() || "";
+                        const city = feat.properties.city?.toLowerCase() || "";
+                        const q = query.toLowerCase();
+                        return name.includes(q) || operator.includes(q) || city.includes(q);
+                    })
+                    .slice(0, 5)
+                    .map(feat => ({
+                        type: 'station',
+                        id: feat.properties.id,
+                        name: feat.properties.name,
+                        sub: feat.properties.operator_name,
+                        coords: feat.geometry.coordinates,
+                        is_operational: feat.properties.is_operational
+                    }));
+
+                // 2. REMOTE ARAMA (Veritabanından GIN indexli hızlı sorgu)
+                const remoteData = await stationManager.searchStations(query);
+                const remoteResults = remoteData
+                    .filter(s => !localResults.find(l => l.id === s.id))
+                    .map(s => ({
+                        type: 'station',
+                        id: s.id,
+                        name: s.name,
+                        sub: s.operator_name,
+                        coords: [s.longitude, s.latitude],
+                        is_operational: s.is_operational
+                    }));
+
+                // 3. GEOCODING (Mapbox ile adres araması)
+                const geocodeRes = await fetch(
+                    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&country=tr&language=tr&limit=3`
+                );
+                const geocodeData = await geocodeRes.json();
+                const geocodeResults = geocodeData.features?.map((f: any) => ({
+                    type: 'address',
+                    id: f.id,
+                    name: f.text,
+                    sub: f.place_name,
+                    coords: f.center
+                })) || [];
+
+                setSearchResults([...localResults, ...remoteResults, ...geocodeResults]);
+            } catch (err) {
+                console.error("SEARCH_LOGIC_ERROR:", err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 400);
+    }, []);
+
+    const handleSelectResult = (result: any) => {
+        if (!map.current) return;
+
+        setShowSearchResults(false);
+        setSearchQuery(result.name);
+
+        map.current.flyTo({
+            center: result.coords,
+            zoom: result.type === 'station' ? 16 : 12,
+            speed: 1.2,
+            curve: 1.2,
+            essential: true
+        });
+
+        if (result.type === 'station') {
+            setSelectedStation({
+                id: result.id,
+                name: result.name,
+                operator_name: result.sub,
+                is_operational: result.is_operational,
+                longitude: result.coords[0],
+                latitude: result.coords[1]
+            });
+        }
+    };
+
     return (
         <div className="relative w-full h-screen bg-zinc-900 overflow-hidden">
             <div ref={mapContainer} className="w-full h-full" />
@@ -298,11 +401,83 @@ export default function NewMap() {
                 <div className="relative group">
                     <div className="absolute inset-0 bg-white/10 dark:bg-black/20 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10" />
                     <div className="relative flex items-center px-4 h-14">
-                        <Search className="w-5 h-5 text-zinc-500" />
-                        <input type="text" placeholder="İstasyon ara..." className="w-full bg-transparent border-none outline-none px-3 text-white placeholder:text-zinc-500 text-sm font-medium" />
+                        <Search className={`w-5 h-5 transition-colors ${isSearching ? 'text-emerald-500 animate-pulse' : 'text-zinc-500'}`} />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => handleSearch(e.target.value)}
+                            onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
+                            placeholder="İstasyon veya adres ara..."
+                            className="w-full bg-transparent border-none outline-none px-3 text-white placeholder:text-zinc-500 text-sm font-medium"
+                        />
+                        {searchQuery && (
+                            <button onClick={() => { setSearchQuery(""); setSearchResults([]); setShowSearchResults(false); }} className="p-1 hover:bg-white/10 rounded-full transition-colors text-zinc-500 mr-1">
+                                <X className="w-4 h-4" />
+                            </button>
+                        )}
                         <div className="w-px h-6 bg-white/10 mx-2" />
                         <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-zinc-300"><Layers className="w-5 h-5" /></button>
                     </div>
+
+                    {/* Search Results Panel */}
+                    <AnimatePresence>
+                        {showSearchResults && (searchResults.length > 0 || isSearching) && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                                className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-2xl rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border border-white/20 dark:border-white/10 overflow-hidden z-50"
+                            >
+                                <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
+                                    {isSearching && searchResults.length === 0 ? (
+                                        <div className="p-12 flex flex-col items-center justify-center gap-4">
+                                            <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center">
+                                                <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">Sinyal Taranıyor...</span>
+                                        </div>
+                                    ) : searchResults.length > 0 ? (
+                                        <div className="py-2">
+                                            {searchResults.map((result, idx) => (
+                                                <button
+                                                    key={result.id + idx}
+                                                    onClick={() => handleSelectResult(result)}
+                                                    className="w-full px-6 py-4 flex items-center gap-5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group border-b border-zinc-50/50 dark:border-white/5 last:border-none"
+                                                >
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 ${result.type === 'station'
+                                                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                                                        : 'bg-blue-500/10 text-blue-500 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
+                                                        }`}>
+                                                        {result.type === 'station' ? <Zap className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+                                                    </div>
+                                                    <div className="text-left overflow-hidden flex-1">
+                                                        <p className="text-[14px] font-bold dark:text-white truncate tracking-tight mb-0.5 group-hover:text-emerald-500 transition-colors">{result.name}</p>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate font-medium uppercase tracking-tight">{result.sub || 'Türkiye'}</p>
+                                                            {result.type === 'station' && (
+                                                                <>
+                                                                    <div className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                                                                    <span className={`text-[9px] font-black uppercase tracking-tighter ${result.is_operational ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                        {result.is_operational ? 'Aktif' : 'Pasif'}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-700 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-10 text-center">
+                                            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Sonuç bulunamadı</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
