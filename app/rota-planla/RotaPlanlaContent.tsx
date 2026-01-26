@@ -7,7 +7,7 @@ import {
   ArrowLeft, MapPin, Navigation, Zap, Battery, Clock, Car,
   ChevronRight, Loader2, Route, AlertCircle, Check,
   Circle, Flag, Settings, Users, Briefcase, Thermometer,
-  MessageCircle
+  MessageCircle, Wind, Droplets
 } from "lucide-react";
 import {
   getElevationProfile,
@@ -408,7 +408,7 @@ export default function RotaPlanlaPage() {
     type === "origin" ? setSearchingOrigin(true) : setSearchingDestination(true);
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?country=TR&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}&limit=10`
       );
       const data = await response.json();
       if (data.features) {
@@ -445,17 +445,49 @@ export default function RotaPlanlaPage() {
     abortRef.current = ac;
 
     const stations: any[] = [];
-    const samplePoints = samplePointsAlongRoute(coordinates, 50);
-    const corridorKm = strategy === "fastest" ? 4 : 10;
+    // Increase sample interval to reduce API calls (100km)
+    const samplePoints = samplePointsAlongRoute(coordinates, 100);
+    const corridorKm = 15; // 15km corridor for finding stations
 
-    for (const sp of samplePoints) {
+    // Helper function for delay
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Helper function for fetch with retry
+    const fetchWithRetry = async (url: string, retries = 3): Promise<any> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await fetch(url, { signal: ac.signal });
+          if (response.status === 429) {
+            // Rate limited - wait longer before retry
+            await delay(2000 * (i + 1));
+            continue;
+          }
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+          return await response.json();
+        } catch (e) {
+          if (e instanceof Error && e.name === "AbortError") throw e;
+          if (i === retries - 1) throw e;
+          await delay(1000 * (i + 1));
+        }
+      }
+      return [];
+    };
+
+    for (let i = 0; i < samplePoints.length; i++) {
+      const sp = samplePoints[i];
       if (ac.signal.aborted) return [];
+
       try {
-        const response = await fetch(
-          `https://api.openchargemap.io/v3/poi/?output=json&countrycode=TR&latitude=${sp.lat}&longitude=${sp.lng}&distance=30&distanceunit=KM&maxresults=50&compact=true&verbose=false&key=${process.env.NEXT_PUBLIC_OCM_API_KEY}`,
-          { signal: ac.signal }
+        // Add delay between requests to avoid rate limiting (500ms)
+        if (i > 0) await delay(500);
+
+        const data = await fetchWithRetry(
+          `/api/ocm?lat=${sp.lat}&lng=${sp.lng}&distance=50&maxresults=30`
         );
-        const data = await response.json();
+
+        if (!Array.isArray(data)) continue;
 
         for (const item of data) {
           const id = item.ID;
@@ -468,15 +500,16 @@ export default function RotaPlanlaPage() {
           const lat = item.AddressInfo?.Latitude;
           const lng = item.AddressInfo?.Longitude;
           if (typeof lat !== "number" || typeof lng !== "number") continue;
-          if (maxPower < 50 || powerType !== "DC") continue;
+          // Minimum 22kW for fast charging (includes AC Type 2 and DC)
+          if (maxPower < 22) continue;
 
           const { minKm, segIdx } = distanceToPolylineKm(coordinates, [lng, lat]);
           if (minKm > corridorKm) continue;
 
           stations.push({
             id,
-            name: item.AddressInfo?.Title || "Bilinmeyen İstasyon",
-            operator: item.OperatorInfo?.Title || "Bilinmeyen",
+            name: item.AddressInfo?.Title || "Unknown Station",
+            operator: item.OperatorInfo?.Title || "Unknown",
             lat, lng,
             power: maxPower,
             powerType,
@@ -746,9 +779,9 @@ export default function RotaPlanlaPage() {
           );
 
           setComparisonResults({
-            fastest: { ...comparison.fastest, strategy: "fastest", label: "En Hızlı", icon: "⚡" },
-            fewest: { ...comparison.fewest, strategy: "fewest", label: "Az Durak", icon: "📍" },
-            cheapest: { ...comparison.cheapest, strategy: "cheapest", label: "En Ucuz", icon: "💰" },
+            fastest: { ...comparison.fastest, strategy: "fastest", label: "En Hızlı", icon: "zap" },
+            fewest: { ...comparison.fewest, strategy: "fewest", label: "Az Durak", icon: "map-pin" },
+            cheapest: { ...comparison.cheapest, strategy: "cheapest", label: "En Ucuz", icon: "wallet" },
           });
 
           // Use graph-based optimizer for current strategy
@@ -907,45 +940,48 @@ export default function RotaPlanlaPage() {
 
   // ===== RENDER =====
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-white dark:bg-[#000000]">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="w-full px-6 py-4 flex items-center gap-4">
-          <Link href="/" className="text-gray-500 hover:text-zinc-900 transition">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-          <h1 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-            <Route className="w-6 h-6 text-emerald-400" />
-            Rota Planlayıcı
-          </h1>
+      <header className="bg-white dark:bg-zinc-950 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
+        <div className="w-full px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div className="flex flex-col">
+              <span className="text-zinc-400 text-[9px] font-bold tracking-[0.3em] uppercase">Navigation</span>
+              <h1 className="text-lg font-light text-zinc-900 dark:text-white tracking-tight">Route Planner</h1>
+            </div>
+          </div>
+          <Route className="w-5 h-5 text-emerald-500" />
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden h-full">
         {/* Sidebar */}
-        <div className="w-full md:w-96 bg-white overflow-y-auto flex-shrink-0">
-          <div className="p-4 space-y-4">
+        <div className="w-full md:w-[420px] bg-white dark:bg-zinc-950 overflow-y-auto flex-shrink-0 border-r border-zinc-100 dark:border-zinc-900">
+          <div className="p-6 space-y-6">
             {/* Origin */}
             <div>
-              <label className="block text-gray-500 text-sm mb-2 flex items-center gap-2">
-                <Circle className="w-4 h-4 text-blue-400" />
-                Başlangıç
+              <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-3 flex items-center gap-2">
+                <Circle className="w-3 h-3 text-emerald-500" />
+                Origin
               </label>
               <div className="relative">
                 <input
                   type="text"
                   value={originSearch}
                   onChange={(e) => { setOriginSearch(e.target.value); searchLocation(e.target.value, "origin"); }}
-                  placeholder="Şehir veya adres ara..."
-                  className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  placeholder="Search city or address..."
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all font-light placeholder:text-zinc-400"
                 />
-                {searchingOrigin && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />}
+                {searchingOrigin && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />}
                 {originResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-2xl z-10 max-h-60 overflow-y-auto">
                     {originResults.map((result, index) => (
-                      <button key={index} onClick={() => selectLocation(result, "origin")} className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="truncate">{result.place_name}</span>
+                      <button key={index} onClick={() => selectLocation(result, "origin")} className="w-full px-5 py-4 text-left text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-3 first:rounded-t-2xl last:rounded-b-2xl">
+                        <MapPin className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                        <span className="truncate text-sm font-light">{result.place_name}</span>
                       </button>
                     ))}
                   </div>
@@ -955,25 +991,25 @@ export default function RotaPlanlaPage() {
 
             {/* Destination */}
             <div>
-              <label className="block text-gray-500 text-sm mb-2 flex items-center gap-2">
-                <Flag className="w-4 h-4 text-red-400" />
-                Varış
+              <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-3 flex items-center gap-2">
+                <Flag className="w-3 h-3 text-red-500" />
+                Destination
               </label>
               <div className="relative">
                 <input
                   type="text"
                   value={destinationSearch}
                   onChange={(e) => { setDestinationSearch(e.target.value); searchLocation(e.target.value, "destination"); }}
-                  placeholder="Şehir veya adres ara..."
-                  className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  placeholder="Search city or address..."
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all font-light placeholder:text-zinc-400"
                 />
-                {searchingDestination && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400 animate-spin" />}
+                {searchingDestination && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />}
                 {destinationResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 rounded-lg shadow-xl z-10 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-2xl z-10 max-h-60 overflow-y-auto">
                     {destinationResults.map((result, index) => (
-                      <button key={index} onClick={() => selectLocation(result, "destination")} className="w-full px-4 py-3 text-left text-zinc-900 hover:bg-gray-200 transition flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="truncate">{result.place_name}</span>
+                      <button key={index} onClick={() => selectLocation(result, "destination")} className="w-full px-5 py-4 text-left text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-3 first:rounded-t-2xl last:rounded-b-2xl">
+                        <MapPin className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                        <span className="truncate text-sm font-light">{result.place_name}</span>
                       </button>
                     ))}
                   </div>
@@ -983,16 +1019,16 @@ export default function RotaPlanlaPage() {
 
             {/* Vehicle Selection */}
             <div>
-              <label className="block text-gray-500 text-sm mb-2 flex items-center gap-2">
-                <Car className="w-4 h-4" />
-                Araç
+              <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-3 flex items-center gap-2">
+                <Car className="w-3 h-3" />
+                Vehicle
               </label>
-              <button onClick={() => setShowVehicleSelect(!showVehicleSelect)} className="w-full bg-gray-100 text-zinc-900 rounded-lg px-4 py-3 text-left flex items-center justify-between hover:bg-gray-200 transition">
-                <span>{selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Araç seçin"}</span>
-                <ChevronRight className={`w-5 h-5 transition-transform ${showVehicleSelect ? "rotate-90" : ""}`} />
+              <button onClick={() => setShowVehicleSelect(!showVehicleSelect)} className="w-full bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 text-left flex items-center justify-between hover:border-zinc-200 dark:hover:border-zinc-700 transition-all">
+                <span className="font-light">{selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Select vehicle"}</span>
+                <ChevronRight className={`w-4 h-4 text-zinc-400 transition-transform ${showVehicleSelect ? "rotate-90" : ""}`} />
               </button>
               {showVehicleSelect && (
-                <div className="mt-2 bg-gray-100 rounded-lg p-3 space-y-3">
+                <div className="mt-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 space-y-4">
                   {/* Mode Toggle */}
                   <div className="flex gap-2">
                     <button
@@ -1002,7 +1038,7 @@ export default function RotaPlanlaPage() {
                         : "bg-gray-200 text-zinc-700 hover:bg-gray-300"
                         }`}
                     >
-                      📋 Kayıtlı ({localVehicles.length})
+                      Kayıtlı ({localVehicles.length})
                     </button>
                     <button
                       onClick={() => setVehicleSearchMode("api")}
@@ -1011,7 +1047,7 @@ export default function RotaPlanlaPage() {
                         : "bg-gray-200 text-zinc-700 hover:bg-gray-300"
                         }`}
                     >
-                      🌐 API&apos;den Ara
+                      API Ara
                     </button>
                   </div>
 
@@ -1116,7 +1152,7 @@ export default function RotaPlanlaPage() {
                             <p className="text-red-500 text-xs">{apiError}</p>
                           )}
                           <p className="text-gray-500 text-xs">
-                            💡 Model adını tam yazın: &quot;Model 3&quot;, &quot;IONIQ 5&quot;, &quot;ID.4&quot; gibi
+                            Model adını tam yazın: "Model 3", "IONIQ 5", "ID.4" gibi
                           </p>
                         </div>
                       )}
@@ -1126,9 +1162,9 @@ export default function RotaPlanlaPage() {
               )}
               {selectedVehicle && (
                 <div className="mt-2 text-xs text-gray-500 flex items-center gap-4">
-                  <span>🔋 {selectedVehicle.batteryCapacity} kWh</span>
-                  <span>📏 {selectedVehicle.range} km</span>
-                  <span>⚡ {selectedVehicle.maxDCPower} kW DC</span>
+                  <span className="flex items-center gap-1"><Battery className="w-3 h-3" />{selectedVehicle.batteryCapacity} kWh</span>
+                  <span className="flex items-center gap-1"><Navigation className="w-3 h-3" />{selectedVehicle.range} km</span>
+                  <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{selectedVehicle.maxDCPower} kW DC</span>
                 </div>
               )}
             </div>
@@ -1151,69 +1187,69 @@ export default function RotaPlanlaPage() {
               </div>
             </div>
 
-            {/* NEW: Trip Settings */}
-            <div className="bg-gray-100 rounded-xl p-4">
-              <h3 className="text-zinc-900 font-medium mb-3 flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Seyahat Ayarları
+            {/* Trip Settings */}
+            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5">
+              <h3 className="text-zinc-900 dark:text-white font-medium mb-4 flex items-center gap-2 text-sm">
+                <Settings className="w-4 h-4 text-zinc-400" />
+                Trip Configuration
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Passengers */}
                 <div>
-                  <label className="block text-gray-500 text-xs mb-1 flex items-center gap-1">
-                    <Users className="w-3 h-3" /> Yolcu Sayısı
+                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2 flex items-center gap-1">
+                    <Users className="w-3 h-3" /> Passengers
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input type="range" min="1" max="5" value={passengerCount} onChange={(e) => setPassengerCount(Number(e.target.value))} className="flex-1 accent-emerald-500" />
-                    <span className="text-zinc-900 text-sm w-8 text-right">{passengerCount}</span>
+                    <span className="text-zinc-900 dark:text-white text-sm font-medium w-8 text-right tabular-nums">{passengerCount}</span>
                   </div>
                 </div>
                 {/* Luggage */}
                 <div>
-                  <label className="block text-gray-500 text-xs mb-1 flex items-center gap-1">
-                    <Briefcase className="w-3 h-3" /> Bagaj (kg)
+                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2 flex items-center gap-1">
+                    <Briefcase className="w-3 h-3" /> Luggage (kg)
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input type="range" min="0" max="100" step="10" value={luggageKg} onChange={(e) => setLuggageKg(Number(e.target.value))} className="flex-1 accent-emerald-500" />
-                    <span className="text-zinc-900 text-sm w-12 text-right">{luggageKg} kg</span>
+                    <span className="text-zinc-900 dark:text-white text-sm font-medium w-12 text-right tabular-nums">{luggageKg} kg</span>
                   </div>
                 </div>
                 {/* HVAC Mode */}
                 <div>
-                  <label className="block text-gray-500 text-xs mb-1">Klima</label>
+                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2">Climate</label>
                   <div className="flex gap-2">
                     {(["auto", "eco", "off"] as const).map((mode) => (
-                      <button key={mode} onClick={() => setHvacMode(mode)} className={`flex-1 py-1.5 text-xs rounded-lg transition ${hvacMode === mode ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}>
-                        {mode === "auto" ? "Otomatik" : mode === "eco" ? "Eko" : "Kapalı"}
+                      <button key={mode} onClick={() => setHvacMode(mode)} className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition ${hvacMode === mode ? "bg-emerald-500 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"}`}>
+                        {mode === "auto" ? "Auto" : mode === "eco" ? "Eco" : "Off"}
                       </button>
                     ))}
                   </div>
                 </div>
                 {/* Driving Style */}
                 <div>
-                  <label className="block text-gray-500 text-xs mb-1">Sürüş Stili</label>
+                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2">Drive Mode</label>
                   <div className="flex gap-2">
                     {(["eco", "normal", "sport"] as const).map((style) => (
-                      <button key={style} onClick={() => setDrivingStyle(style)} className={`flex-1 py-1.5 text-xs rounded-lg transition ${drivingStyle === style ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}>
-                        {style === "eco" ? "🌱 Eko" : style === "normal" ? "🚗 Normal" : "🏎️ Sport"}
+                      <button key={style} onClick={() => setDrivingStyle(style)} className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition ${drivingStyle === style ? "bg-emerald-500 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"}`}>
+                        {style === "eco" ? "Eco" : style === "normal" ? "Normal" : "Sport"}
                       </button>
                     ))}
                   </div>
                 </div>
                 {/* Optimization Strategy */}
                 <div>
-                  <label className="block text-gray-500 text-xs mb-1">Şarj Stratejisi</label>
+                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2">Charging Strategy</label>
                   <div className="flex gap-2">
                     {(["fastest", "fewest", "cheapest"] as const).map((s) => (
-                      <button key={s} onClick={() => setStrategy(s)} className={`flex-1 py-1.5 text-xs rounded-lg transition ${strategy === s ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-600 hover:bg-gray-300"}`}>
-                        {s === "fastest" ? "⚡ En Hızlı" : s === "fewest" ? "📍 Az Durak" : "💰 En Ucuz"}
+                      <button key={s} onClick={() => setStrategy(s)} className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition ${strategy === s ? "bg-emerald-500 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"}`}>
+                        {s === "fastest" ? "Fastest" : s === "fewest" ? "Fewest" : "Cheapest"}
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    {strategy === "fastest" && "Toplam süreyi minimize eder"}
-                    {strategy === "fewest" && "En az durak sayısı ile gider"}
-                    {strategy === "cheapest" && "Şarj maliyetini minimize eder"}
+                  <p className="text-[10px] text-zinc-400 mt-2">
+                    {strategy === "fastest" && "Minimizes total travel time"}
+                    {strategy === "fewest" && "Minimizes number of stops"}
+                    {strategy === "cheapest" && "Minimizes charging cost"}
                   </p>
                 </div>
               </div>
@@ -1228,35 +1264,35 @@ export default function RotaPlanlaPage() {
             )}
 
             {/* Calculate Button */}
-            <button onClick={() => calculateRoute()} disabled={calculating || !origin || !destination || !selectedVehicle} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded-full font-medium transition flex items-center justify-center gap-2">
-              {calculating ? (<><Loader2 className="w-5 h-5 animate-spin" />Hesaplanıyor...</>) : (<><Route className="w-5 h-5" />Rotayı Hesapla</>)}
+            <button onClick={() => calculateRoute()} disabled={calculating || !origin || !destination || !selectedVehicle} className="w-full py-4 bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 disabled:cursor-not-allowed text-white dark:text-black rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10 dark:shadow-white/10">
+              {calculating ? (<><Loader2 className="w-4 h-4 animate-spin" />Calculating...</>) : (<><Route className="w-4 h-4" />Calculate Route</>)}
             </button>
 
             {/* Weather Loading */}
             {weatherLoading && (
-              <div className="flex items-center justify-center gap-2 text-gray-500 text-sm py-2">
+              <div className="flex items-center justify-center gap-2 text-zinc-400 text-sm py-3">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Hava durumu alınıyor...
+                Fetching weather data...
               </div>
             )}
 
-            {/* NEW: Weather Display */}
+            {/* Weather Display */}
             {routeWeather && (
-              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-100">
-                <h3 className="text-zinc-900 font-medium mb-3 flex items-center gap-2">
+              <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5">
+                <h3 className="text-zinc-900 dark:text-white font-medium mb-4 flex items-center gap-2 text-sm">
                   <Thermometer className="w-4 h-4 text-blue-500" />
-                  Rota Hava Durumu
+                  Route Weather
                 </h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">🌡️</span>
+                    <Thermometer className="w-5 h-5 text-blue-500" />
                     <div>
                       <div className="text-gray-500 text-xs">Sıcaklık</div>
                       <div className="text-zinc-900 font-medium">{routeWeather.average.temperature}°C</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">💨</span>
+                    <Wind className="w-5 h-5 text-cyan-500" />
                     <div>
                       <div className="text-gray-500 text-xs">Rüzgar</div>
                       <div className="text-zinc-900 font-medium">
@@ -1267,7 +1303,7 @@ export default function RotaPlanlaPage() {
                   </div>
                   {routeWeather.conditions.isRainy && (
                     <div className="flex items-center gap-2 col-span-2">
-                      <span className="text-xl">🌧️</span>
+                      <Droplets className="w-5 h-5 text-blue-400" />
                       <div>
                         <div className="text-gray-500 text-xs">Yağış</div>
                         <div className="text-zinc-900 font-medium">
