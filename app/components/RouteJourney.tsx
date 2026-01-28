@@ -3,7 +3,8 @@
 import { useState } from "react";
 import {
     Battery, Zap, Clock, MapPin, Navigation, ChevronDown, ChevronUp,
-    Fuel, Timer, TrendingDown, Car, Flag, Circle, ArrowRight
+    Fuel, Timer, TrendingDown, Car, Flag, Circle, ArrowRight,
+    Thermometer, AlertCircle
 } from "lucide-react";
 
 interface ChargingStop {
@@ -22,6 +23,10 @@ interface ChargingStop {
     chargingTime: number;
     chargingCost: number;
     distanceFromPrev: number;
+    temperatureC?: number;
+    avgPowerKw?: number;
+    peakPowerKw?: number;
+    warnings?: string[];
 }
 
 interface RouteJourneyProps {
@@ -366,8 +371,8 @@ export default function RouteJourney({
 
                                                     {/* Expanded Details */}
                                                     {expandedStop === (point as any).idx && (
-                                                        <div className="border-t border-emerald-200 bg-emerald-100/50 p-3 space-y-2">
-                                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                        <div className="border-t border-emerald-200 bg-emerald-100/50 p-3 space-y-3">
+                                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                                                                 <div className="flex items-center gap-2">
                                                                     <Zap className="w-3 h-3 text-emerald-500" />
                                                                     <span className="text-gray-600">Güç:</span>
@@ -375,7 +380,7 @@ export default function RouteJourney({
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <Navigation className="w-3 h-3 text-emerald-500" />
-                                                                    <span className="text-gray-600">Km:</span>
+                                                                    <span className="text-gray-600">Mesafe:</span>
                                                                     <span className="text-zinc-900 font-medium">{Math.round(point.km)} km</span>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
@@ -388,12 +393,55 @@ export default function RouteJourney({
                                                                     <span className="text-gray-600">Varış:</span>
                                                                     <span className="text-zinc-900 font-medium">{formatTime(point.time)}</span>
                                                                 </div>
+
+                                                                {/* Detailed Power & Weather */}
+                                                                {(point as any).stop.avgPowerKw && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Zap className="w-3 h-3 text-amber-500" />
+                                                                        <span className="text-gray-600">Ort. Güç:</span>
+                                                                        <span className="text-zinc-900 font-medium">{(point as any).stop.avgPowerKw} kW</span>
+                                                                    </div>
+                                                                )}
+                                                                {(point as any).stop.peakPowerKw && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Zap className="w-3 h-3 text-orange-500" />
+                                                                        <span className="text-gray-600">Tepe Güç:</span>
+                                                                        <span className="text-zinc-900 font-medium">{(point as any).stop.peakPowerKw} kW</span>
+                                                                    </div>
+                                                                )}
+                                                                {(point as any).stop.temperatureC !== undefined && (
+                                                                    <div className="col-span-2 flex items-center gap-2">
+                                                                        <Thermometer className="w-3 h-3 text-blue-500" />
+                                                                        <span className="text-gray-600">Hava Durumu:</span>
+                                                                        <span className="text-zinc-900 font-medium">{(point as any).stop.temperatureC}°C {(point as any).stop.temperatureC < 10 ? "❄️" : "☀️"}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
+
+                                                            {/* Warnings Section */}
+                                                            {((point as any).stop.warnings?.length > 0 || (vehicleName.toLowerCase().includes('togg') && (point as any).stop.temperatureC < 10)) && (
+                                                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1">
+                                                                    {(point as any).stop.warnings?.map((warning: string, wIdx: number) => (
+                                                                        <div key={wIdx} className="text-[10px] text-amber-700 flex items-start gap-1.5 font-medium">
+                                                                            <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                                                            {warning}
+                                                                        </div>
+                                                                    ))}
+
+                                                                    {vehicleName.toLowerCase().includes('togg') && (point as any).stop.temperatureC < 10 && (
+                                                                        <div className="text-[10px] text-amber-700 flex items-start gap-1.5 font-bold">
+                                                                            <AlertCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                                                            TOGG&apos;da preconditioning yok. Soğuk havada şarj süresi önemli ölçüde uzayabilir.
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
                                                             <a
                                                                 href={`https://www.google.com/maps/dir/?api=1&destination=${(point as any).stop.station.lat},${(point as any).stop.station.lng}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="block w-full py-2 bg-emerald-500 text-white text-center text-xs font-medium rounded-lg hover:bg-emerald-600 transition"
+                                                                className="block w-full py-2 bg-emerald-500 text-white text-center text-xs font-semibold rounded-lg hover:bg-emerald-600 transition shadow-sm"
                                                             >
                                                                 Google Maps&apos;te Aç
                                                             </a>

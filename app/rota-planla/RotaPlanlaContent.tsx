@@ -211,6 +211,10 @@ interface ChargingStop {
   chargingTime: number;
   chargingCost: number;
   distanceFromPrev: number;
+  temperatureC?: number;
+  avgPowerKw?: number;
+  peakPowerKw?: number;
+  warnings?: string[];
 }
 
 interface RouteResult {
@@ -822,6 +826,10 @@ export default function RotaPlanlaPage() {
               chargingTime: stop.chargingTimeMin,
               chargingCost: stop.chargingCostTL,
               distanceFromPrev: Math.round(stop.station.routeProgressKm - lastProgressKm),
+              temperatureC: stop.temperatureC,
+              avgPowerKw: stop.avgPowerKw,
+              peakPowerKw: stop.peakPowerKw,
+              warnings: stop.warnings,
             });
 
             console.log("[CHARGING]", {
@@ -880,6 +888,10 @@ export default function RotaPlanlaPage() {
                 chargingTime: chargeResult.minutes,
                 chargingCost: Math.round(chargingCost),
                 distanceFromPrev: Math.round(deltaKm),
+                temperatureC: Math.round(batteryTemp),
+                avgPowerKw: chargeResult.avgPowerKw,
+                peakPowerKw: chargeResult.peakPowerKw,
+                warnings: batteryTemp < 5 ? [`Soğuk hava (${Math.round(batteryTemp)}°C) nedeniyle şarj süresi uzayabilir.`] : undefined
               });
 
               totalChargingTime += (chargeResult.minutes + (station.detourMin ?? 0));

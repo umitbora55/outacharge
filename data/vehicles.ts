@@ -37,7 +37,7 @@ export interface Vehicle {
 export const vehicles: Vehicle[] = [
   // ==================== TOGG ====================
   {
-    id: "togg-t10x",
+    id: "togg-t10x-lr",
     brand: "TOGG",
     model: "T10X",
     batteryCapacity: 88.5,
@@ -83,7 +83,7 @@ export const vehicles: Vehicle[] = [
 
   // ==================== TESLA ====================
   {
-    id: "tesla-model-3",
+    id: "tesla-model-3-sr-lfp",
     brand: "Tesla",
     model: "Model 3",
     batteryCapacity: 60,
@@ -105,7 +105,7 @@ export const vehicles: Vehicle[] = [
     tempEfficiencyLoss: 6,
   },
   {
-    id: "tesla-model-y",
+    id: "tesla-model-y-lr",
     brand: "Tesla",
     model: "Model Y",
     batteryCapacity: 75,
@@ -151,7 +151,7 @@ export const vehicles: Vehicle[] = [
 
   // ==================== BMW ====================
   {
-    id: "bmw-ix",
+    id: "bmw-ix-xdrive50",
     brand: "BMW",
     model: "iX xDrive50",
     batteryCapacity: 111.5,
@@ -173,7 +173,7 @@ export const vehicles: Vehicle[] = [
     tempEfficiencyLoss: 7,
   },
   {
-    id: "bmw-i4",
+    id: "bmw-i4-edrive40",
     brand: "BMW",
     model: "i4 eDrive40",
     batteryCapacity: 83.9,
@@ -241,7 +241,7 @@ export const vehicles: Vehicle[] = [
     tempEfficiencyLoss: 7,
   },
   {
-    id: "mercedes-eqs",
+    id: "mercedes-eqs-450plus",
     brand: "Mercedes",
     model: "EQS 450+",
     batteryCapacity: 107.8,
@@ -287,7 +287,7 @@ export const vehicles: Vehicle[] = [
 
   // ==================== VOLKSWAGEN ====================
   {
-    id: "vw-id4",
+    id: "vw-id4-pro-77",
     brand: "Volkswagen",
     model: "ID.4",
     batteryCapacity: 77,
@@ -379,7 +379,7 @@ export const vehicles: Vehicle[] = [
 
   // ==================== PORSCHE ====================
   {
-    id: "porsche-taycan",
+    id: "porsche-taycan-93",
     brand: "Porsche",
     model: "Taycan",
     batteryCapacity: 93.4,
@@ -403,7 +403,7 @@ export const vehicles: Vehicle[] = [
 
   // ==================== HYUNDAI ====================
   {
-    id: "hyundai-ioniq5",
+    id: "hyundai-ioniq5-84-2024",
     brand: "Hyundai",
     model: "IONIQ 5",
     batteryCapacity: 77.4,
@@ -425,7 +425,7 @@ export const vehicles: Vehicle[] = [
     tempEfficiencyLoss: 6,
   },
   {
-    id: "hyundai-ioniq6",
+    id: "hyundai-ioniq6-lr",
     brand: "Hyundai",
     model: "IONIQ 6",
     batteryCapacity: 77.4,
@@ -471,7 +471,7 @@ export const vehicles: Vehicle[] = [
 
   // ==================== KIA ====================
   {
-    id: "kia-ev6",
+    id: "kia-ev6-77-2022",
     brand: "Kia",
     model: "EV6",
     batteryCapacity: 77.4,
@@ -976,8 +976,8 @@ export function calculateChargingTime(
   targetSoC: number,
   availablePower: number,
   ambientTempC: number = 20
-): { minutes: number; energyKwh: number; avgPowerKw: number } {
-  if (startSoC >= targetSoC) return { minutes: 0, energyKwh: 0, avgPowerKw: 0 };
+): { minutes: number; energyKwh: number; avgPowerKw: number; peakPowerKw: number } {
+  if (startSoC >= targetSoC) return { minutes: 0, energyKwh: 0, avgPowerKw: 0, peakPowerKw: 0 };
 
   const batteryCapacity = vehicle.batteryCapacity;
   const maxVehicleDCPower = vehicle.maxDCPower;
@@ -1003,31 +1003,33 @@ export function calculateChargingTime(
 
   let totalMinutes = 0;
   let totalEnergy = 0;
+  let peakPower = 0;
   const stepSize = 1; // %1 SoC adımlarla hesapla
 
   for (let s = Math.floor(startSoC); s < targetSoC; s += stepSize) {
     // Mevcut SoC için güç katsayısı bul
     let curveFactor = 1.0;
     for (let i = 0; i < curve.length - 1; i++) {
-      if (s >= curve[i].soc && s < curve[i+1].soc) {
+      if (s >= curve[i].soc && s < curve[i + 1].soc) {
         const p1 = curve[i].powerKw;
-        const p2 = curve[i+1].powerKw;
-        const ratio = (s - curve[i].soc) / (curve[i+1].soc - curve[i].soc);
+        const p2 = curve[i + 1].powerKw;
+        const ratio = (s - curve[i].soc) / (curve[i + 1].soc - curve[i].soc);
         curveFactor = p1 + (p2 - p1) * ratio;
         break;
       }
     }
-    
+
     // Eğer curve'deki powerKw > 1 ise direkt kW kabul et, <= 1 ise katsayı kabul et
-    let currentPowerKw = curveFactor > 1 
-      ? Math.min(curveFactor, effectiveMaxPower) 
+    let currentPowerKw = curveFactor > 1
+      ? Math.min(curveFactor, effectiveMaxPower)
       : effectiveMaxPower * curveFactor;
 
     currentPowerKw *= temperatureFactor;
-    
+    if (currentPowerKw > peakPower) peakPower = currentPowerKw;
+
     // Bu %1'lik dilim için gereken enerji (kWh)
     const energyNeeded = (stepSize / 100) * batteryCapacity;
-    
+
     // Geçen süre (saat) = Enerji / Güç
     const hours = energyNeeded / Math.max(1, currentPowerKw);
     totalMinutes += hours * 60;
@@ -1039,6 +1041,7 @@ export function calculateChargingTime(
   return {
     minutes: Math.round(totalMinutes),
     energyKwh: Math.round(totalEnergy * 10) / 10,
-    avgPowerKw: Math.round(avgPower * 10) / 10
+    avgPowerKw: Math.round(avgPower * 10) / 10,
+    peakPowerKw: Math.round(peakPower * 10) / 10
   };
 }

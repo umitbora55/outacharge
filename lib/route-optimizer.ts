@@ -11,6 +11,13 @@
  */
 
 import { Vehicle, calculateChargingTime, ChargingCurvePoint } from "@/data/vehicles";
+import {
+    getChargingProfile,
+    calculateChargingTime as calculateChargingTimeNew,
+    interpolateChargingPower
+} from './charging-curves';
+import { fetchWeatherForPoint } from './weather-service';
+
 
 // ===== TYPES =====
 
@@ -57,6 +64,7 @@ export interface OptimizationResult {
     arrivalSoC: number;
     nodesExplored: number;
     message?: string;
+    warnings?: string[];
 }
 
 export interface OptimalStop {
@@ -67,6 +75,10 @@ export interface OptimalStop {
     chargingCostTL: number;
     energyChargedKwh: number;
     distanceFromPrevKm: number;
+    temperatureC?: number; // Ambient temperature at station
+    avgPowerKw?: number;
+    peakPowerKw?: number;
+    warnings?: string[];
 }
 
 // ===== PRIORITY QUEUE =====
@@ -128,6 +140,7 @@ export class RouteOptimizer {
     private minSoC: number;
     private maxSoC: number = 90; // Normalde %90'a kadar şarj
     private batteryTemp: number;
+    private stationWeather: Map<string, number> = new Map(); // stationId -> temperature
     private pricePerKwhDC: number = 12.5;
     private pricePerKwhAC: number = 9;
 
@@ -271,6 +284,23 @@ export class RouteOptimizer {
     }
 
     /**
+     * İsteğe bağlı: İstasyonlar için gerçek hava durumu verilerini çek
+     */
+    async updateWeatherForStations(): Promise<void> {
+        const stationNodes = Array.from(this.nodes.values()).filter(n => n.type === "station");
+
+        // Paralel çek
+        const promises = stationNodes.map(async (node) => {
+            const weather = await fetchWeatherForPoint(node.lat, node.lng);
+            if (weather) {
+                this.stationWeather.set(node.id, weather.temperature);
+            }
+        });
+
+        await Promise.all(promises);
+    }
+
+    /**
      * En optimal rotayı bul (Modified Dijkstra)
      */
     findOptimalRoute(startSoC: number): OptimizationResult {
@@ -393,13 +423,33 @@ export class RouteOptimizer {
 
                         // Calculate charging time
                         const effectivePower = Math.min(targetNode.power, this.vehicle.maxDCPower);
-                        const chargeResult = calculateChargingTime(
-                            this.vehicle,
-                            socAfterDriving,
-                            targetSoC,
-                            effectivePower,
-                            this.batteryTemp
-                        );
+                        const ambientTemp = this.stationWeather.get(targetNode.id) ?? this.batteryTemp;
+                        const profile = getChargingProfile(this.vehicle.id);
+                        let chargeResult;
+
+                        if (profile) {
+                            const result = calculateChargingTimeNew(
+                                profile,
+                                socAfterDriving,
+                                targetSoC,
+                                effectivePower,
+                                ambientTemp
+                            );
+                            chargeResult = {
+                                minutes: result.totalMinutes,
+                                energyKwh: result.energyKwh,
+                                avgPowerKw: result.avgPowerKw
+                            };
+                        } else {
+                            // Fallback to old calculator if profile not found
+                            chargeResult = calculateChargingTime(
+                                this.vehicle,
+                                socAfterDriving,
+                                targetSoC,
+                                effectivePower,
+                                ambientTemp
+                            );
+                        }
 
                         const pricePerKwh = targetNode.powerType === "DC" ? this.pricePerKwhDC : this.pricePerKwhAC;
                         const chargingCost = chargeResult.energyKwh * pricePerKwh;
@@ -490,15 +540,50 @@ export class RouteOptimizer {
                 const arrivalSoC = prevState.socPercent - ((edge?.energyKwh || 0) / this.vehicle.batteryCapacity) * 100;
 
                 const effectivePower = Math.min(node.power || 0, this.vehicle.maxDCPower);
-                const chargeResult = calculateChargingTime(
-                    this.vehicle,
-                    arrivalSoC,
-                    state.chargedToPercent,
-                    effectivePower,
-                    this.batteryTemp
-                );
-
                 const pricePerKwh = node.powerType === "DC" ? this.pricePerKwhDC : this.pricePerKwhAC;
+                const ambientTemp = this.stationWeather.get(node.id) ?? this.batteryTemp;
+                const stopWarnings: string[] = [];
+
+                const profile = getChargingProfile(this.vehicle.id);
+                let chargeResult;
+
+                if (profile) {
+                    const result = calculateChargingTimeNew(
+                        profile,
+                        arrivalSoC,
+                        state.chargedToPercent,
+                        effectivePower,
+                        ambientTemp
+                    );
+                    chargeResult = {
+                        minutes: result.totalMinutes,
+                        energyKwh: result.energyKwh,
+                        avgPowerKw: result.avgPowerKw,
+                        peakPowerKw: result.peakPowerKw
+                    };
+
+                    // Generate warnings
+                    if (ambientTemp < 5) {
+                        stopWarnings.push(`Soğuk hava (${Math.round(ambientTemp)}°C) nedeniyle şarj süresi uzayabilir.`);
+                    }
+                    if (profile.batteryChemistry === 'LFP' && ambientTemp < 10) {
+                        stopWarnings.push("LFP batarya soğukta daha yavaş şarj olur.");
+                    }
+                    if (!profile.temperatureEffects.preconditioningAvailable && ambientTemp < 10) {
+                        stopWarnings.push("Bu araçta batarya ön ısıtma (preconditioning) yok, şarj hızı kısıtlanabilir.");
+                    }
+                } else {
+                    chargeResult = calculateChargingTime(
+                        this.vehicle,
+                        arrivalSoC,
+                        state.chargedToPercent,
+                        effectivePower,
+                        ambientTemp
+                    );
+                    if (ambientTemp < 5) {
+                        stopWarnings.push(`Soğuk hava (${Math.round(ambientTemp)}°C) nedeniyle şarj süresi uzayabilir.`);
+                    }
+                }
 
                 stops.push({
                     station: node,
@@ -508,11 +593,17 @@ export class RouteOptimizer {
                     chargingCostTL: Math.round(chargeResult.energyKwh * pricePerKwh),
                     energyChargedKwh: Math.round(chargeResult.energyKwh * 10) / 10,
                     distanceFromPrevKm: Math.round(edge?.distanceKm || 0),
+                    temperatureC: Math.round(ambientTemp),
+                    avgPowerKw: chargeResult.avgPowerKw,
+                    peakPowerKw: chargeResult.peakPowerKw,
+                    warnings: stopWarnings.length > 0 ? stopWarnings : undefined,
                 });
 
                 totalChargingMin += chargeResult.minutes;
             }
         }
+
+        const consolidatedWarnings = Array.from(new Set(stops.flatMap(s => s.warnings || [])));
 
         const totalDrivingMin = bestSolution.totalTimeMin - totalChargingMin;
 
@@ -533,6 +624,7 @@ export class RouteOptimizer {
             totalCostTL: Math.round(bestSolution.totalCostTL),
             arrivalSoC: Math.round(bestSolution.socPercent),
             nodesExplored,
+            warnings: consolidatedWarnings.length > 0 ? consolidatedWarnings : undefined,
         };
     }
 

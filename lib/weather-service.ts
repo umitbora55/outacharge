@@ -98,7 +98,7 @@ function categorizeRain(precipitationMmH: number): 0 | 1 | 2 | 3 {
 /**
  * Tek bir nokta için hava durumu çeker
  */
-async function fetchWeatherForPoint(lat: number, lng: number): Promise<{
+export async function fetchWeatherForPoint(lat: number, lng: number): Promise<{
     temperature: number;
     windSpeed: number;
     windDirection: number;

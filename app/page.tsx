@@ -5,6 +5,7 @@ import HeroSection from "./components/HeroSection";
 import { motion } from "framer-motion";
 import { Users, ArrowRight, Zap, Globe, Sun, Leaf, Heart } from "lucide-react";
 import Link from "next/link";
+import Footer from "./components/Footer";
 
 export default function Home() {
     const [language, setLanguage] = useState<'tr' | 'en'>('tr');
@@ -270,11 +271,7 @@ export default function Home() {
 
                 </div>
 
-                <div className="pb-32 text-center opacity-40 pointer-events-none select-none">
-                    <span className="text-[12vw] font-black tracking-tight uppercase whitespace-nowrap text-slate-100">
-                        OutaCharge
-                    </span>
-                </div>
+                <Footer language={language} />
             </div>
         </div>
     );
