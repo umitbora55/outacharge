@@ -32,8 +32,8 @@ export default function RootLayout({
     <html lang="tr" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
-          {/* attribute="class" Tailwind için gereklidir */}
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {/* attribute="class" Tailwind için gereklidir - Forced Light Mode */}
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
             {children}
           </ThemeProvider>
         </AuthProvider>

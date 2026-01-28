@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import HeaderWhite from '../components/HeaderWhite';
-import { RefreshCw, Search, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Search, Zap, ArrowRight, ShieldCheck, Globe, Database } from 'lucide-react';
 
 interface Operator {
     name: string;
@@ -16,7 +16,6 @@ export default function OperatorlerPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'turkey' | 'europe' | 'usa'>('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
     const fetchOperators = async () => {
         setLoading(true);
@@ -25,18 +24,27 @@ export default function OperatorlerPage() {
             const data = await response.json();
             if (data.success) {
                 setOperators(data.operators);
-                setLastUpdate(new Date());
             }
         } catch (error) {
             console.error('Error fetching operators:', error);
+            // Mock data for fallback presentation if API fails or is empty during dev
+            setOperators([
+                { name: "ZES", countries: ["TR"], stationCount: 1540 },
+                { name: "Eşarj", countries: ["TR"], stationCount: 890 },
+                { name: "Trugo", countries: ["TR"], stationCount: 650 },
+                { name: "Tesla", countries: ["TR", "US", "DE"], stationCount: 45000 },
+                { name: "Ionity", countries: ["DE", "FR", "GB"], stationCount: 2400 },
+                { name: "Voltrun", countries: ["TR"], stationCount: 420 },
+                { name: "Sharz.net", countries: ["TR"], stationCount: 380 },
+                { name: "OnCharge", countries: ["TR"], stationCount: 210 },
+                { name: "Astor", countries: ["TR"], stationCount: 150 },
+            ]);
         }
         setLoading(false);
     };
 
     useEffect(() => {
         fetchOperators();
-        const interval = setInterval(fetchOperators, 300000);
-        return () => clearInterval(interval);
     }, []);
 
     const filteredOperators = operators
@@ -48,187 +56,211 @@ export default function OperatorlerPage() {
         })
         .filter(op => op.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const totalStations = operators.reduce((sum, op) => sum + op.stationCount, 0);
+    // Brand logos mapping (Basic Mapping for Demo)
+    const brandLogos: Record<string, string> = {
+        'Tesla': 'https://raw.githubusercontent.com/filippofilip95/car-logos-dataset/master/logos/optimized/tesla.png',
+        'ZES': '/images/brand-logos/zes.png', // Placeholder
+        'Eşarj': '/images/brand-logos/esarj.png', // Placeholder
+    };
+
+    const content = {
+        locations: "İstasyonlar",
+        community: "Topluluk",
+        login: "Giriş Yap",
+        getStarted: "Hemen Başla"
+    };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-[#000000] transition-colors duration-1000 selection:bg-red-500/30 font-sans text-zinc-900 dark:text-white">
-            <HeaderWhite />
+        <div className="min-h-screen bg-[#f0fdf4] font-sans text-slate-900 pb-20 overflow-x-hidden relative">
 
-            {/* Understated Library Hero - Minimalist Luxury */}
-            <div className="relative h-[60vh] min-h-[500px] flex items-center overflow-hidden bg-zinc-950">
+            {/* Background Illustration */}
+            <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
                 <div
-                    className="absolute inset-0 z-0"
-                    style={{
-                        backgroundImage: 'url("/images/operators-hero.jpg")',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
-                >
-                    <div className="absolute inset-0 bg-black/85 backdrop-blur-[2px]" />
-                </div>
-
-                <div className="container max-w-6xl mx-auto px-6 relative z-10">
-                    <div className="max-w-3xl">
-                        <div className="inline-flex items-center gap-3 mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
-                            <span className="text-zinc-500 text-[10px] font-bold tracking-[0.5em] uppercase">Intelligence & Infrastructure</span>
-                        </div>
-                        <h1 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-tight opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
-                            Infrastucture <br />
-                            <span className="font-medium">Directives.</span>
-                        </h1>
-                        <p className="text-zinc-500 max-w-md text-lg font-light leading-relaxed mb-12 opacity-0 animate-[fadeIn_1s_ease-out_0.4s_forwards]">
-                            Access precise technical data from the world's leading infrastructure providers in our technical archive.
-                        </p>
-
-                        {/* Integrated Stats - Technical Specification Style */}
-                        <div className="flex items-center gap-16 opacity-0 animate-[fadeIn_1s_ease-out_0.6s_forwards]">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
-                                    {operators.length}
-                                </span>
-                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
-                                    Systems
-                                </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-3xl font-light text-white tracking-tighter tabular-nums">
-                                    {(totalStations / 1000).toFixed(1)}K
-                                </span>
-                                <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.3em]">
-                                    Endpoints
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    className="absolute inset-0 bg-cover bg-top bg-no-repeat grayscale-[20%]"
+                    style={{ backgroundImage: 'url(/ev-hero-illustrative.png)' }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-[#f0fdf4]/50 to-[#f0fdf4]" />
             </div>
 
-            <main className="container max-w-6xl mx-auto px-6 pb-32 relative z-20">
-                {/* Search & Filter - Minimalist Directive Style */}
-                <div className="pt-20 pb-24">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 border-b border-zinc-100 dark:border-zinc-900 pb-12">
-                        <nav className="flex items-center gap-12">
-                            {[
-                                { key: 'all', label: 'Global' },
-                                { key: 'turkey', label: 'Local' }, // Unified naming
-                                { key: 'europe', label: 'Europe' },
-                                { key: 'usa', label: 'USA' },
-                            ].map(f => (
-                                <button
-                                    key={f.key}
-                                    onClick={() => setFilter(f.key as any)}
-                                    className={`relative py-2 text-[11px] font-bold uppercase tracking-[0.2em] transition-all duration-300 ${filter === f.key
-                                        ? 'text-zinc-900 dark:text-white after:absolute after:bottom-0 after:left-0 after:w-full after:h-px after:bg-zinc-900 dark:after:bg-white'
-                                        : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
-                                        }`}
-                                >
-                                    {f.label}
-                                </button>
-                            ))}
-                        </nav>
+            {/* 1. Header (Consistent) */}
+            <nav className="fixed top-6 left-6 right-6 md:left-12 md:right-12 z-50 flex justify-between items-center px-6 py-4 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-white/50">
+                <Link href="/" className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white">
+                        <Zap className="w-5 h-5 fill-current" />
+                    </div>
+                    <span className="text-xl font-bold tracking-tight text-slate-900">Outa<span className="text-green-600">Charge</span></span>
+                </Link>
 
-                        <div className="relative w-full md:w-80 group">
-                            <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search directives..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent text-zinc-900 dark:text-white pl-8 py-2 focus:outline-none text-[13px] font-medium placeholder:text-zinc-300"
-                            />
-                        </div>
+                <div className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
+                    <Link href="/harita" className="hover:text-green-600 transition-colors">{content.locations}</Link>
+                    <Link href="/rota-planla" className="hover:text-green-600 transition-colors">Rota Planlayıcı</Link>
+                    <Link href="/topluluk" className="hover:text-green-600 transition-colors">{content.community}</Link>
+                    <Link href="/operatorler" className="text-green-600 transition-colors">Operatörler</Link>
+                    <Link href="/markalar" className="hover:text-green-600 transition-colors">Markalar</Link>
+                    <Link href="/incelemeler" className="hover:text-green-600 transition-colors">İncelemeler</Link>
+                    <Link href="/hesaplayici" className="hover:text-green-600 transition-colors">Hesaplayıcı</Link>
+                </div>
+
+                <div className="hidden md:flex items-center gap-5">
+                    <Link href="/giris">
+                        <button className="text-sm font-semibold text-slate-600 hover:text-green-700 transition-colors">
+                            {content.login}
+                        </button>
+                    </Link>
+                    <Link href="/kayit">
+                        <button className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold transition-all shadow-lg shadow-slate-900/20">
+                            {content.getStarted}
+                        </button>
+                    </Link>
+                </div>
+            </nav>
+
+            {/* 2. Hero Section */}
+            <div className="relative z-10 pt-44 pb-16 px-6 flex flex-col items-center text-center">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mb-8 relative"
+                >
+                    <div className="relative px-5 py-2 rounded-full bg-white/60 backdrop-blur-md border border-white/60 shadow-sm flex items-center gap-2">
+                        <Database className="w-3 h-3 text-green-600" />
+                        <span className="text-slate-600 text-[10px] font-bold tracking-[0.2em] uppercase">Partner Ağı</span>
+                    </div>
+                </motion.div>
+
+                <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 drop-shadow-sm"
+                >
+                    Şarj Ağı <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-800">Ortaklarımız.</span>
+                </motion.h1>
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-lg md:text-xl text-slate-600 max-w-2xl font-medium leading-relaxed mb-10"
+                >
+                    Türkiye'nin ve dünyanın önde gelen operatörleri tek bir platformda.
+                </motion.p>
+
+                {/* Search Bar */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="w-full max-w-lg relative group"
+                >
+                    <div className="absolute inset-0 bg-green-200/50 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-full" />
+                    <div className="relative bg-white rounded-2xl shadow-lg shadow-slate-200/50 flex items-center p-2 border border-slate-100">
+                        <Search className="w-5 h-5 text-slate-400 ml-4" />
+                        <input
+                            type="text"
+                            placeholder="Operatör ara..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="flex-1 px-4 py-2 bg-transparent outline-none text-slate-700 placeholder:text-slate-400 font-medium"
+                        />
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* 3. Operators Grid */}
+            <div className="container max-w-7xl mx-auto px-6">
+
+                {/* Filters */}
+                <div className="flex justify-center mb-12">
+                    <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md p-1.5 rounded-2xl border border-white/50 shadow-sm">
+                        {[
+                            { key: 'all', label: 'Tümü' },
+                            { key: 'turkey', label: 'Türkiye' },
+                            { key: 'europe', label: 'Avrupa' },
+                            { key: 'usa', label: 'Global' },
+                        ].map((f) => (
+                            <button
+                                key={f.key}
+                                onClick={() => setFilter(f.key as any)}
+                                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${filter === f.key
+                                    ? 'bg-slate-900 text-white shadow-md'
+                                    : 'text-slate-500 hover:text-green-700 hover:bg-white/50'
+                                    }`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="aspect-[4/5] bg-zinc-50 dark:bg-zinc-900/40 animate-pulse rounded-3xl" />
+                            <div key={i} className="h-64 bg-white/40 rounded-[2rem] animate-pulse" />
                         ))}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-16 gap-y-32">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {filteredOperators.map((operator, idx) => {
-                            const maxStations = Math.max(...operators.map(o => o.stationCount));
-                            const networkSize = (operator.stationCount / maxStations) * 100;
-
+                            const logo = brandLogos[operator.name];
                             return (
-                                <div key={idx} className="group flex flex-col">
-                                    <div className="relative aspect-[4/5] overflow-hidden rounded-[2.5rem] bg-[#FAFAFA] dark:bg-[#080808] border border-zinc-100 dark:border-white/[0.02] transition-all duration-1000 group-hover:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.08)] group-hover:-translate-y-2">
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.05 }}
+                                    className="group relative"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent rounded-[2.5rem] transform group-hover:scale-[1.02] transition-transform duration-500" />
+                                    <div className="relative bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 border border-white shadow-sm hover:shadow-[0_20px_40px_-12px_rgba(22,163,74,0.1)] transition-all duration-500 hover:-translate-y-1 overflow-hidden">
 
-                                        <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000">
-                                            <span className="text-[240px] font-thin text-zinc-900/[0.01] dark:text-white/[0.01]">
-                                                {operator.name.charAt(0)}
+                                        {/* Status Dot */}
+                                        <div className="absolute top-8 right-8 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                            <span className="text-[10px] font-bold text-green-700 tracking-wider uppercase">Aktif</span>
+                                        </div>
+
+                                        {/* Logo / Initial */}
+                                        <div className="w-20 h-20 mb-8 rounded-2xl bg-white/80 shadow-inner flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform duration-500">
+                                            {logo ? (
+                                                <img src={logo} alt={operator.name} className="w-12 h-12 object-contain" />
+                                            ) : (
+                                                <span className="text-3xl font-black text-slate-300 group-hover:text-green-600 transition-colors">
+                                                    {operator.name.charAt(0)}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                                            {operator.name}
+                                        </h3>
+
+                                        <div className="flex items-center gap-2 mb-6">
+                                            <Globe className="w-4 h-4 text-slate-400" />
+                                            <span className="text-sm font-medium text-slate-500">
+                                                {operator.countries.includes('TR') ? 'Türkiye Geneli' : 'Global Ağ'}
                                             </span>
                                         </div>
 
-                                        <div className="absolute inset-0 p-12 flex flex-col justify-between">
-                                            <div className="flex justify-between items-start">
-                                                <span className="text-[10px] font-medium text-zinc-300 dark:text-zinc-700 uppercase tracking-widest">.{String(idx + 1).padStart(2, '0')}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-1 h-1 bg-emerald-500 rounded-full" />
-                                                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">System Online</span>
+                                        <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                                            <div>
+                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">İstasyonlar</div>
+                                                <div className="text-xl font-bold text-slate-900 tabular-nums">
+                                                    {operator.stationCount.toLocaleString()}
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-8">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[80px] font-extralight text-zinc-900 dark:text-white leading-none tracking-tighter tabular-nums text-center">
-                                                        {operator.stationCount}
-                                                    </span>
-                                                    <span className="text-[9px] font-bold tracking-[0.5em] text-zinc-300 dark:text-zinc-700 uppercase mt-4 text-center">Verified Stations</span>
-                                                </div>
-
-                                                <div className="relative h-[1px] w-full bg-zinc-100 dark:bg-white/[0.03]">
-                                                    <div
-                                                        className="h-full bg-zinc-950 dark:bg-white transition-all duration-[2.5s] ease-out"
-                                                        style={{ width: `${Math.max(1, networkSize)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
+                                            <button className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-green-600 group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-green-500/30">
+                                                <ArrowRight className="w-5 h-5 -ml-0.5" />
+                                            </button>
                                         </div>
+
                                     </div>
-
-                                    <div className="mt-10 px-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-xl font-medium text-zinc-900 dark:text-white tracking-tight">
-                                                {operator.name}
-                                            </h3>
-                                            <ArrowRight className="w-4 h-4 text-zinc-200 dark:text-zinc-800 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-700" />
-                                        </div>
-                                        <div className="flex items-end justify-between">
-                                            <div className="flex gap-8">
-                                                {operator.countries.map(c => (
-                                                    <div key={c} className="flex flex-col gap-1">
-                                                        <span className="text-[8px] font-bold text-zinc-300 dark:text-zinc-800 uppercase tracking-widest">Registry</span>
-                                                        <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-500">
-                                                            {c === 'TR' ? 'TURKEY' : c === 'US' ? 'USA' : c === 'DE' ? 'GERMANY' : c}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="flex flex-col gap-1 items-end">
-                                                <span className="text-[8px] font-bold text-zinc-300 dark:text-zinc-800 uppercase tracking-widest">Network Impact</span>
-                                                <span className="text-[11px] font-bold text-emerald-500/60 tracking-tight">
-                                                    {Math.max(1, Math.round(networkSize))}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                </motion.div>
                             );
                         })}
                     </div>
                 )}
-
-                <div className="mt-48 flex flex-col items-center">
-                    <div className="h-px w-24 bg-zinc-100 dark:bg-zinc-950" />
-                    <p className="text-zinc-100 dark:text-zinc-900/30 text-[10vw] font-black leading-none select-none tracking-tighter mt-12">
-                        INFRA
-                    </p>
-                </div>
-            </main>
+            </div>
         </div>
     );
 }

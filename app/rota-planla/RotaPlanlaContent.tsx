@@ -940,446 +940,311 @@ export default function RotaPlanlaPage() {
 
   // ===== RENDER =====
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-[#000000]">
-      {/* Header */}
-      <header className="bg-white dark:bg-zinc-950 border-b border-zinc-100 dark:border-zinc-900 flex-shrink-0">
-        <div className="w-full px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div className="flex flex-col">
-              <span className="text-zinc-400 text-[9px] font-bold tracking-[0.3em] uppercase">Navigation</span>
-              <h1 className="text-lg font-light text-zinc-900 dark:text-white tracking-tight">Route Planner</h1>
-            </div>
-          </div>
-          <Route className="w-5 h-5 text-emerald-500" />
-        </div>
-      </header>
+    <div className="flex flex-col md:flex-row h-screen w-full bg-slate-50 font-sans text-slate-900 relative overflow-hidden">
 
-      <div className="flex-1 flex overflow-hidden h-full">
-        {/* Sidebar */}
-        <div className="w-full md:w-[420px] bg-white dark:bg-zinc-950 overflow-y-auto flex-shrink-0 border-r border-zinc-100 dark:border-zinc-900">
-          <div className="p-6 space-y-6">
-            {/* Origin */}
-            <div>
-              <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-3 flex items-center gap-2">
-                <Circle className="w-3 h-3 text-emerald-500" />
-                Origin
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={originSearch}
-                  onChange={(e) => { setOriginSearch(e.target.value); searchLocation(e.target.value, "origin"); }}
-                  placeholder="Search city or address..."
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all font-light placeholder:text-zinc-400"
-                />
-                {searchingOrigin && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />}
-                {originResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-2xl z-10 max-h-60 overflow-y-auto">
-                    {originResults.map((result, index) => (
-                      <button key={index} onClick={() => selectLocation(result, "origin")} className="w-full px-5 py-4 text-left text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-3 first:rounded-t-2xl last:rounded-b-2xl">
-                        <MapPin className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                        <span className="truncate text-sm font-light">{result.place_name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Destination */}
-            <div>
-              <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-3 flex items-center gap-2">
-                <Flag className="w-3 h-3 text-red-500" />
-                Destination
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={destinationSearch}
-                  onChange={(e) => { setDestinationSearch(e.target.value); searchLocation(e.target.value, "destination"); }}
-                  placeholder="Search city or address..."
-                  className="w-full bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all font-light placeholder:text-zinc-400"
-                />
-                {searchingDestination && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 animate-spin" />}
-                {destinationResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-2xl z-10 max-h-60 overflow-y-auto">
-                    {destinationResults.map((result, index) => (
-                      <button key={index} onClick={() => selectLocation(result, "destination")} className="w-full px-5 py-4 text-left text-zinc-900 dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition flex items-center gap-3 first:rounded-t-2xl last:rounded-b-2xl">
-                        <MapPin className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                        <span className="truncate text-sm font-light">{result.place_name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Vehicle Selection */}
-            <div>
-              <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-3 flex items-center gap-2">
-                <Car className="w-3 h-3" />
-                Vehicle
-              </label>
-              <button onClick={() => setShowVehicleSelect(!showVehicleSelect)} className="w-full bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-100 dark:border-zinc-800 rounded-2xl px-5 py-4 text-left flex items-center justify-between hover:border-zinc-200 dark:hover:border-zinc-700 transition-all">
-                <span className="font-light">{selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : "Select vehicle"}</span>
-                <ChevronRight className={`w-4 h-4 text-zinc-400 transition-transform ${showVehicleSelect ? "rotate-90" : ""}`} />
-              </button>
-              {showVehicleSelect && (
-                <div className="mt-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 space-y-4">
-                  {/* Mode Toggle */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setVehicleSearchMode("local")}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${vehicleSearchMode === "local"
-                        ? "bg-emerald-500 text-white"
-                        : "bg-gray-200 text-zinc-700 hover:bg-gray-300"
-                        }`}
-                    >
-                      Kayıtlı ({localVehicles.length})
-                    </button>
-                    <button
-                      onClick={() => setVehicleSearchMode("api")}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${vehicleSearchMode === "api"
-                        ? "bg-emerald-500 text-white"
-                        : "bg-gray-200 text-zinc-700 hover:bg-gray-300"
-                        }`}
-                    >
-                      API Ara
-                    </button>
-                  </div>
-
-                  {/* Local Vehicle Selection */}
-                  {vehicleSearchMode === "local" && (
-                    <>
-                      <select value={selectedBrand} onChange={(e) => setSelectedBrand(e.target.value)} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
-                        <option value="">Marka seçin</option>
-                        {loadingSupabase ? (
-                          <option disabled>Yükleniyor...</option>
-                        ) : (
-                          supabaseBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)
-                        )}
-                      </select>
-                      {selectedBrand && (
-                        <select
-                          value={selectedVehicle?.id || ""}
-                          onChange={(e) => {
-                            // Önce Supabase'den ara
-                            const supabaseVehicle = supabaseVehicles.find(v => v.id === e.target.value);
-                            if (supabaseVehicle) {
-                              // Supabase verisini local Vehicle formatına çevir
-                              const convertedVehicle: Vehicle = {
-                                id: supabaseVehicle.id,
-                                brand: supabaseVehicle.make,
-                                model: `${supabaseVehicle.model} ${supabaseVehicle.variant || ''}`.trim(),
-                                year: "2024", // Default
-                                batteryCapacity: supabaseVehicle.battery_kwh,
-                                maxDCPower: supabaseVehicle.charge_dc_kw,
-                                maxACPower: 11, // Default
-                                connectors: [supabaseVehicle.connector_type],
-                                range: supabaseVehicle.range_wltp_km,
-                                massKg: 2100, // Average EV weight
-                                dragCoefficient: 0.28,
-                                frontalArea: 2.5,
-                                rollingResistance: 0.010,
-                                drivetrainEfficiency: 0.90,
-                                regenEfficiency: 0.70,
-                                hvacPowerKw: 2.5,
-                                batteryHeatingKw: 5,
-                                optimalBatteryTempC: 25,
-                                tempEfficiencyLoss: 8, // 8% per 10°C
-                                chargingCurve: [], // Will use default curve
-                              };
-                              setSelectedVehicle(convertedVehicle);
-                            } else {
-                              // Fallback: local vehicles
-                              const vehicle = localVehicles.find(v => v.id === e.target.value);
-                              setSelectedVehicle(vehicle || null);
-                            }
-                            setShowVehicleSelect(false);
-                          }}
-                          className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
-                        >
-                          <option value="">Model seçin</option>
-                          {supabaseVehicles
-                            .filter(v => v.make === selectedBrand)
-                            .map(vehicle => (
-                              <option key={vehicle.id} value={vehicle.id}>
-                                {vehicle.model} {vehicle.variant} ({vehicle.range_wltp_km} km)
-                              </option>
-                            ))}
-                        </select>
-                      )}
-                    </>
-                  )}
-
-                  {/* API Vehicle Search */}
-                  {vehicleSearchMode === "api" && (
-                    <>
-                      <select value={selectedBrand} onChange={(e) => { setSelectedBrand(e.target.value); setApiModelSearch(""); }} className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm">
-                        <option value="">Marka seçin</option>
-                        {SUPPORTED_MAKES.map(brand => <option key={brand} value={brand}>{brand}</option>)}
-                      </select>
-                      {selectedBrand && (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={apiModelSearch}
-                            onChange={(e) => setApiModelSearch(e.target.value)}
-                            placeholder="Model adı yazın (örn: Model 3)"
-                            className="w-full bg-gray-200 text-zinc-900 rounded-lg px-3 py-2 text-sm"
-                          />
-                          <button
-                            onClick={() => fetchVehicleFromAPI(selectedBrand, apiModelSearch)}
-                            disabled={!apiModelSearch.trim() || apiLoading}
-                            className="w-full bg-emerald-500 text-white rounded-lg py-2 text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                          >
-                            {apiLoading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Aranıyor...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="w-4 h-4" />
-                                API&apos;den Getir
-                              </>
-                            )}
-                          </button>
-                          {apiError && (
-                            <p className="text-red-500 text-xs">{apiError}</p>
-                          )}
-                          <p className="text-gray-500 text-xs">
-                            Model adını tam yazın: "Model 3", "IONIQ 5", "ID.4" gibi
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-              {selectedVehicle && (
-                <div className="mt-2 text-xs text-gray-500 flex items-center gap-4">
-                  <span className="flex items-center gap-1"><Battery className="w-3 h-3" />{selectedVehicle.batteryCapacity} kWh</span>
-                  <span className="flex items-center gap-1"><Navigation className="w-3 h-3" />{selectedVehicle.range} km</span>
-                  <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{selectedVehicle.maxDCPower} kW DC</span>
-                </div>
-              )}
-            </div>
-
-            {/* Charge Settings */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-gray-500 text-xs mb-1">Mevcut Şarj</label>
-                <div className="flex items-center gap-2">
-                  <input type="range" min="10" max="100" value={currentCharge} onChange={(e) => setCurrentCharge(Number(e.target.value))} className="flex-1 accent-emerald-500" />
-                  <span className="text-zinc-900 text-sm w-12 text-right">%{currentCharge}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-gray-500 text-xs mb-1">Min. Varış Şarjı</label>
-                <div className="flex items-center gap-2">
-                  <input type="range" min="10" max="50" value={minArrivalCharge} onChange={(e) => setMinArrivalCharge(Number(e.target.value))} className="flex-1 accent-emerald-500" />
-                  <span className="text-zinc-900 text-sm w-12 text-right">%{minArrivalCharge}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Trip Settings */}
-            <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5">
-              <h3 className="text-zinc-900 dark:text-white font-medium mb-4 flex items-center gap-2 text-sm">
-                <Settings className="w-4 h-4 text-zinc-400" />
-                Trip Configuration
-              </h3>
-              <div className="space-y-4">
-                {/* Passengers */}
-                <div>
-                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2 flex items-center gap-1">
-                    <Users className="w-3 h-3" /> Passengers
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input type="range" min="1" max="5" value={passengerCount} onChange={(e) => setPassengerCount(Number(e.target.value))} className="flex-1 accent-emerald-500" />
-                    <span className="text-zinc-900 dark:text-white text-sm font-medium w-8 text-right tabular-nums">{passengerCount}</span>
-                  </div>
-                </div>
-                {/* Luggage */}
-                <div>
-                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2 flex items-center gap-1">
-                    <Briefcase className="w-3 h-3" /> Luggage (kg)
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input type="range" min="0" max="100" step="10" value={luggageKg} onChange={(e) => setLuggageKg(Number(e.target.value))} className="flex-1 accent-emerald-500" />
-                    <span className="text-zinc-900 dark:text-white text-sm font-medium w-12 text-right tabular-nums">{luggageKg} kg</span>
-                  </div>
-                </div>
-                {/* HVAC Mode */}
-                <div>
-                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2">Climate</label>
-                  <div className="flex gap-2">
-                    {(["auto", "eco", "off"] as const).map((mode) => (
-                      <button key={mode} onClick={() => setHvacMode(mode)} className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition ${hvacMode === mode ? "bg-emerald-500 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"}`}>
-                        {mode === "auto" ? "Auto" : mode === "eco" ? "Eco" : "Off"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Driving Style */}
-                <div>
-                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2">Drive Mode</label>
-                  <div className="flex gap-2">
-                    {(["eco", "normal", "sport"] as const).map((style) => (
-                      <button key={style} onClick={() => setDrivingStyle(style)} className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition ${drivingStyle === style ? "bg-emerald-500 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"}`}>
-                        {style === "eco" ? "Eco" : style === "normal" ? "Normal" : "Sport"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Optimization Strategy */}
-                <div>
-                  <label className="block text-zinc-400 text-[10px] font-bold tracking-widest uppercase mb-2">Charging Strategy</label>
-                  <div className="flex gap-2">
-                    {(["fastest", "fewest", "cheapest"] as const).map((s) => (
-                      <button key={s} onClick={() => setStrategy(s)} className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-xl transition ${strategy === s ? "bg-emerald-500 text-white" : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700"}`}>
-                        {s === "fastest" ? "Fastest" : s === "fewest" ? "Fewest" : "Cheapest"}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-zinc-400 mt-2">
-                    {strategy === "fastest" && "Minimizes total travel time"}
-                    {strategy === "fewest" && "Minimizes number of stops"}
-                    {strategy === "cheapest" && "Minimizes charging cost"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-center gap-2 text-red-400 text-sm">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {/* Calculate Button */}
-            <button onClick={() => calculateRoute()} disabled={calculating || !origin || !destination || !selectedVehicle} className="w-full py-4 bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 disabled:cursor-not-allowed text-white dark:text-black rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-zinc-900/10 dark:shadow-white/10">
-              {calculating ? (<><Loader2 className="w-4 h-4 animate-spin" />Calculating...</>) : (<><Route className="w-4 h-4" />Calculate Route</>)}
-            </button>
-
-            {/* Weather Loading */}
-            {weatherLoading && (
-              <div className="flex items-center justify-center gap-2 text-zinc-400 text-sm py-3">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Fetching weather data...
-              </div>
-            )}
-
-            {/* Weather Display */}
-            {routeWeather && (
-              <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5">
-                <h3 className="text-zinc-900 dark:text-white font-medium mb-4 flex items-center gap-2 text-sm">
-                  <Thermometer className="w-4 h-4 text-blue-500" />
-                  Route Weather
-                </h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Thermometer className="w-5 h-5 text-blue-500" />
-                    <div>
-                      <div className="text-gray-500 text-xs">Sıcaklık</div>
-                      <div className="text-zinc-900 font-medium">{routeWeather.average.temperature}°C</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Wind className="w-5 h-5 text-cyan-500" />
-                    <div>
-                      <div className="text-gray-500 text-xs">Rüzgar</div>
-                      <div className="text-zinc-900 font-medium">
-                        {routeWeather.average.headwindComponent > 0 ? "Karşı " : routeWeather.average.headwindComponent < 0 ? "Arkadan " : ""}
-                        {Math.abs(Math.round(routeWeather.average.headwindComponent))} km/h
-                      </div>
-                    </div>
-                  </div>
-                  {routeWeather.conditions.isRainy && (
-                    <div className="flex items-center gap-2 col-span-2">
-                      <Droplets className="w-5 h-5 text-blue-400" />
-                      <div>
-                        <div className="text-gray-500 text-xs">Yağış</div>
-                        <div className="text-zinc-900 font-medium">
-                          {routeWeather.conditions.rainIntensity === 1 ? "Hafif" : routeWeather.conditions.rainIntensity === 2 ? "Orta" : "Şiddetli"}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {routeWeather.warnings.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-blue-200 space-y-1">
-                    {routeWeather.warnings.map((warning, idx) => (
-                      <div key={idx} className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">{warning}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Route Result */}
-            {routeResult && selectedVehicle && (
-              <div className="space-y-4">
-                {/* Strategy Comparison */}
-                {comparisonResults && (
-                  <RouteComparison
-                    results={comparisonResults}
-                    selectedStrategy={strategy}
-                    onSelect={(s) => {
-                      setStrategy(s);
-                      // Re-calculate with new strategy immediately
-                      calculateRoute(s);
-                    }}
-                  />
-                )}
-
-                {/* NEW: Beautiful Journey Component */}
-                <RouteJourney
-                  origin={origin?.name || "Başlangıç"}
-                  destination={destination?.name || "Varış"}
-                  totalDistance={routeResult.distance}
-                  totalDuration={routeResult.duration}
-                  totalChargingTime={routeResult.totalChargingTime}
-                  totalChargingCost={routeResult.totalChargingCost}
-                  startCharge={currentCharge}
-                  arrivalCharge={routeResult.arrivalCharge}
-                  energyUsed={routeResult.energyUsed || 0}
-                  efficiency={routeResult.efficiency || 0}
-                  chargingStops={routeResult.chargingStops}
-                  vehicleName={`${selectedVehicle.brand} ${selectedVehicle.model}`}
-                  vehicleRange={selectedVehicle.range}
-                  batteryCapacity={selectedVehicle.batteryCapacity}
-                />
-
-                {/* Weather Analysis Component */}
-                <RouteWeatherAnalysis
-                  routeCoordinates={routeResult.geometry.coordinates}
-                  vehicleSpecs={{ batteryCapacity: selectedVehicle.batteryCapacity, range: selectedVehicle.range }}
-                />
-
-                {/* Chat Hub Button */}
-                {routeResult.chargingStops.length > 0 && (
-                  <button onClick={() => setShowChatHub(true)} className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-medium transition flex items-center justify-center gap-2">
-                    <MessageCircle className="w-5 h-5" />
-                    Durak Chat&apos;lerine Katıl
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Map */}
-        <div ref={mapContainer} className="flex-1 min-h-[400px] md:min-h-0" style={{ background: "#e5e5e5" }} />
+      {/* Background Decoration */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-green-100/50 rounded-full blur-3xl -ml-32 -mt-32" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-yellow-100/50 rounded-full blur-3xl -mr-32 -mb-32" />
       </div>
 
-      {/* Route Chat Hub */}
+      {/* Control Panel - Floating Card Style */}
+      <div className="relative z-10 w-full md:w-[480px] h-[45vh] md:h-[calc(100vh-2rem)] md:m-4 bg-white/90 backdrop-blur-xl border border-white/50 md:rounded-[2.5rem] shadow-2xl shadow-slate-200/50 flex flex-col md:overflow-hidden transition-all duration-500">
+
+        {/* Header - Minimalist */}
+        <div className="p-6 md:p-8 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <Link href="/" className="flex items-center gap-2 group text-slate-500 hover:text-green-600 transition-colors">
+              <div className="p-2 rounded-full bg-slate-100 group-hover:bg-green-100 group-hover:text-green-600 transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-semibold tracking-wide">Back</span>
+            </Link>
+            <div className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider">
+              Beta v2.0
+            </div>
+          </div>
+
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-1">
+            <span className="text-green-600">Plan</span> Your Journey.
+          </h1>
+          <p className="text-slate-500 text-sm font-medium">Smart EV routing • Terrain & Weather aware</p>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-8 space-y-6 scrollbar-hide">
+          {/* Locations Input */}
+          <div className="space-y-3 relative"> {/* Relative for dropdown positioning */}
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-[3px] border-emerald-500" />
+              <input
+                type="text"
+                placeholder="Start Point"
+                value={originSearch}
+                onChange={(e) => { setOriginSearch(e.target.value); searchLocation(e.target.value, "origin"); }}
+                onFocus={() => { if (originSearch) searchLocation(originSearch, "origin") }}
+                className="w-full h-14 pl-10 pr-4 bg-slate-100 hover:bg-slate-50 focus:bg-white text-slate-800 font-medium rounded-2xl border-2 border-transparent focus:border-green-500/20 outline-none transition-all placeholder:text-slate-400 shadow-sm"
+              />
+              {originResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 max-h-60 overflow-y-auto">
+                  {originResults.map((item, i) => (
+                    <button key={i} onClick={() => selectLocation(item, "origin")} className="w-full text-left p-3 hover:bg-green-50 rounded-xl text-sm font-medium text-slate-700 transition-colors">
+                      {item.place_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Connector Line in CSS/SVG could go here, simplifying for clean input stack */}
+
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border-[3px] border-amber-400" />
+              <input
+                type="text"
+                placeholder="Destination"
+                value={destinationSearch}
+                onChange={(e) => { setDestinationSearch(e.target.value); searchLocation(e.target.value, "destination"); }}
+                onFocus={() => { if (destinationSearch) searchLocation(destinationSearch, "destination") }}
+                className="w-full h-14 pl-10 pr-4 bg-slate-100 hover:bg-slate-50 focus:bg-white text-slate-800 font-medium rounded-2xl border-2 border-transparent focus:border-amber-400/20 outline-none transition-all placeholder:text-slate-400 shadow-sm"
+              />
+              {destinationResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-20 max-h-60 overflow-y-auto">
+                  {destinationResults.map((item, i) => (
+                    <button key={i} onClick={() => selectLocation(item, "destination")} className="w-full text-left p-3 hover:bg-amber-50 rounded-xl text-sm font-medium text-slate-700 transition-colors">
+                      {item.place_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Vehicle Selector */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm relative">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Car className="w-5 h-5 text-slate-400" />
+                <span className="text-sm font-bold text-slate-700">Your Vehicle</span>
+              </div>
+              <button
+                onClick={() => setShowVehicleSelect(!showVehicleSelect)}
+                className="text-xs font-bold text-green-600 hover:text-green-700 px-3 py-1 bg-green-50 rounded-full transition-colors"
+              >
+                {selectedVehicle ? "Change" : "Select"}
+              </button>
+            </div>
+
+            {selectedVehicle ? (
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                  <Car className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="text-base font-bold text-slate-900">{selectedVehicle.brand} {selectedVehicle.model}</div>
+                  <div className="flex items-center gap-3 text-xs font-medium text-slate-500 mt-0.5">
+                    <span className="flex items-center gap-1"><Battery className="w-3 h-3" /> {selectedVehicle.batteryCapacity} kWh</span>
+                    <span className="flex items-center gap-1"><Navigation className="w-3 h-3" /> {selectedVehicle.range} km</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-slate-400 py-2">No vehicle selected. Please select one for accurate planning.</div>
+            )}
+
+            {/* Vehicle Dropdown */}
+            {showVehicleSelect && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    onClick={() => setVehicleSearchMode("local")}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${vehicleSearchMode === "local" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    Local DB
+                  </button>
+                  <button
+                    onClick={() => setVehicleSearchMode("api")}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${vehicleSearchMode === "api" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    Global API
+                  </button>
+                </div>
+
+                {vehicleSearchMode === "local" && (
+                  <div className="space-y-2">
+                    <select
+                      value={selectedBrand}
+                      onChange={(e) => { setSelectedBrand(e.target.value); setSelectedVehicle(null); }}
+                      className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm rounded-xl px-3 py-2.5 outline-none border border-transparent focus:border-green-200 transition-all font-medium"
+                    >
+                      <option value="">Select Brand</option>
+                      {supabaseBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    {selectedBrand && (
+                      <select
+                        onChange={(e) => {
+                          const v = supabaseVehicles.find(v => v.id === e.target.value);
+                          if (v) {
+                            const converted: Vehicle = {
+                              id: v.id, brand: v.make, model: v.model + (v.variant ? ` ${v.variant}` : ""), year: "2024",
+                              batteryCapacity: v.battery_kwh, maxDCPower: v.charge_dc_kw, maxACPower: 11, connectors: [v.connector_type],
+                              range: v.range_wltp_km, massKg: 2000, dragCoefficient: 0.29, frontalArea: 2.5, rollingResistance: 0.010, drivetrainEfficiency: 0.90, regenEfficiency: 0.70, hvacPowerKw: 2.5, batteryHeatingKw: 5, optimalBatteryTempC: 25, tempEfficiencyLoss: 8, chargingCurve: [],
+                            };
+                            setSelectedVehicle(converted);
+                            setShowVehicleSelect(false);
+                          }
+                        }}
+                        className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm rounded-xl px-3 py-2.5 outline-none border border-transparent focus:border-green-200 transition-all font-medium"
+                      >
+                        <option value="">Select Model</option>
+                        {supabaseVehicles.filter(v => v.make === selectedBrand).map(v => (
+                          <option key={v.id} value={v.id}>{v.model} {v.variant} ({v.range_wltp_km} km)</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Charge Levels */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Current Battery</label>
+              <div className="flex items-center gap-2 mb-1">
+                <Battery className="w-5 h-5 text-green-500" />
+                <span className="text-2xl font-bold text-slate-900">{currentCharge}%</span>
+              </div>
+              <input type="range" min="10" max="100" value={currentCharge} onChange={(e) => setCurrentCharge(Number(e.target.value))} className="w-full accent-green-500 h-1.5 bg-slate-100 rounded-full appearance-none mt-2" />
+            </div>
+            <div className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Arrival Minimal</label>
+              <div className="flex items-center gap-2 mb-1">
+                <Flag className="w-5 h-5 text-amber-500" />
+                <span className="text-2xl font-bold text-slate-900">{minArrivalCharge}%</span>
+              </div>
+              <input type="range" min="5" max="50" value={minArrivalCharge} onChange={(e) => setMinArrivalCharge(Number(e.target.value))} className="w-full accent-amber-500 h-1.5 bg-slate-100 rounded-full appearance-none mt-2" />
+            </div>
+          </div>
+
+          {/* Configuration Panel - Collapsible or Compact */}
+          <div className="p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+              <Settings className="w-4 h-4 text-slate-400" />
+              Trip Preferences
+            </h3>
+
+            {/* Strategy Pills */}
+            <div className="flex gap-2 p-1 bg-white rounded-xl border border-slate-100 mb-4">
+              {(["fastest", "fewest", "cheapest"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStrategy(s)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${strategy === s ? "bg-slate-900 text-white shadow-md" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Passengers */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1.5 ml-1">Passengers</label>
+                <div className="bg-white rounded-xl px-3 py-2 flex items-center justify-between border border-slate-100">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="1" max="5" value={passengerCount} onChange={(e) => setPassengerCount(Number(e.target.value))} className="w-16 h-1 bg-slate-100 rounded-full accent-slate-900" />
+                    <span className="text-sm font-bold text-slate-700 w-3">{passengerCount}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Luggage */}
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1.5 ml-1">Luggage</label>
+                <div className="bg-white rounded-xl px-3 py-2 flex items-center justify-between border border-slate-100">
+                  <Briefcase className="w-4 h-4 text-slate-400" />
+                  <div className="flex items-center gap-2">
+                    <input type="range" min="0" max="100" step="10" value={luggageKg} onChange={(e) => setLuggageKg(Number(e.target.value))} className="w-16 h-1 bg-slate-100 rounded-full accent-slate-900" />
+                    <span className="text-sm font-bold text-slate-700 w-8 text-right">{luggageKg}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          {error && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 flex items-center gap-2 text-red-600 text-xs font-medium animate-pulse">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={() => calculateRoute()}
+            disabled={calculating || !origin || !destination || !selectedVehicle}
+            className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white rounded-2xl text-sm font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-green-600/20 hover:shadow-green-500/30 transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            {calculating ? (<><Loader2 className="w-5 h-5 animate-spin" />Planning...</>) : (<><Route className="w-5 h-5" />Calculate Journey</>)}
+          </button>
+
+          {/* Weather & Results - Keeping simple for now, would follow similar card style */}
+          {routeWeather && (
+            <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-4">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-500 shadow-sm">
+                <Thermometer className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-blue-400 uppercase tracking-wide">Route Weather</div>
+                <div className="text-sm font-bold text-slate-700">
+                  {routeWeather.average.temperature}°C • Win: {Math.round(routeWeather.average.windSpeed)} km/h
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Results Component Placeholders - These would also need extensive styling updates in their own files, 
+                but basic wrapper here ensures they don't break the layout. 
+                Ideally, we pass a 'theme="light"' prop if supported or rely on parent styles.
+            */}
+          {routeResult && selectedVehicle && (
+            <div className="space-y-4">
+              {/* Re-using components but they might need CSS adjustments driven by the parent 'text-slate-900' */}
+              <RouteJourney
+                origin={origin?.name || "Start"}
+                destination={destination?.name || "End"}
+                totalDistance={routeResult.distance}
+                totalDuration={routeResult.duration}
+                totalChargingTime={routeResult.totalChargingTime}
+                totalChargingCost={routeResult.totalChargingCost}
+                startCharge={currentCharge}
+                arrivalCharge={routeResult.arrivalCharge}
+                energyUsed={routeResult.energyUsed || 0}
+                efficiency={routeResult.efficiency || 0}
+                chargingStops={routeResult.chargingStops}
+                vehicleName={`${selectedVehicle.brand} ${selectedVehicle.model}`}
+                vehicleRange={selectedVehicle.range}
+                batteryCapacity={selectedVehicle.batteryCapacity}
+              />
+
+              {routeResult.chargingStops.length > 0 && (
+                <button onClick={() => setShowChatHub(true)} className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  Community Chat
+                </button>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Map Layer */}
+      <div ref={mapContainer} className="absolute inset-0 z-0 h-full w-full" />
+
+      {/* Modals/Overlays */}
       {routeResult && routeResult.chargingStops.length > 0 && (
         <RouteChatHub chargingStops={routeResult.chargingStops} isOpen={showChatHub} onClose={() => setShowChatHub(false)} />
       )}

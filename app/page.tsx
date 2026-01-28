@@ -1,197 +1,280 @@
 "use client";
+import React, { useState } from "react";
 import Onboarding from "./components/Onboarding";
 import HeroSection from "./components/HeroSection";
-import HeaderWhite from "./components/HeaderWhite";
 import { motion } from "framer-motion";
-import { Globe, Users, Navigation, ArrowRight, Zap } from "lucide-react";
+import { Users, ArrowRight, Zap, Globe, Sun, Leaf, Heart } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
+    const [language, setLanguage] = useState<'tr' | 'en'>('tr');
+
+    const toggleLanguage = () => {
+        setLanguage(prev => prev === 'tr' ? 'en' : 'tr');
+    };
+
+    const t = {
+        tr: {
+            network: {
+                badge: "Ağ Kapsamı",
+                headline: ["Seninle Büyüyen", "Bir İletişim Ağı."],
+                desc: "Şehir merkezlerinden uzak dağ geçitlerine kadar, seni doğaya bağlayan bir şarj ağı kuruyoruz.",
+                bullets: ["Temiz Enerji", "Hızlı Şarj", "Her Zaman Erişilebilir"],
+                cta: "Haritayı Keşfet",
+                card: { badge: "Küresel Erişim", sub: "Tek hesap. Sınırsız destinasyon." }
+            },
+            community: {
+                badge: "Topluluk",
+                headline: ["İnsanlar Tarafından", "Yönlendirilen."],
+                desc: "Dürüst incelemeler, gerçek zamanlı fotoğraflar ve en iyi şarjı bulmak için birbirine yardım eden bir topluluk.",
+                cta: "Topluluğa Katıl",
+                card: { badge: "4.9/5 Yıldız", sub: "Topluluk Puanı" }
+            },
+            route: {
+                badge: "Akıllı Planlama",
+                headline: ["Endişesiz", "Yolculuklar."],
+                desc: "Akıllı planlayıcımız, arazi, hava durumu ve trafiği hesaba katarak en doğru menzil tahminlerini sunar.",
+                cta: "Yolculuğunu Planla",
+                card: { badge: "Rota", sub: "Akıllı Rota" }
+            }
+        },
+        en: {
+            network: {
+                badge: "Network Coverage",
+                headline: ["A Network That", "Grows With You."],
+                desc: "From city centers to remote mountain passes, we're building a charging network that connects you to nature.",
+                bullets: ["Clean Energy", "Fast Charging", "Always Available"],
+                cta: "Explore Map",
+                card: { badge: "Global Access", sub: "One account. Endless destinations." }
+            },
+            community: {
+                badge: "Community",
+                headline: ["Driven by", "People."],
+                desc: "Honest reviews, real-time photos, and a community that helps each other find the best charge.",
+                cta: "Join Communities",
+                card: { badge: "4.9/5 Star Rating", sub: "Community Score" }
+            },
+            route: {
+                badge: "Smart Planning",
+                headline: ["Worry-Free", "Travels."],
+                desc: "Our smart planner accounts for terrain, weather, and traffic to give you the most accurate range estimates.",
+                cta: "Plan Your Trip",
+                card: { badge: "Route", sub: "Smart Route" }
+            }
+        }
+    };
+
+    const content = t[language];
+
+    // Helper for translating link routes if needed, but sticking to TR routes for now since the app structure is fixed.
+
     return (
-        <div className="bg-white dark:bg-black selection:bg-emerald-500/30 overflow-x-hidden transition-colors duration-500">
+        <div className="bg-[#FFFFFF] min-h-screen text-slate-800 selection:bg-green-100 overflow-x-hidden font-sans">
             <Onboarding />
-            <HeaderWhite />
 
-            {/* Hero Section */}
-            <HeroSection />
+            <div className="fixed inset-0 z-0 bg-stone-50" />
 
-            {/* Feature Sections - Editorial Style */}
-            <div className="relative px-6 pb-32 space-y-32 md:space-y-64 max-w-7xl mx-auto">
+            <div className="relative z-10">
+                {/* Hero Section with Language Props */}
+                <HeroSection language={language} onToggleLanguage={toggleLanguage} />
 
-                {/* Section 1: Network */}
-                <motion.section
-                    initial={{ opacity: 0, y: 100, scale: 0.95 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="grid md:grid-cols-2 gap-12 items-center"
-                >
-                    <div className="space-y-8 order-2 md:order-1">
-                        <div className="space-y-2">
-                            <span className="text-emerald-600 dark:text-emerald-500 text-[10px] font-bold uppercase tracking-[0.4em]">High Precision Network</span>
-                            <h2 className="text-4xl md:text-6xl font-extralight tracking-tight text-black dark:text-white leading-[1.1]">
-                                Türkiye'nin <br /> <span className="font-medium italic">En Kapsamlı</span> Ağı.
-                            </h2>
-                        </div>
-                        <p className="text-zinc-600 dark:text-zinc-500 text-lg font-light leading-relaxed max-w-md">
-                            29 farklı operatör ve 3.500'den fazla istasyon. OutaCharge, Türkiye genelindeki tüm şarj noktalarını tek bir platformda birleştirir.
-                        </p>
-                        <Link href="/harita" className="inline-flex items-center gap-2 text-black dark:text-white font-medium group text-sm">
-                            Tüm İstasyonları Gör
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-600 dark:text-emerald-500" />
-                        </Link>
-                    </div>
-                    <motion.div
-                        className="relative order-1 md:order-2"
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ duration: 0.5 }}
+                {/* Feature Sections */}
+                <div className="relative px-6 pb-32 space-y-32 md:space-y-48 max-w-7xl mx-auto mt-20">
+
+                    {/* Section 1: Network */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 50 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-100px" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className="grid md:grid-cols-2 gap-16 items-center"
                     >
-                        <div className="aspect-square rounded-[3rem] bg-emerald-500/[0.03] dark:bg-emerald-500/20 border border-zinc-200 dark:border-white/10 flex items-center justify-center relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.1),transparent)] group-hover:scale-150 transition-transform duration-1000" />
-                            <Globe className="w-32 h-32 text-emerald-600/30 dark:text-emerald-500/50 relative z-10" />
-                            {/* Decorative nodes - Fixed positions to avoid hydration mismatch */}
-                            {[
-                                { top: '25%', left: '30%' },
-                                { top: '60%', left: '20%' },
-                                { top: '45%', left: '70%' },
-                                { top: '75%', left: '60%' },
-                                { top: '35%', left: '55%' },
-                            ].map((pos, i) => (
-                                <motion.div
-                                    key={i}
-                                    animate={{
-                                        scale: [1, 1.2, 1],
-                                        opacity: [0.3, 0.6, 0.3]
-                                    }}
-                                    transition={{
-                                        duration: 3 + i,
-                                        repeat: Infinity,
-                                        ease: "easeInOut"
-                                    }}
-                                    className="absolute w-2 h-2 bg-emerald-500 dark:bg-emerald-400 rounded-full blur-[2px]"
-                                    style={{
-                                        top: pos.top,
-                                        left: pos.left
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    </motion.div>
-                </motion.section>
-
-                {/* Section 2: Community */}
-                <motion.section
-                    initial={{ opacity: 0, y: 100, scale: 0.95 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="grid md:grid-cols-2 gap-12 items-center"
-                >
-                    <motion.div
-                        className="relative"
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ duration: 0.5 }}
-                    >
-                        <div className="aspect-video rounded-[3rem] bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 backdrop-blur-3xl p-8 flex flex-col justify-between group">
-                            <div className="flex gap-3">
-                                {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-white/10" />
-                                ))}
-                                <div className="w-10 h-10 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 flex items-center justify-center">
-                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">+12K</span>
-                                </div>
-                            </div>
+                        <div className="space-y-8 order-2 md:order-1">
                             <div className="space-y-4">
-                                <div className="h-4 w-3/4 bg-zinc-200 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        whileInView={{ width: "70%" }}
-                                        transition={{ duration: 2, delay: 0.5 }}
-                                        className="h-full bg-emerald-500"
-                                    />
-                                </div>
-                                <div className="h-4 w-1/2 bg-zinc-200 dark:bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        whileInView={{ width: "45%" }}
-                                        transition={{ duration: 2, delay: 0.7 }}
-                                        className="h-full bg-teal-500"
-                                    />
-                                </div>
+                                <span className="inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider">
+                                    {content.network.badge}
+                                </span>
+                                <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
+                                    {content.network.headline[0]} <br /> <span className="text-green-600">{content.network.headline[1]}</span>
+                                </h2>
                             </div>
-                            <Users className="absolute bottom-8 right-8 w-12 h-12 text-zinc-300 dark:text-white/10 group-hover:text-emerald-600/20 dark:group-hover:text-emerald-500/20 transition-colors duration-500" />
-                        </div>
-                    </motion.div>
-                    <div className="space-y-8">
-                        <div className="space-y-2">
-                            <span className="text-teal-600 dark:text-teal-500 text-[10px] font-bold uppercase tracking-[0.4em]">Join the Hive</span>
-                            <h2 className="text-4xl md:text-6xl font-extralight tracking-tight text-black dark:text-white leading-[1.1]">
-                                Gücümüz <br /> <span className="font-medium underline decoration-teal-600/30 dark:decoration-teal-500/30 underline-offset-8">Topluluktan.</span>
-                            </h2>
-                        </div>
-                        <p className="text-zinc-600 dark:text-zinc-500 text-lg font-light leading-relaxed max-w-md">
-                            Diğer elektrikli araç sahipleriyle tanışın, deneyimlerinizi paylaşın ve operatörler hakkında gerçek kullanıcı yorumlarını okuyun.
-                        </p>
-                        <Link href="/topluluk" className="inline-flex items-center gap-2 text-black dark:text-white font-medium group text-sm">
-                            Topluluğa Katıl
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-teal-600 dark:text-teal-500" />
-                        </Link>
-                    </div>
-                </motion.section>
+                            <p className="text-slate-600 text-lg leading-relaxed max-w-md">
+                                {content.network.desc}
+                            </p>
 
-                {/* Section 3: Route Planning */}
-                <motion.section
-                    initial={{ opacity: 0, y: 100, scale: 0.95 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true, margin: "-100px" }}
-                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="grid md:grid-cols-2 gap-12 items-center"
-                >
-                    <div className="space-y-8 order-2 md:order-1">
-                        <div className="space-y-2">
-                            <span className="text-emerald-600 dark:text-emerald-500 text-[10px] font-bold uppercase tracking-[0.4em]">Smart Route Intelligence</span>
-                            <h2 className="text-4xl md:text-6xl font-extralight tracking-tight text-black dark:text-white leading-[1.1]">
-                                Stres Yok, <br /> <span className="font-medium">Sadece Rota.</span>
-                            </h2>
+                            <ul className="space-y-4 pt-4">
+                                {content.network.bullets.map((item, i) => (
+                                    <li key={i} className="flex items-center gap-3 text-slate-700 font-semibold">
+                                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                            <Leaf className="w-3.5 h-3.5 fill-current" />
+                                        </div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <Link href="/harita" className="group inline-flex items-center gap-3 px-8 py-4 bg-slate-900 text-white text-sm font-bold tracking-wide rounded-2xl hover:bg-slate-800 transition-all mt-6 shadow-lg shadow-slate-900/10">
+                                {content.network.cta}
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </Link>
                         </div>
-                        <p className="text-zinc-600 dark:text-zinc-500 text-lg font-light leading-relaxed max-w-md">
-                            Aracınızın menziline ve hava durumuna göre optimize edilmiş en akıllı rota planlama algoritması. Yolda kalma endişesine son verin.
-                        </p>
-                        <Link href="/rota-planla" className="inline-flex items-center gap-2 text-black dark:text-white font-medium group text-sm">
-                            Rotanı Planla
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-600 dark:text-emerald-500" />
-                        </Link>
-                    </div>
-                    <motion.div
-                        className="relative order-1 md:order-2"
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ duration: 0.5 }}
+
+                        <div className="relative order-1 md:order-2">
+                            <div className="aspect-square rounded-[2.5rem] bg-white relative overflow-hidden group shadow-2xl shadow-slate-200 border border-slate-100 p-8 flex flex-col justify-between hover:-translate-y-2 transition-transform duration-500">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-green-50 rounded-full blur-3xl -mr-16 -mt-16" />
+                                <div className="relative z-10 w-16 h-16 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-500/30">
+                                    <Globe className="w-8 h-8" />
+                                </div>
+                                <div className="relative z-10">
+                                    <h3 className="text-3xl font-bold text-slate-900 mb-2">{content.network.card.badge}</h3>
+                                    <p className="text-slate-500 font-medium">{content.network.card.sub}</p>
+                                </div>
+                                <svg className="absolute bottom-0 right-0 w-full h-1/2 opacity-10 text-green-600" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <path d="M0,100 C30,90 40,50 100,20" fill="none" stroke="currentColor" strokeWidth="2" />
+                                </svg>
+                            </div>
+                        </div>
+                    </motion.section>
+
+                    {/* Section 2: Community */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 50 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-100px" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className="grid md:grid-cols-2 gap-16 items-center"
                     >
-                        <div className="aspect-square rounded-[3rem] bg-gradient-to-tr from-teal-500/[0.03] dark:from-teal-500/20 to-emerald-500/5 border border-zinc-200 dark:border-white/10 p-12 flex flex-col justify-center items-center group">
-                            <div className="relative w-full h-full flex items-center justify-center">
-                                <Navigation className="w-24 h-24 text-black dark:text-white group-hover:scale-110 transition-transform duration-700" />
+                        <div className="relative">
+                            <div className="aspect-[4/3] rounded-[2.5rem] bg-white relative overflow-hidden group shadow-2xl shadow-slate-200 border border-slate-100 flex items-center justify-center hover:-translate-y-2 transition-transform duration-500">
+                                <div className="absolute bottom-0 left-0 w-64 h-64 bg-yellow-50 rounded-full blur-3xl -ml-16 -mb-16" />
                                 <motion.div
-                                    className="absolute inset-0 border-2 border-dashed border-zinc-200 dark:border-white/10 rounded-full"
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                    className="absolute w-12 h-12 rounded-full bg-slate-200 border-2 border-white shadow-md top-1/4 left-1/4"
+                                    animate={{ y: [-5, 5, -5] }}
+                                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                                 />
                                 <motion.div
-                                    className="absolute inset-12 border border-emerald-500/10 dark:border-emerald-500/20 rounded-full"
-                                    animate={{ rotate: -360 }}
-                                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                                    className="absolute w-16 h-16 rounded-full bg-slate-300 border-2 border-white shadow-md bottom-1/3 right-1/4"
+                                    animate={{ y: [5, -5, 5] }}
+                                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
                                 />
+                                <div className="relative z-10 flex flex-col items-center">
+                                    <div className="w-20 h-20 rounded-full bg-yellow-400 flex items-center justify-center shadow-xl shadow-yellow-400/30 mb-4 transform group-hover:scale-110 transition-transform duration-300">
+                                        <Heart className="w-10 h-10 text-white fill-white" />
+                                    </div>
+                                    <div className="px-6 py-2 rounded-full bg-white shadow-lg border border-slate-100">
+                                        <span className="text-sm font-bold text-slate-800">{content.community.card.badge}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </motion.div>
-                </motion.section>
 
-            </div>
+                        <div className="space-y-8 relative">
+                            <div className="space-y-4">
+                                <span className="inline-block px-4 py-1.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider">
+                                    {content.community.badge}
+                                </span>
+                                <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
+                                    {content.community.headline[0]} <br /> <span className="text-yellow-500">{content.community.headline[1]}</span>
+                                </h2>
+                            </div>
+                            <p className="text-slate-600 text-lg leading-relaxed max-w-md">
+                                {content.community.desc}
+                            </p>
+                            <Link href="/topluluk" className="group inline-flex items-center gap-3 px-8 py-4 border-2 border-slate-100 bg-white text-slate-900 text-sm font-bold tracking-wide rounded-2xl hover:border-slate-300 transition-all mt-6">
+                                {content.community.cta}
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-slate-400" />
+                            </Link>
+                        </div>
+                    </motion.section>
 
-            {/* Decorative Watermark Footer */}
-            <div className="pb-20 text-center opacity-[0.03] dark:opacity-5 pointer-events-none transition-opacity">
-                <span className="text-[15vw] font-black tracking-tighter uppercase whitespace-nowrap text-black dark:text-white">
-                    OutaCharge
-                </span>
+                    {/* Section 3: Intelligence (Route Planner Preview) */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 50 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-100px" }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        className="grid md:grid-cols-2 gap-16 items-center"
+                    >
+                        <div className="space-y-8 order-2 md:order-1">
+                            <div className="space-y-4">
+                                <span className="inline-block px-4 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider">
+                                    {content.route.badge}
+                                </span>
+                                <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
+                                    {content.route.headline[0]} <br /> <span className="text-blue-500">{content.route.headline[1]}</span>
+                                </h2>
+                            </div>
+                            <p className="text-slate-600 text-lg leading-relaxed max-w-md">
+                                {content.route.desc}
+                            </p>
+                            <Link href="/rota-planla" className="group inline-flex items-center gap-3 px-8 py-4 bg-blue-600 text-white text-sm font-bold tracking-wide rounded-2xl hover:bg-blue-700 transition-all mt-6 shadow-xl shadow-blue-500/20">
+                                {content.route.cta}
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                        </div>
+
+                        <div className="relative order-1 md:order-2">
+                            {/* Illustrative Route Card */}
+                            <div className="aspect-square rounded-[2.5rem] bg-white relative overflow-hidden group shadow-2xl shadow-slate-200 border border-slate-100 p-8 flex flex-col hover:-translate-y-2 transition-transform duration-500">
+
+                                {/* Background Map Abstract */}
+                                <div className="absolute inset-0 opacity-10 pointer-events-none">
+                                    <svg className="w-full h-full text-slate-900" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <path d="M0,0 Q50,50 100,100 M100,0 Q50,50 0,100" stroke="currentColor" strokeWidth="0.5" fill="none" />
+                                        <circle cx="20" cy="30" r="1" fill="currentColor" />
+                                        <circle cx="80" cy="70" r="1" fill="currentColor" />
+                                        <circle cx="50" cy="50" r="2" fill="currentColor" />
+                                    </svg>
+                                </div>
+
+                                {/* Floating Inputs */}
+                                <div className="relative z-10 space-y-4 mt-8">
+                                    <div className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 flex items-center gap-4 transform group-hover:translate-x-2 transition-transform duration-500">
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <div className="w-3 h-3 rounded-full bg-current" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="h-2 w-16 bg-slate-200 rounded-full mb-2" />
+                                            <div className="h-2 w-32 bg-slate-100 rounded-full" />
+                                        </div>
+                                    </div>
+
+                                    <div className="absolute left-8 top-12 bottom-12 w-0.5 border-l-2 border-dashed border-slate-200 h-8 z-0 ml-4" />
+
+                                    <div className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 flex items-center gap-4 transform group-hover:translate-x-4 transition-transform duration-700 delay-100">
+                                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                                            <Zap className="w-4 h-4 fill-current" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="h-2 w-20 bg-slate-200 rounded-full mb-2" />
+                                            <div className="h-2 w-24 bg-slate-100 rounded-full" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Bottom Stats */}
+                                <div className="mt-auto bg-slate-50 rounded-2xl p-6 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Mesafe</div>
+                                        <div className="text-xl font-bold text-slate-900">450 km</div>
+                                    </div>
+                                    <div className="w-px h-8 bg-slate-200" />
+                                    <div>
+                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Süre</div>
+                                        <div className="text-xl font-bold text-slate-900">4s 20dk</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.section>
+
+                </div>
+
+                <div className="pb-32 text-center opacity-40 pointer-events-none select-none">
+                    <span className="text-[12vw] font-black tracking-tight uppercase whitespace-nowrap text-slate-100">
+                        OutaCharge
+                    </span>
+                </div>
             </div>
         </div>
     );
